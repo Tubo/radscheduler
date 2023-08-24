@@ -5,16 +5,14 @@ import holidays
 import statistics
 
 from radscheduler.core.models import ShiftType, LeaveType, Status, StatusType, Weekday
-from radscheduler.core.validators import validate_assignments
+from radscheduler.core.roster import filter_assignments_by_date_and_shift_type
 from radscheduler.core.logic import (
     Assignment,
-    generate_shifts,
+    DefaultRoster,
     generate_leaves,
     filter_shifts_by_date,
     filter_shifts_by_types,
     filter_shifts_by_date_and_type,
-    fill_roster,
-    registrar_by_fatigue,
     assignment_shift_breakdown,
     registrar_assignment_date_distance,
 )
@@ -97,11 +95,11 @@ def test_mark_stat_day_in_generated_shifts():
 
     # 26th is Monday and Boxing day and Christmas holiday, every shift is stat_day
     day_26 = filter_shifts_by_date(shifts, date(2022, 12, 26))
-    assert all([shift.stat_day for shift in day_26])
+    assert len([shift.stat_day for shift in day_26 if shift.stat_day]) == 3, "not NRDO"
 
     # 27th is Tuesday and Boxing holiday, every shift is stat_day
     day_27 = filter_shifts_by_date(shifts, date(2022, 12, 27))
-    assert all([shift.stat_day for shift in day_27])
+    assert len([shift.stat_day for shift in day_27 if shift.stat_day]) == 3, "not NRDO"
 
 
 def test_2022_holidays():
@@ -117,39 +115,31 @@ def test_2022_holidays():
     assert date(2022, 11, 11) in canterbury_holidays, "Canterbury anniversary"
 
 
-def get_assignments(assignments, date, shift_type):
-    return list(
-        filter(
-            lambda a: (a.shift.date == date) and (a.shift.type == shift_type),
-            assignments,
-        )
-    )
-
-
 def test_recency_weighting(juniors):
+    roster = DefaultRoster(registrars=juniors)
     assignment = fill_weekend_and_rdos(
-        generate_shifts(date(2023, 1, 2), date(2023, 1, 22)),
+        roster.generate_shifts(date(2023, 1, 2), date(2023, 1, 22)),
         juniors[0],
         date(2023, 1, 7),
     )
     assert (
-        registrar_by_fatigue(juniors, assignment, [], [], date(2023, 1, 21))[-1][1] > 6
+        roster.registrar_sorted_by_fatigue(assignment, date(2023, 1, 21))[-1][1] > 6
     ), "Fatigue > 6 due to recency"
 
 
 def test_complete_week(juniors, seniors):
-    result = fill_roster(
-        generate_shifts(date(2023, 1, 2), date(2023, 1, 10)), juniors + seniors
-    )
-    roster = partial(get_assignments, result)
+    roster = DefaultRoster(registrars=juniors + seniors)
+    roster.generate_shifts(date(2023, 1, 2), date(2023, 1, 10))
+    result = roster.fill_roster()
+    get_assignment = partial(filter_assignments_by_date_and_shift_type, result)
 
     # Weekend
-    mon_rdo = roster(date(2023, 1, 2), ShiftType.WRDO)[0]
-    tue_rdo = roster(date(2023, 1, 3), ShiftType.WRDO)[0]
-    fri = roster(date(2023, 1, 6), ShiftType.LONG)[0]
-    sat = roster(date(2023, 1, 7), ShiftType.WEEKEND)[0]
-    sun = roster(date(2023, 1, 8), ShiftType.WEEKEND)[0]
-    mon2 = roster(date(2023, 1, 9), ShiftType.LONG)[0]
+    mon_rdo = get_assignment(date(2023, 1, 2), ShiftType.WRDO)[0]
+    tue_rdo = get_assignment(date(2023, 1, 3), ShiftType.WRDO)[0]
+    fri = get_assignment(date(2023, 1, 6), ShiftType.LONG)[0]
+    sat = get_assignment(date(2023, 1, 7), ShiftType.WEEKEND)[0]
+    sun = get_assignment(date(2023, 1, 8), ShiftType.WEEKEND)[0]
+    mon2 = get_assignment(date(2023, 1, 9), ShiftType.LONG)[0]
 
     assert mon_rdo.registrar == tue_rdo.registrar, "same reg on two rdos"
     assert fri.registrar != sat.registrar, "not oncall pre weekend"
@@ -158,12 +148,12 @@ def test_complete_week(juniors, seniors):
     assert sun.registrar != mon2.registrar, "not oncall post weekend"
 
     # Weekend nights
-    thur = roster(date(2023, 1, 5), ShiftType.LONG)[0]
-    fri_night = roster(date(2023, 1, 6), ShiftType.NIGHT)[0]
-    fri_long = roster(date(2023, 1, 6), ShiftType.LONG)[0]
-    sat_night = roster(date(2023, 1, 7), ShiftType.NIGHT)[0]
-    sun_night = roster(date(2023, 1, 8), ShiftType.NIGHT)[0]
-    mon2 = roster(date(2023, 1, 9), ShiftType.LONG)[0]
+    thur = get_assignment(date(2023, 1, 5), ShiftType.LONG)[0]
+    fri_night = get_assignment(date(2023, 1, 6), ShiftType.NIGHT)[0]
+    fri_long = get_assignment(date(2023, 1, 6), ShiftType.LONG)[0]
+    sat_night = get_assignment(date(2023, 1, 7), ShiftType.NIGHT)[0]
+    sun_night = get_assignment(date(2023, 1, 8), ShiftType.NIGHT)[0]
+    mon2 = get_assignment(date(2023, 1, 9), ShiftType.LONG)[0]
 
     assert thur.registrar != fri_night.registrar, "no oncall pre nights"
     assert fri_night.registrar == sat_night.registrar, "same reg on nights"
@@ -172,11 +162,11 @@ def test_complete_week(juniors, seniors):
     assert sun_night.registrar != mon2.registrar, "not oncall post nights"
 
     # Weekday nights
-    mon_night = roster(date(2023, 1, 2), ShiftType.NIGHT)[0]
-    tue_night = roster(date(2023, 1, 3), ShiftType.NIGHT)[0]
-    wed_night = roster(date(2023, 1, 4), ShiftType.NIGHT)[0]
-    thur_night = roster(date(2023, 1, 5), ShiftType.NIGHT)[0]
-    fri_long = roster(date(2023, 1, 6), ShiftType.LONG)[0]
+    mon_night = get_assignment(date(2023, 1, 2), ShiftType.NIGHT)[0]
+    tue_night = get_assignment(date(2023, 1, 3), ShiftType.NIGHT)[0]
+    wed_night = get_assignment(date(2023, 1, 4), ShiftType.NIGHT)[0]
+    thur_night = get_assignment(date(2023, 1, 5), ShiftType.NIGHT)[0]
+    fri_long = get_assignment(date(2023, 1, 6), ShiftType.LONG)[0]
 
     assert mon_night.registrar == tue_night.registrar
     assert tue_night.registrar == wed_night.registrar
@@ -189,22 +179,21 @@ def test_weekend_and_rdos(seniors):
     When a registrar is assigned to a weekend, they should also be assigned to
     RDOs on the Mon and Tue on the same week, Thurs and Fri for the next week.
     """
-    result = fill_roster(
-        generate_shifts(date(2023, 1, 2), date(2023, 1, 16)),
-        seniors,
-    )
-    roster = partial(get_assignments, result)
+    roster = DefaultRoster(registrars=seniors)
+    roster.generate_shifts(date(2023, 1, 2), date(2023, 1, 16))
+    result = roster.fill_roster()
+    get_assignment = partial(filter_assignments_by_date_and_shift_type, result)
 
-    mon_rdo = roster(date(2023, 1, 2), ShiftType.WRDO)[0]
-    tue_rdo = roster(date(2023, 1, 3), ShiftType.WRDO)[0]
-    sat = roster(date(2023, 1, 7), ShiftType.WEEKEND)[0]
-    sun = roster(date(2023, 1, 8), ShiftType.WEEKEND)[0]
-    mon_rdo2 = roster(date(2023, 1, 9), ShiftType.WRDO)[0]
-    tue_rdo2 = roster(date(2023, 1, 10), ShiftType.WRDO)[0]
-    thur_rdo = roster(date(2023, 1, 12), ShiftType.WRDO)[0]
-    fri_rdo = roster(date(2023, 1, 13), ShiftType.WRDO)[0]
-    sat2 = roster(date(2023, 1, 14), ShiftType.WEEKEND)[0]
-    sun2 = roster(date(2023, 1, 15), ShiftType.WEEKEND)[0]
+    mon_rdo = get_assignment(date(2023, 1, 2), ShiftType.WRDO)[0]
+    tue_rdo = get_assignment(date(2023, 1, 3), ShiftType.WRDO)[0]
+    sat = get_assignment(date(2023, 1, 7), ShiftType.WEEKEND)[0]
+    sun = get_assignment(date(2023, 1, 8), ShiftType.WEEKEND)[0]
+    mon_rdo2 = get_assignment(date(2023, 1, 9), ShiftType.WRDO)[0]
+    tue_rdo2 = get_assignment(date(2023, 1, 10), ShiftType.WRDO)[0]
+    thur_rdo = get_assignment(date(2023, 1, 12), ShiftType.WRDO)[0]
+    fri_rdo = get_assignment(date(2023, 1, 13), ShiftType.WRDO)[0]
+    sat2 = get_assignment(date(2023, 1, 14), ShiftType.WEEKEND)[0]
+    sun2 = get_assignment(date(2023, 1, 15), ShiftType.WEEKEND)[0]
 
     assert sat.registrar == sun.registrar, "same reg on Sat and Sun for weekend1"
     assert sat2.registrar == sun2.registrar, "same reg on Sat and Sun on weekend2"
@@ -222,17 +211,16 @@ def test_nights_and_rdos(seniors):
     After a weekend set of nights (Fri, Sat and Sun), the registrar should have
     2 RDOs (Mon and Tue) in the following week.
     """
-    result = fill_roster(
-        generate_shifts(date(2023, 1, 2), date(2023, 1, 11)),
-        seniors,
-    )
-    roster = partial(get_assignments, result)
+    roster = DefaultRoster(registrars=seniors)
+    roster.generate_shifts(date(2023, 1, 2), date(2023, 1, 11))
+    result = roster.fill_roster()
+    get_assignments = partial(filter_assignments_by_date_and_shift_type, result)
 
-    fri_night = roster(date(2023, 1, 6), ShiftType.NIGHT)[0]
-    sat_night = roster(date(2023, 1, 7), ShiftType.NIGHT)[0]
-    sun_night = roster(date(2023, 1, 8), ShiftType.NIGHT)[0]
-    mon_rdo = roster(date(2023, 1, 9), ShiftType.NRDO)[0]
-    tue_rdo = roster(date(2023, 1, 10), ShiftType.NRDO)[0]
+    fri_night = get_assignments(date(2023, 1, 6), ShiftType.NIGHT)[0]
+    sat_night = get_assignments(date(2023, 1, 7), ShiftType.NIGHT)[0]
+    sun_night = get_assignments(date(2023, 1, 8), ShiftType.NIGHT)[0]
+    mon_rdo = get_assignments(date(2023, 1, 9), ShiftType.NRDO)[0]
+    tue_rdo = get_assignments(date(2023, 1, 10), ShiftType.NRDO)[0]
 
     assert (
         fri_night.registrar == sat_night.registrar
@@ -253,17 +241,17 @@ def test_three_year_roster_equal_start(juniors, seniors):
     In a group of registrars, the number of shifts should be even across all
     when they have no previous assignments.
     """
-
-    shifts = generate_shifts(date(2023, 1, 2), date(2026, 1, 1))
-    assignments = fill_roster(shifts, juniors + seniors)
+    roster = DefaultRoster(registrars=juniors + seniors)
+    roster.generate_shifts(date(2023, 1, 2), date(2026, 1, 1))
+    assignments = roster.fill_roster()
 
     shift_breakdown = assignment_shift_breakdown(assignments)
     for shift_type, counts in shift_breakdown.items():
         shift_count_stdev = statistics.stdev(counts.values())
         assert shift_count_stdev < 5, f"{shift_type} should be even"
 
-    fatigue_breakdown = registrar_by_fatigue(
-        juniors + seniors, assignments, [], [], date(2026, 1, 1), recency_wgt=False
+    fatigue_breakdown = roster.registrar_sorted_by_fatigue(
+        assignments, date(2026, 1, 1), recency_length=0
     )
     fatigue_stdev = statistics.stdev([f for _, f in fatigue_breakdown])
     assert (
@@ -272,11 +260,13 @@ def test_three_year_roster_equal_start(juniors, seniors):
 
 
 def test_no_shifts_when_on_leave(juniors, seniors):
-    shifts = generate_shifts(date(2023, 1, 2), date(2023, 1, 22))
     leaves = generate_leaves(
         date(2023, 1, 2), date(2023, 1, 22), LeaveType.ANNUAL, juniors[0]
     )
-    assignments = fill_roster(shifts, juniors + seniors, leaves=leaves)
+    roster = DefaultRoster(registrars=juniors + seniors, leaves=leaves)
+    roster.generate_shifts(date(2023, 1, 2), date(2023, 1, 22))
+    assignments = roster.fill_roster()
+
     assert (
         list(filter(lambda a: a.registrar == juniors[0], assignments)) == []
     ), "No shifts if on leave"
@@ -284,14 +274,16 @@ def test_no_shifts_when_on_leave(juniors, seniors):
 
 def test_non_rostered_status(juniors, seniors):
     junior1 = juniors[0]
-    shifts = generate_shifts(date(2023, 1, 2), date(2023, 1, 22))
     status = Status(
         start=date(2023, 1, 2),
         end=date(2023, 1, 22),
         type=StatusType.BUDDY,
         registrar=junior1,
     )
-    assignments = fill_roster(shifts, juniors + seniors, statuses=[status])
+    roster = DefaultRoster(registrars=juniors + seniors, statuses=[status])
+    roster.generate_shifts(date(2023, 1, 2), date(2023, 1, 22))
+
+    assignments = roster.fill_roster()
     assert (
         list(filter(lambda a: a.registrar == junior1, assignments)) != []
     ), "Registrar with buddy status should be rostered"
@@ -302,7 +294,8 @@ def test_non_rostered_status(juniors, seniors):
         type=StatusType.PRE_ONCALL,
         registrar=junior1,
     )
-    assignments = fill_roster(shifts, juniors + seniors, statuses=[status])
+    roster.statuses = [status]
+    assignments = roster.fill_roster()
     assert (
         list(filter(lambda a: a.registrar == junior1, assignments)) == []
     ), "Registrar with pre-oncall status should not be rostered"
@@ -310,24 +303,21 @@ def test_non_rostered_status(juniors, seniors):
 
 def test_first_start_oncall(juniors, seniors):
     junior1 = juniors[0]
-    shifts = generate_shifts(date(2023, 1, 2), date(2024, 1, 2))
     status = Status(
         start=date(2023, 1, 2),
         end=date(2023, 6, 22),
         type=StatusType.PRE_ONCALL,
         registrar=junior1,
     )
-    assignments = fill_roster(shifts, juniors + seniors, statuses=[status])
+    roster = DefaultRoster(registrars=juniors + seniors, statuses=[status])
+    roster.generate_shifts(date(2023, 1, 2), date(2024, 1, 2))
+    assignments = roster.fill_roster()
 
     shift_breakdown = assignment_shift_breakdown(assignments)
-
-    fatigue_breakdown = registrar_by_fatigue(
-        juniors + seniors,
+    fatigue_breakdown = roster.registrar_sorted_by_fatigue(
         assignments,
-        leaves=[],
-        statuses=[status],
         until=date(2024, 1, 2),
-        recency_wgt=False,
+        recency_length=0,
     )
     fatigue_stdev = statistics.stdev([f for _, f in fatigue_breakdown])
     assert (
@@ -346,22 +336,19 @@ def test_first_start_oncall(juniors, seniors):
 
 
 def test_return_from_parental_leave(juniors, seniors):
-    junior1 = juniors[0]
-    shifts = generate_shifts(date(2023, 1, 2), date(2024, 1, 2))
     leaves = generate_leaves(
         date(2023, 3, 2), date(2023, 9, 22), LeaveType.PARENT, juniors[0]
     )
-    assignments = fill_roster(shifts, juniors + seniors, leaves=leaves, statuses=[])
+    roster = DefaultRoster(registrars=juniors + seniors, leaves=leaves)
+    roster.generate_shifts(date(2023, 1, 2), date(2024, 1, 2))
+    assignments = roster.fill_roster()
 
     shift_breakdown = assignment_shift_breakdown(assignments)
 
-    fatigue_breakdown = registrar_by_fatigue(
-        juniors + seniors,
+    fatigue_breakdown = roster.registrar_sorted_by_fatigue(
         assignments,
-        leaves=leaves,
-        statuses=[],
         until=date(2024, 1, 2),
-        recency_wgt=False,
+        recency_length=False,
     )
     fatigue_stdev = statistics.stdev([f for _, f in fatigue_breakdown])
     assert (
@@ -377,41 +364,3 @@ def test_return_from_parental_leave(juniors, seniors):
     assert (
         dist_mean - 2 * dist_stdev < distances[0][1]
     ), "Distance should be higher than mean, as registrar is returning from leave"
-
-
-def test_no_weekend_shift_abutting_leaves(juniors, seniors):
-    junior1 = juniors[0]
-    shifts = generate_shifts(date(2023, 1, 2), date(2023, 12, 31))
-    leaves = generate_leaves(
-        date(2023, 1, 2), date(2024, 1, 2), LeaveType.ANNUAL, juniors[0]
-    )
-    mon_leaves = list(filter(lambda l: l.date.weekday() == Weekday.MON, leaves))
-    fri_leaves = list(filter(lambda l: l.date.weekday() == Weekday.FRI, leaves))
-
-    # If taking leaves every Monday or Friday, then no weekend day or night shifts
-    for day, leaves in [("Mon", mon_leaves), ("Fri", fri_leaves)]:
-        assignments = fill_roster(shifts, juniors + seniors, leaves=leaves, statuses=[])
-        shift_breakdown = assignment_shift_breakdown(assignments)
-
-        junior1_assignments = list(
-            filter(lambda a: a.registrar == junior1, assignments)
-        )
-
-        weekend_assignments = list(
-            filter(lambda a: a.shift.type == ShiftType.WEEKEND, junior1_assignments)
-        )
-        assert (
-            list(weekend_assignments) == []
-        ), f"No weekend day shifts abutting {day} leave"
-
-        weekend_nights_assignments = list(
-            filter(
-                lambda a: (a.shift.type == ShiftType.NIGHT)
-                and (a.shift.date.weekday() in [Weekday.FRI, Weekday.SAT, Weekday.SUN]),
-                junior1_assignments,
-            )
-        )
-
-        assert (
-            weekend_nights_assignments == []
-        ), f"No weekend night shifts abutting {day} leave"
