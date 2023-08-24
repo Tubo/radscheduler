@@ -1,6 +1,5 @@
 from functools import partial
 from datetime import date, timedelta
-import pytest
 import holidays
 import statistics
 
@@ -48,7 +47,8 @@ def test_generate_usual_shifts():
     """
     Test that the numbers of generated shifts per day are correct.
     """
-    shifts = generate_shifts(date(2023, 1, 2), date(2023, 1, 22))
+    roster = DefaultRoster()
+    shifts = roster.generate_shifts(date(2023, 1, 2), date(2023, 1, 22))
 
     mon = filter_shifts_by_date(shifts, date(2023, 1, 9))
     assert len(mon) == 4, "Monday: LONG, NIGHT, WRDO, NRDO"
@@ -73,7 +73,8 @@ def test_generate_usual_shifts():
 
 
 def test_mark_stat_day_in_generated_shifts():
-    shifts = generate_shifts(date(2022, 12, 22), date(2022, 12, 29))
+    roster = DefaultRoster()
+    shifts = roster.generate_shifts(date(2022, 12, 22), date(2022, 12, 29))
 
     # 24th is Saturday, not a stat day. Only NIGHT should be stat_day
     day_24 = filter_shifts_by_date(shifts, date(2022, 12, 24))
