@@ -1,4 +1,9 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+
+from radscheduler.core.models import Registrar
+
+admin.site.register(Registrar, UserAdmin)
 
 # Register your models here.
 """

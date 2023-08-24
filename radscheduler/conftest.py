@@ -1,11 +1,8 @@
-from datetime import date
 import pytest
 from django.contrib.auth import get_user_model
 
-from radscheduler.core.models import Profile
-from radscheduler.core.logic import generate_shifts
+from radscheduler.core.models import Registrar
 
-User = get_user_model()
 
 YEAR2 = ["Erika", "Will", "Kelly", "Carol", "Edward"]
 YEAR3 = ["Sam", "Connor", "Michael", "Aaron", "Liam"]
@@ -13,8 +10,7 @@ YEAR4 = ["Angelo", "Waleed", "Nick", "Ben", "Tubo"]
 
 
 def registrar(name, senior=False):
-    user = User(username=name)
-    Profile(user=user, senior=senior)
+    user = Registrar(username=name, senior=senior)
     return user
 
 

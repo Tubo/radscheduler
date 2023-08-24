@@ -1,9 +1,7 @@
 from enum import Enum, IntEnum, auto
 
 from django.db import models
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
+from django.contrib.auth.models import AbstractUser
 
 
 class Weekday(IntEnum):
@@ -14,6 +12,16 @@ class Weekday(IntEnum):
     FRI = 4
     SAT = 5
     SUN = 6
+
+
+class Registrar(AbstractUser):
+    senior = models.BooleanField(default=False)
+    start = models.DateField("start date")
+    finish = models.DateField("finish date")
+    year = models.IntegerField(default=1)
+
+    def __repr__(self) -> str:
+        return f"<Profile: {self.username}>"
 
 
 class ShiftType(models.TextChoices):
@@ -28,7 +36,7 @@ class Shift(models.Model):
     date = models.DateField("shift date")
     type = models.CharField("shift type", max_length=10, choices=ShiftType)
     registrar = models.ForeignKey(
-        User,
+        Registrar,
         blank=True,
         null=True,
         on_delete=models.SET_NULL,
@@ -39,7 +47,7 @@ class Shift(models.Model):
 
     def __repr__(self) -> str:
         if self.registrar:
-            registrar = self.registrar.name
+            registrar = self.registrar.username
         else:
             registrar = "N/A"
         return f"<{self.type} Shift {self.date} ({Weekday(self.date.weekday()).name}): {registrar}>"
@@ -68,7 +76,7 @@ class Status(models.Model):
     end = models.DateField("end date")
     type = models.IntegerField(choices=StatusType)
     registrar = models.ForeignKey(
-        User, blank=False, null=False, on_delete=models.CASCADE
+        Registrar, blank=False, null=False, on_delete=models.CASCADE
     )
 
     @property
@@ -102,7 +110,7 @@ class Leave(models.Model):
     comment = models.TextField()
 
     registrar = models.ForeignKey(
-        User, blank=False, null=False, on_delete=models.CASCADE
+        Registrar, blank=False, null=False, on_delete=models.CASCADE
     )
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
@@ -111,23 +119,12 @@ class Leave(models.Model):
         return f"<Leave: {self.registrar.username} {self.date} ({LeaveType(self.type).name})>"
 
 
-class LeaveForm(models.Model):
+class LeaveApplication(models.Model):
     """
     - Generate printable PDF
     - Triggers an email after creation
     """
 
 
-class SwapForm(models.Model):
+class SwapApplication(models.Model):
     pass
-
-
-class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    senior = models.BooleanField(default=False)
-    start = models.DateField("start date")
-    finish = models.DateField("finish date")
-    year = models.IntegerField(default=1)
-
-    def __repr__(self) -> str:
-        return f"<Profile: {self.user.username}>"
