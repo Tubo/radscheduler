@@ -1,0 +1,15 @@
+[tool.mypy]
+plugins = ["mypy_django_plugin.main"]
+
+[tool.django-stubs]
+DJANGO_SETTINGS_MODULE = "config.settings"
+
+[tool.pytest.ini_options]
+python_files = "tests.py test_*.py *_tests.py"
+DJANGO_SETTINGS_MODULE = "config.settings"
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+    "integration",
+]
