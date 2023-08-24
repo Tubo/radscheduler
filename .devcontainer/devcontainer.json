@@ -19,7 +19,8 @@
 		"vscode": {
 			"extensions": [
 				"ms-python.black-formatter",
-				"GitHub.copilot"
+				"GitHub.copilot",
+				"ms-python.mypy-type-checker"
 			]
 		}
 	}

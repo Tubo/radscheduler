@@ -6,3 +6,4 @@ pytest==7.4.0
 pytest-django==4.5.2
 ortools==9.6.2534
 holidays==0.30
+django-stubs[compatible-mypy]==4.2.3
