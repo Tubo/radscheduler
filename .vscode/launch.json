@@ -8,9 +8,21 @@
             "name": "Python: Django",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/radscheduler/manage.py",
+            "program": "${workspaceFolder}/manage.py",
             "args": [
                 "runserver"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
+            "name": "Python: Django: Import",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/manage.py",
+            "args": [
+                "import",
+                "resources/2021-2023.csv"
             ],
             "django": true,
             "justMyCode": true
