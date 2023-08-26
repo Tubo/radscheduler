@@ -17,6 +17,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from radscheduler.core.views import roster_view
+
 urlpatterns = [
+    path("roster", roster_view, name="roster"),
     path("admin/", admin.site.urls),
 ]
