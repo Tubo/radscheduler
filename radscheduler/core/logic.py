@@ -3,13 +3,12 @@ from datetime import timedelta, date
 
 from radscheduler.core.roster import (
     Assignment,
-    DefaultRoster,
     daterange,
 )
 from radscheduler.core.models import (
     Registrar,
-    Shift,
     Weekday,
+    Shift,
     ShiftType,
     Leave,
     LeaveType,
@@ -86,10 +85,7 @@ def registrar_assignment_date_distance(registrar, assignments):
         assignment.shift.date
         for assignment in assignments
         if (assignment.registrar == registrar)
-        and (
-            assignment.shift.type
-            in [ShiftType.LONG, ShiftType.NIGHT, ShiftType.WEEKEND]
-        )
+        and (assignment.shift.type in [ShiftType.LONG, ShiftType.NIGHT])
     ]
     return average_date_distance(dates)
 

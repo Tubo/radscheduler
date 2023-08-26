@@ -5,10 +5,12 @@ import holidays
 import statistics
 
 from radscheduler.core.models import ShiftType, LeaveType, Status, StatusType, Weekday
-from radscheduler.core.roster import filter_assignments_by_date_and_shift_type
+from radscheduler.core.roster import (
+    DefaultRoster,
+    filter_assignments_by_date_and_shift_type,
+)
 from radscheduler.core.logic import (
     Assignment,
-    DefaultRoster,
     generate_leaves,
     filter_shifts_by_date,
     filter_shifts_by_types,
@@ -39,7 +41,10 @@ def test_no_weekend_shift_abutting_leaves(juniors, seniors):
         )
 
         weekend_assignments = list(
-            filter(lambda a: a.shift.type == ShiftType.WEEKEND, junior1_assignments)
+            filter(
+                lambda a: (a.shift.type == ShiftType.LONG) and a.shift.is_weekend,
+                junior1_assignments,
+            )
         )
         assert (
             list(weekend_assignments) == []
@@ -47,8 +52,7 @@ def test_no_weekend_shift_abutting_leaves(juniors, seniors):
 
         weekend_nights_assignments = list(
             filter(
-                lambda a: (a.shift.type == ShiftType.NIGHT)
-                and (a.shift.date.weekday() in [Weekday.FRI, Weekday.SAT, Weekday.SUN]),
+                lambda a: (a.shift.type == ShiftType.NIGHT) and a.shift.is_weekend,
                 junior1_assignments,
             )
         )

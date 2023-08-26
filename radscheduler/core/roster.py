@@ -52,15 +52,13 @@ class DefaultRoster:
     SHIFT_TYPES = [
         ShiftType.LONG,
         ShiftType.NIGHT,
-        ShiftType.WEEKEND,
-        ShiftType.WRDO,
-        ShiftType.NRDO,
+        ShiftType.RDO,
+        ShiftType.SLEEP,
     ]
     STAT_DAY_SHIFTS = [
         ShiftType.LONG,
         ShiftType.NIGHT,
-        ShiftType.WEEKEND,
-        ShiftType.WRDO,
+        ShiftType.RDO,
     ]
     STAT_NIGHT_SHIFTS = [
         ShiftType.NIGHT,
@@ -96,24 +94,24 @@ class DefaultRoster:
 
         Monday and Tuesday:
         - Long day and night
-        - WRDO (Pre-weekend)
-        - NRDO (Post-weekend)
+        - RDO (Pre-weekend)
+        - Sleep (Post-weekend)
 
         Wednesday:
         - Long day and night
 
         Thursday:
         - Long day and night
-        - WRDO (Post-weekend)
+        - RDO (Post-weekend)
 
         Friday:
         - Long day and night
-        - NRDO (Post weekday night)
-        - WRDO (Post-weekend)
+        - Sleep (Post weekday night)
+        - RDO (Post-weekend)
 
         Saturday and Sunday:
         - Long day and night
-        - NRDO (Post weekday night)
+        - Sleep (Post weekday night)
         """
         self.start, self.end = start, end
         results = []
@@ -150,9 +148,9 @@ class DefaultRoster:
 
     def _gen_monday(self, day) -> [Shift]:
         shifts = self._gen_common_shifts(day)
-        shifts.append(Shift(date=day, type=ShiftType.WRDO))
+        shifts.append(Shift(date=day, type=ShiftType.RDO))
         if self.start <= day - timedelta(2):
-            shifts.append(Shift(date=day, type=ShiftType.NRDO))
+            shifts.append(Shift(date=day, type=ShiftType.SLEEP))
         return shifts
 
     def _gen_tuesday(self, day) -> [Shift]:
@@ -164,24 +162,21 @@ class DefaultRoster:
     def _gen_thursday(self, day) -> [Shift]:
         shifts = self._gen_common_shifts(day)
         if self.start <= day - timedelta(5):
-            shifts.append(Shift(date=day, type=ShiftType.WRDO))
+            shifts.append(Shift(date=day, type=ShiftType.RDO))
         return shifts
 
     def _gen_friday(self, day) -> [Shift]:
         shifts = self._gen_common_shifts(day)
         if self.start <= day - timedelta(5):
-            shifts.append(Shift(date=day, type=ShiftType.WRDO))
+            shifts.append(Shift(date=day, type=ShiftType.RDO))
         if self.start <= day - timedelta(2):
-            shifts.append(Shift(date=day, type=ShiftType.NRDO))
+            shifts.append(Shift(date=day, type=ShiftType.SLEEP))
         return shifts
 
     def _gen_saturday(self, day) -> [Shift]:
-        shifts = [
-            Shift(date=day, type=ShiftType.WEEKEND),
-            Shift(date=day, type=ShiftType.NIGHT),
-        ]
+        shifts = self._gen_common_shifts(day)
         if self.start <= day - timedelta(2):
-            shifts.append(Shift(date=day, type=ShiftType.NRDO))
+            shifts.append(Shift(date=day, type=ShiftType.SLEEP))
         return shifts
 
     def _gen_sunday(self, day) -> [Shift]:
@@ -198,32 +193,35 @@ class DefaultRoster:
             elif shift.type == ShiftType.NIGHT:
                 registrar = self.fill_NIGHT_shift(shift, results)
 
-            elif shift.type == ShiftType.WEEKEND:
-                registrar = self.fill_WEEKEND_shift(shift, results)
+            elif shift.type == ShiftType.RDO:
+                registrar = self.fill_RDO_shift(shift, results)
 
-            elif shift.type == ShiftType.WRDO:
-                registrar = self.fill_WRDO_shift(shift, results)
-
-            elif shift.type == ShiftType.NRDO:
-                registrar = self.fill_NRDO_shift(shift, results)
+            elif shift.type == ShiftType.SLEEP:
+                registrar = self.fill_SLEEP_day(shift, results)
 
             else:
                 raise ValueError("Unknown shift type")
 
             results.append(Assignment(shift, registrar))
 
-        # todo: refactor
         if self.validate_proposed_assignment(results):
             return results
         else:
             raise NonCompliantRoster("Non-compliant roster")
 
     def fill_LONG_shift(self, shift, results) -> Registrar:
-        """
-        Long days and holidays
-        Find next rested registrar
-        """
-        return self.select_next_registrar(shift, results)
+        if shift.is_weekend:
+            if self.is_start_of_set(shift):
+                # Find the registrar that had RDO 5 days ago
+                # Weekend shifts are special, they are deteremined by the RDO from previous Monday and Tuesday
+                # Find the registrar that had RDO from 5 days ago (Monday),
+                registrar = self.same_registrar_last_RDO(shift, results)
+            else:
+                # On Sunday, find the weekend registrar from yesterday
+                registrar = self.same_registrar_yesterday(shift, results)
+            return registrar
+        else:
+            return self.select_next_registrar(shift, results)
 
     def fill_NIGHT_shift(self, shift, results) -> Registrar:
         if self.is_start_of_set(shift):
@@ -234,18 +232,7 @@ class DefaultRoster:
             registrar = self.same_registrar_yesterday(shift, results)
         return registrar
 
-    def fill_WEEKEND_shift(self, shift, results) -> Registrar:
-        if self.is_start_of_set(shift):
-            # Find the registrar that had RDO 5 days ago
-            # Weekend shifts are special, they are deteremined by the RDO from previous Monday and Tuesday
-            # Find the registrar that had RDO from 5 days ago (Monday),
-            registrar = self.same_registrar_last_WRDO(shift, results)
-        else:
-            # On Sunday, find the weekend registrar from yesterday
-            registrar = self.same_registrar_yesterday(shift, results)
-        return registrar
-
-    def fill_WRDO_shift(self, shift, results) -> Registrar:
+    def fill_RDO_shift(self, shift, results) -> Registrar:
         if self.is_start_of_set(shift):
             # Find next rested registrar
             registrar = self.select_next_registrar(shift, results)
@@ -258,7 +245,7 @@ class DefaultRoster:
             registrar = self.same_registrar_yesterday(shift, results)
         return registrar
 
-    def fill_NRDO_shift(self, shift, results) -> Registrar:
+    def fill_SLEEP_day(self, shift, results) -> Registrar:
         # Find the registrar that worked nights last weekend
         registrar = self.same_registrar_last_night_shift(shift, results)
         return registrar
@@ -296,13 +283,13 @@ class DefaultRoster:
 
         If NIGHT shift, then Monday and Friday are first days.
         If WEEKEND shift, then Saturday is the first day.
-        If WRDO shift, then Monday is the first day.
+        If RDO shift, then Monday is the first day.
         """
         if shift.type == ShiftType.NIGHT:
             return shift.date.weekday() in [Weekday.MON, Weekday.FRI]
-        elif shift.type == ShiftType.WEEKEND:
+        elif (shift.type == ShiftType.LONG) and shift.is_weekend:
             return shift.date.weekday() == Weekday.SAT
-        elif shift.type == ShiftType.WRDO:
+        elif shift.type == ShiftType.RDO:
             return shift.date.weekday() == Weekday.MON
         return False
 
@@ -326,11 +313,11 @@ class DefaultRoster:
         )
         return registrar
 
-    def same_registrar_last_WRDO(self, shift, proposed_assignment) -> Registrar:
+    def same_registrar_last_RDO(self, shift, proposed_assignment) -> Registrar:
         last_rdo = shift.date - timedelta(5)
         registrar = find_registrar_from_assignments(
             last_rdo,
-            ShiftType.WRDO,
+            ShiftType.RDO,
             self.prev_assignments + proposed_assignment,
             "No RDO before weekends",
         )
@@ -342,7 +329,7 @@ class DefaultRoster:
 
         return find_registrar_from_assignments(
             saturday,
-            ShiftType.WEEKEND,
+            ShiftType.LONG,
             self.prev_assignments + proposed_assignments,
             "No one worked last weekend",
         )
@@ -439,9 +426,9 @@ def mark_stat_day(
     Change a shift to a stat day if it falls on a public holiday.
     Public holidays are never on weekends per NZ law.
 
-    If a LONG, WEEKEND, WRDO falls on a stat day, it should be a stat day.
-    NRDO should not be a stat day according to clause 17.4.6
+    If a LONG, WEEKEND, RDO falls on a stat day, it should be a stat day.
     If a NIGHT shift falls starts on or finishes on a stat day, it should be counted.
+    Post night sleep day should not be a stat day according to clause 17.4.6
     """
     if (shift.date in canterbury_holidays) and (
         shift.type in day_shifts + night_shifts
@@ -485,7 +472,7 @@ def leave_fatigue_wgt(leaves: list[Leave], until: date, weighting: float) -> flo
     Every 5 day of parental leave is counted as 1 shift.
     """
     parental = list(
-        filter(lambda l: (l.type == LeaveType.PARENT) and (l.date <= until), leaves)
+        filter(lambda l: (l.type == LeaveType.PARENTAL) and (l.date <= until), leaves)
     )
     return len(parental) / 5 * weighting
 

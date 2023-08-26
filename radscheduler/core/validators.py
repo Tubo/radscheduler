@@ -60,7 +60,7 @@ def validate_roster(assignments, leaves, statuses):
         working_days = [
             shift.date
             for shift in shifts
-            if shift.type in [ShiftType.LONG, ShiftType.NIGHT, ShiftType.WEEKEND]
+            if shift.type in [ShiftType.LONG, ShiftType.NIGHT]
         ]
         for i in range(len(working_days) - 7):
             if len(working_days[i : i + 7]) >= 2:
@@ -166,9 +166,9 @@ class NoWeekendAbuttingLeaveValidator(Validator):
         - Friday long is not considered a weekend shift, but a Friday night shift is part of a weekend.
         - Lieu days are not considered in this clause
         """
-        if self.shift.type == ShiftType.WRDO:
-            # This is a Monday WRDO
-            assert self.shift.date.weekday() == Weekday.MON, "Must be a Monday WRDO"
+        if self.shift.type == ShiftType.RDO:
+            # This is a Monday RDO
+            assert self.shift.date.weekday() == Weekday.MON, "Must be a Monday RDO"
             # Other shifts are deteremined by the shift generation algorithm
             leaves_next_fri_or_mon = [
                 l

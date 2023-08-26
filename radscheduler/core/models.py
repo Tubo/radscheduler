@@ -1,4 +1,5 @@
 from enum import Enum, IntEnum, auto
+from datetime import date
 
 from django.db import models
 from django.contrib.auth.models import AbstractUser
@@ -16,25 +17,29 @@ class Weekday(IntEnum):
 
 class Registrar(AbstractUser):
     senior = models.BooleanField(default=False)
-    start = models.DateField("start date")
-    finish = models.DateField("finish date")
-    year = models.IntegerField(default=1)
+    start = models.DateField("start date", null=True, blank=True)
+    finish = models.DateField("finish date", null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    last_edited = models.DateTimeField(auto_now=True)
 
     def __repr__(self) -> str:
-        return f"<Profile: {self.username}>"
+        return f"<Registrar: {self.username}>"
+
+    @property
+    def year(self):
+        return ((date.today() - self.start).days // 365) + 1
 
 
 class ShiftType(models.TextChoices):
-    LONG = "L", "Long day"  # from 5pm to 10m
-    NIGHT = "N", "Night"  # from 10pm to 8am
-    WEEKEND = "W", "Weekend"  # from 8am to 10pm
-    WRDO = "WRDO", "Post weekend RDO"
-    NRDO = "NRDO", "Sleep day"
+    LONG = "LONG", "Weekday Long"  # from 8am to 10pm
+    NIGHT = "NIGHT", "Night"  # from 10pm to 8am
+    RDO = "RDO", "Post weekend RDO"
+    SLEEP = "SLP", "Sleep day"
 
 
 class Shift(models.Model):
     date = models.DateField("shift date")
-    type = models.CharField("shift type", max_length=10, choices=ShiftType)
+    type = models.CharField("shift type", max_length=10, choices=ShiftType.choices)
     registrar = models.ForeignKey(
         Registrar,
         blank=True,
@@ -44,13 +49,24 @@ class Shift(models.Model):
     stat_day = models.BooleanField(default=False)
     extra_duty = models.BooleanField(default=False)
     fatigue_override = models.FloatField(default=0.0)
+    created = models.DateTimeField(auto_now_add=True)
+    last_edited = models.DateTimeField(auto_now=True)
+
+    @property
+    def is_weekend(self) -> bool:
+        """Determine if a LONG day shift is on a weekend"""
+        if self.type == ShiftType.LONG:
+            return self.date.weekday() in [Weekday.SAT, Weekday.SUN]
+        elif self.type == ShiftType.NIGHT:
+            return self.date.weekday() in [Weekday.FRI, Weekday.SAT, Weekday.SUN]
+        return False
 
     def __repr__(self) -> str:
         if self.registrar:
             registrar = self.registrar.username
         else:
             registrar = "N/A"
-        return f"<{self.type} Shift {self.date} ({Weekday(self.date.weekday()).name}): {registrar}>"
+        return f"<{ShiftType(self.type).name} Shift {self.date} ({Weekday(self.date.weekday()).name}): {registrar}>"
 
 
 class StatusType(models.IntegerChoices):
@@ -74,10 +90,12 @@ class Status(models.Model):
 
     start = models.DateField("start date")
     end = models.DateField("end date")
-    type = models.IntegerField(choices=StatusType)
+    type = models.IntegerField(choices=StatusType.choices)
     registrar = models.ForeignKey(
         Registrar, blank=False, null=False, on_delete=models.CASCADE
     )
+    created = models.DateTimeField(auto_now_add=True)
+    last_edited = models.DateTimeField(auto_now=True)
 
     @property
     def not_oncall(self):
@@ -93,17 +111,18 @@ class LeaveType(models.IntegerChoices):
     CONF = auto(), "Conference"
     BE = auto(), "Bereavement"
     LIEU = auto(), "Lieu day"
-    PARENT = auto(), "Parental"
+    PARENTAL = auto(), "Parental"
     SICK = auto(), "Sick"
 
 
 class Leave(models.Model):
-    type = models.IntegerField(choices=LeaveType)
+    type = models.IntegerField(choices=LeaveType.choices)
     date = models.DateField("date of leave")
     portion = models.CharField(
         "portion of day",
         max_length=5,
         choices=[("ALL", "All day"), ("AM", "AM"), ("PM", "PM")],
+        default="ALL",
     )
     approved = models.BooleanField(default=False)
     cancelled = models.BooleanField(default=False)
@@ -124,6 +143,10 @@ class LeaveApplication(models.Model):
     - Generate printable PDF
     - Triggers an email after creation
     """
+
+    registrar = models.ForeignKey(Registrar, on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True)
+    last_edited = models.DateTimeField(auto_now=True)
 
 
 class SwapApplication(models.Model):
