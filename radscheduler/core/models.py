@@ -15,6 +15,16 @@ class Weekday(IntEnum):
     SUN = 6
 
 
+class ISOWeekday(IntEnum):
+    MON = 1
+    TUE = 2
+    WED = 3
+    THUR = 4
+    FRI = 5
+    SAT = 6
+    SUN = 7
+
+
 class Registrar(AbstractUser):
     senior = models.BooleanField(default=False)
     start = models.DateField("start date", null=True, blank=True)
@@ -27,13 +37,17 @@ class Registrar(AbstractUser):
 
     @property
     def year(self):
+        if self.start is None:
+            return None
+        if date.today() > self.finish:
+            return None
         return ((date.today() - self.start).days // 365) + 1
 
 
 class ShiftType(models.TextChoices):
-    LONG = "LONG", "Weekday Long"  # from 8am to 10pm
+    LONG = "LONG", "Long day"  # from 8am to 10pm
     NIGHT = "NIGHT", "Night"  # from 10pm to 8am
-    RDO = "RDO", "Post weekend RDO"
+    RDO = "RDO", "RDO"
     SLEEP = "SLP", "Sleep day"
 
 
@@ -107,7 +121,7 @@ class Status(models.Model):
 
 class LeaveType(models.IntegerChoices):
     ANNUAL = auto(), "Annual"
-    EDU = auto(), "Medical education"
+    EDU = auto(), "Education"
     CONF = auto(), "Conference"
     BE = auto(), "Bereavement"
     LIEU = auto(), "Lieu day"
@@ -116,8 +130,8 @@ class LeaveType(models.IntegerChoices):
 
 
 class Leave(models.Model):
-    type = models.IntegerField(choices=LeaveType.choices)
     date = models.DateField("date of leave")
+    type = models.IntegerField(choices=LeaveType.choices)
     portion = models.CharField(
         "portion of day",
         max_length=5,

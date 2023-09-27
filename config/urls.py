@@ -20,6 +20,8 @@ from django.urls import path
 from radscheduler.core.views import roster_view
 
 urlpatterns = [
-    path("roster", roster_view, name="roster"),
+    path("calendar/", calendar_view, name="calendar"),
+    path("roster/", table_view, name="roster"),
+    path("roster/events/", get_roster_events, name="roster_events"),
     path("admin/", admin.site.urls),
 ]

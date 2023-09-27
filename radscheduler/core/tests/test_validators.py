@@ -9,7 +9,7 @@ from radscheduler.core.roster import (
     DefaultRoster,
     filter_assignments_by_date_and_shift_type,
 )
-from radscheduler.core.logic import (
+from radscheduler.core.utils import (
     Assignment,
     generate_leaves,
     filter_shifts_by_date,

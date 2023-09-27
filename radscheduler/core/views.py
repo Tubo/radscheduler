@@ -1,17 +1,41 @@
 import json
-from django.shortcuts import render
+from datetime import date
+from django.shortcuts import render, HttpResponse
 
-from radscheduler.core.service import retrieve_fullcalendar_events
+from radscheduler.core.service import (
+    retrieve_fullcalendar_events,
+    retrieve_roster_events,
+)
+from radscheduler.core.forms import DateRangeForm
 
 
-# Create your views here.
-def roster_view(request):
+def calendar_view(request):
     """
     Display the roster in a calendar format.
     """
     events = retrieve_fullcalendar_events()
-    e = json.dumps(events)
-    return render(request, "roster.html", {"events": e})
+    events_json = json.dumps(events)
+    return render(request, "calendar.html", {"events": events_json})
+
+
+def table_view(request):
+    """
+    Display the roster in a table format.
+
+    Todo: This should be eventually changed into an Unicorn view.
+    """
+    return render(request, "table.html")
+
+
+def get_roster_events(request):
+    if request.method == "GET":
+        form = DateRangeForm(request.GET)
+        if form.is_valid():
+            start = form.cleaned_data["start"]
+            end = form.cleaned_data["end"]
+            events = retrieve_roster_events(start, end)
+            events_json = events.to_json(orient="table", index=False)
+            return HttpResponse(events_json, content_type="application/json")
 
 
 def workload_view():
@@ -21,10 +45,10 @@ def workload_view():
     """
 
 
-def calendar_feed():
+def feed_view():
     """
-    Three calendars
+    iCal feed of all events groupbed by:
     - Oncall shifts
-    - Leaves and RDOs
+    - Leaves: RDO, SLEEP, AL, MEL, LIEU etc
     - Leave requests (admin only)
     """
