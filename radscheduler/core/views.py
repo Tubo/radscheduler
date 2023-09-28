@@ -5,6 +5,7 @@ from django.shortcuts import render, HttpResponse
 from radscheduler.core.service import (
     retrieve_fullcalendar_events,
     retrieve_roster_events,
+    retrieve_workload_breakdown,
 )
 from radscheduler.core.forms import DateRangeForm
 
@@ -38,11 +39,19 @@ def get_roster_events(request):
             return HttpResponse(events_json, content_type="application/json")
 
 
-def workload_view():
+def get_workload(request):
     """
     Various rankings of registrar workload
     - Heatmap of days of long days a registrar has done within a period
     """
+    if request.method == "GET":
+        form = DateRangeForm(request.GET)
+        if form.is_valid():
+            start = form.cleaned_data["start"]
+            end = form.cleaned_data["end"]
+            workload = retrieve_workload_breakdown(start, end)
+            events_json = workload.to_json(orient="table", index=False)
+            return HttpResponse(events_json, content_type="application/json")
 
 
 def feed_view():

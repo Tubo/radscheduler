@@ -2,68 +2,124 @@
 <html>
   <head>
     <title>Shift Schedule</title>
-    <script src="//unpkg.com/alpinejs" defer></script>
     <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
     <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
     <script src=" https://cdn.jsdelivr.net/npm/luxon@3.4.3/build/global/luxon.min.js "></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.0/dist/cdn.min.js"></script>
     <style></style>
   </head>
   <body>
     <h2>Shift Schedule</h2>
-    <div id="example-table"></div>
+    <div x-data>
+      <input x-model="$store.state.start" type="date" />
+      <input x-model="$store.state.end" type="date" />
+      <button x-on:click="$store.state.refresh()">Refresh</button>
+    </div>
+    <br />
+    <div id="roster-table"></div>
+    <div id="workload-table"></div>
+
     <script>
-      var table = new Tabulator('#example-table', {
-        ajaxURL: '/roster/events/',
-        ajaxContentType: 'json',
-        ajaxResponse: function (url, params, response) {
-          //url - the URL of the request
-          //params - the parameters passed with the request
-          //response - the JSON object returned in the body of the response.
+      const DateTime = luxon.DateTime
       
-          return response.data //return the tableData property of a response json object
-        },
-        layout: 'fitData', //fit columns to width of table (optional)
-        headerSort: false,
-        autoColumnsDefinitions: [
-          { title: 'Registrar', field: 'username', frozen: true, width: 200, formatter: 'plaintext', titleFormatter: 'plaintext' },
-          { field: 'year', visible: false }
-        ],
-        autoColumns: true,
-        columnDefaults: {
-          hozAlign: 'center',
-          headerSort: false,
-          resizable: false,
-          width: 150,
-          headerHozAlign: 'center',
-          titleFormatter: 'datetime',
-          titleFormatterParams: {
-            inputFormat: 'yyyy-MM-dd',
-            outputFormat: 'dd/MM/yy EEE',
-            invalidPlaceholder: ''
-          },
-          formatter: function (cell, formatterParams, onRendered) {
-            el = cell.getElement()
-            content = cell.getValue()
-            dateString = cell.getField()
-            row = cell.getRow().getElement()
-            let date = luxon.DateTime.fromISO(dateString)
-            if (date.weekday === 6 || date.weekday === 7) {
-              if (row.classList.contains('tabulator-row-even')) {
-                el.style.backgroundColor = '#b1b1b1'
-              } else if (row.classList.contains('tabulator-row-odd')) {
-                el.style.backgroundColor = '#c6c6c6'
-              }
-            }
-            return content
+      document.addEventListener('alpine:init', () => {
+        Alpine.store('state', {
+          start: DateTime.now().minus({ days: 7 }).toISODate(),
+          end: DateTime.now().plus({ days: 28 }).toISODate(),
+          rosterTable: rosterTable('#roster-table'),
+          workloadTable: workloadTable('#workload-table'),
+          refresh: function () {
+            this.rosterTable.setData()
+            this.workloadTable.setData()
           }
-        },
-        initialSort: [
-          { column: 'year', dir: 'asc' }, //sort by this first
-          { column: 'username', dir: 'asc' } //then sort by this second
-        ],
-        groupBy: 'year',
-        groupToggleElement: false
+        })
       })
+      
+      function rosterTable(id) {
+        return new Tabulator(id, {
+          renderHorizontal: 'virtual',
+          ajaxURL: '/roster/events/',
+          ajaxContentType: 'json',
+          ajaxParams: () => ({ start: Alpine.store('state').start, end: Alpine.store('state').end }),
+          ajaxResponse: function (url, params, response) {
+            return response.data
+          },
+          layout: 'fitData', //fit columns to width of table (optional)
+          headerSort: false,
+          autoColumnsDefinitions: [
+            { title: 'Registrar', field: 'username', frozen: true, width: 200, formatter: 'plaintext', titleFormatter: 'plaintext' },
+            { field: 'year', visible: false }
+          ],
+          autoColumns: true,
+          columnDefaults: {
+            hozAlign: 'center',
+            headerSort: false,
+            resizable: false,
+            width: 150,
+            headerHozAlign: 'center',
+            titleFormatter: function (cell, formatterParams, onRendered) {
+              let el = cell.getElement()
+              let value = cell.getValue()
+              let date = DateTime.fromISO(value)
+      
+              if (date.toISODate() === DateTime.now().toISODate()) {
+                el.style.backgroundColor = '#ffff00'
+              }
+      
+              return date.toFormat('ccc dd/MM/yy')
+            },
+            formatter: function (cell, formatterParams, onRendered) {
+              let el = cell.getElement()
+              let content = cell.getValue()
+              let dateString = cell.getField()
+              let row = cell.getRow().getElement()
+      
+              // Saturday and Sunday column background colour
+              let date = luxon.DateTime.fromISO(dateString)
+              if (date.weekday === 6 || date.weekday === 7) {
+                if (row.classList.contains('tabulator-row-even')) {
+                  el.style.backgroundColor = '#b1b1b1'
+                } else if (row.classList.contains('tabulator-row-odd')) {
+                  el.style.backgroundColor = '#c6c6c6'
+                }
+              }
+      
+              // Highlight shifts and leaves
+              let leaves = ['Annual', 'Education', 'Parental', 'Lieu', 'Sick']
+              let shifts = ['Long', 'Night']
+              if (typeof content === 'string') {
+                if (leaves.some((substr) => content.includes(substr))) {
+                  el.style.backgroundColor = '#90ee90'
+                } else if (shifts.some((substr) => content.includes(substr))) {
+                  el.style.backgroundColor = '#ffcccb'
+                }
+              }
+      
+              return content
+            }
+          },
+          initialSort: [
+            { column: 'year', dir: 'asc' }, //sort by this first
+            { column: 'username', dir: 'asc' } //then sort by this second
+          ],
+          groupBy: 'year',
+          groupToggleElement: false
+        })
+      }
+      
+      function workloadTable(id) {
+        return new Tabulator(id, {
+          ajaxURL: '/roster/workload/',
+          ajaxContentType: 'json',
+          ajaxParams: () => ({ start: Alpine.store('state').start, end: Alpine.store('state').end }),
+          ajaxResponse: function (url, params, response) {
+            return response.data
+          },
+          headerSort: false,
+          autoColumnsDefinitions: [{ title: 'Registrar', field: 'username', frozen: true, width: 200, formatter: 'plaintext', titleFormatter: 'plaintext' }],
+          autoColumns: true
+        })
+      }
     </script>
   </body>
 </html>

@@ -32,7 +32,9 @@ leave_types = {
 
 
 def import_history(filename: str, users: list[Registrar], start: date, end: date):
-    """Imports the history of shifts and leaves from a CSV file."""
+    """Imports the history of shifts and leaves from a CSV file.
+    Specify a range to import from START to END.
+    """
     rows = []
     with open(filename) as f:
         reader = csv.reader(f)
@@ -74,7 +76,13 @@ def parse_row(date, username, shift_type_str, start, end, users):
     elif shift_type_str in leave_types:
         leave_type = leave_types[shift_type_str]
         user = users[username]
-        return Leave(date=date, type=leave_type, registrar=user)
+        if "a.m." in shift_type_str:
+            portion = "AM"
+        elif "p.m." in shift_type_str:
+            portion = "PM"
+        else:
+            portion = "ALL"
+        return Leave(date=date, type=leave_type, registrar=user, portion=portion)
 
 
 def import_users(fname):
