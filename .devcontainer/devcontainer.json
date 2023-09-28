@@ -24,7 +24,8 @@
 				"ms-python.isort",
 				"donjayamanne.python-extension-pack",
 				"ms-python.vscode-pylance",
-				"junstyle.vscode-django-support"
+				"junstyle.vscode-django-support",
+				"ms-toolsai.jupyter"
 			]
 		}
 	}
