@@ -76,13 +76,19 @@ def retrieve_roster_events(start: date = None, end: date = None):
 
     df_registrars = DataFrame(registrars.values("id", "username", "days"))
     df_registrars["year"] = df_registrars.days.dt.days // 365 + 1
-    df_registrars["year"] = "Year " + df_registrars.year.astype("str")
+    # df_registrars["year"] = "Year " + df_registrars.year.astype("str")
+    df_registrars.drop(["days"], axis=1, inplace=True)
 
     df_shifts = DataFrame(shifts)
     df_shifts["type"] = df_shifts.type.apply(lambda x: ShiftType(x).label)
     # Mark shift type with EXTRA DUTY
     df_shifts["extra_duty"] = df_shifts.extra_duty.apply(lambda x: "extra" if x else "")
-    df_shifts["type"] = df_shifts["type"] + "," + df_shifts.extra_duty
+    df_shifts["type"] = df_shifts.apply(
+        lambda row: row["type"] + "," + row["extra_duty"]
+        if row["extra_duty"]
+        else row["type"],
+        axis=1,
+    )
 
     df_leaves = DataFrame(leaves)
     df_leaves["type"] = df_leaves.type.apply(lambda x: LeaveType(x).label)
@@ -96,8 +102,6 @@ def retrieve_roster_events(start: date = None, end: date = None):
 
     df = concat([df_shifts, df_leaves])
 
-    holidays = df["date"].drop_duplicates().apply(lambda x: canterbury_holidays.get(x))
-
     df["date"] = df.date.astype("str")
 
     pivot = df.pivot_table(
@@ -106,10 +110,17 @@ def retrieve_roster_events(start: date = None, end: date = None):
         values="type",
         aggfunc=lambda x: ",".join(x),
     )
-    pivot = df_registrars.merge(pivot.T, right_index=True, left_on="id", how="left")
-    pivot.drop(["id", "days"], axis=1, inplace=True)
+    pivot["holiday"] = pivot.index.map(lambda d: canterbury_holidays.get(d, ""))
+    pivot.fillna("", inplace=True)
+    pivot.reset_index(inplace=True)
+    # pivot = pivot.rename(columns=df_registrars.set_index("id").username.to_dict())
+    # pivot.drop(["id", "days"], axis=1, inplace=True)
 
-    return pivot
+    result = {
+        "columns": df_registrars.to_dict(orient="records"),
+        "data": pivot.to_dict(orient="records"),
+    }
+    return result
 
 
 def retrieve_workload_breakdown(start: date = None, end: date = None):

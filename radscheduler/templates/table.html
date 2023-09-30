@@ -32,51 +32,104 @@
         end: DateTime.now().plus({ days: 28 }).toISODate(),
         rosterTable: rosterTable('#roster-table'),
         workloadTable: workloadTable('#workload-table'),
-        dates: null,
+        tableData: null, // set by rosterTable.ajaxResponse
         refresh: function () {
-          fetchDateAnnotation()
-          //this.rosterTable.setData()
+          this.rosterTable.setData()
           this.workloadTable.setData()
         }
       })
     })
 
-    function fetchDateAnnotation() {
-      fetch('/roster/dates/')
-        .then((response) => response.json())
-        .then((data) => {
-          for (i = 0; i < data.length; i++) {
-            day = data[i]
-            Alpine.store('state').rosterTable.updateColumnDefinition(day.date, {
-              title: function (columnDefinition) {
-                return columnDefinition.title + ' (' + day.holiday + ')'
-              }
-            })
-          }
-        }
-        )
-    }
-
     function rosterTable(id) {
       return new Tabulator(id, {
+        layout: 'fitData',
         ajaxURL: '/roster/events/',
         ajaxContentType: 'json',
         ajaxParams: () => ({ start: Alpine.store('state').start, end: Alpine.store('state').end }),
         ajaxResponse: function (url, params, response) {
+          Alpine.store('state').tableData = response
           return response.data
         },
-        layout: 'fitData', //fit columns to width of table (optional)
         headerSort: false,
-        autoColumnsDefinitions: [
-          { title: 'Registrar', field: 'username', frozen: true, width: 200, formatter: 'plaintext', titleFormatter: 'plaintext' },
-          { field: 'year', visible: false }
-        ],
         autoColumns: true,
+        autoColumnsDefinitions: function (definitions) {
+          const registrars = Alpine.store('state').tableData.columns
+          const years = [...new Set(registrars.map(item => item.year))];
+          let result = [];
+
+          result.push({
+            field: 'date',
+            title: 'Date',
+            formatter: function (cell, formatterParams, onRendered) {
+              const el = cell.getElement()
+              const value = cell.getValue()
+              const row = cell.getRow().getElement()
+
+              // Saturday and Sunday column background colour
+              let date = luxon.DateTime.fromISO(value)
+              if (date.toISODate() === DateTime.now().toISODate()) {
+                el.style.backgroundColor = '#ffff00'
+              }
+              return date.toFormat('dd/MM/yy ccc');
+            }
+          })
+
+          result.push({
+            field: 'holiday',
+            title: 'Holiday',
+            formatter: function (cell, formatterParams, onRendered) {
+              const el = cell.getElement()
+              el.style.backgroundColor = '#ffffff'
+              return cell.getValue()
+            }
+          })
+
+          sorted_registrars = registrars.sort(function (a, b) {
+            return b.year - a.year || a.username.localeCompare(b.username)
+          });
+
+          years.forEach((year) => {
+            result.push({
+              title: "Year " + year,
+              columns: sorted_registrars.filter((registrar) => registrar.year === year).map((registrar) => {
+                return {
+                  field: registrar.id.toString(),
+                  title: registrar.username,
+                  formatter: function (cell, formatterParams, onRendered) {
+                    let el = cell.getElement()
+                    let value = cell.getValue()
+                    let row = cell.getRow().getElement()
+
+                    // Highlight shifts and leaves
+                    let leaves = ['Annual', 'Education', 'Parental', 'Lieu', 'Sick']
+                    let shifts = ['Long', 'Night']
+                    if (typeof value === 'string') {
+                      content = value.split(',')[0]
+
+                      if (leaves.some((substr) => content.includes(substr))) {
+                        el.style.backgroundColor = '#90ee90'
+                      } else if (value.includes('extra')) {
+                        el.style.backgroundColor = '#e8e17a'
+                      } else if (shifts.some((substr) => content.includes(substr))) {
+                        el.style.backgroundColor = '#ffcccb'
+                      }
+                    } else {
+                      content = value
+                    }
+                    return content
+                  }
+                }
+              })
+            })
+          })
+
+          return result;
+        },
         columnDefaults: {
           hozAlign: 'center',
           headerSort: false,
           resizable: false,
-          width: 150,
+          width: 100,
           headerHozAlign: 'center',
           titleFormatter: function (cell, formatterParams, onRendered) {
             const el = cell.getElement()
@@ -84,54 +137,26 @@
             const date = DateTime.fromISO(value)
             const specialDays = Alpine.store('state').dates
 
-            if (date.toISODate() === DateTime.now().toISODate()) {
-              el.style.backgroundColor = '#ffff00'
-            }
-
-            return date.toFormat('ccc dd/MM/yy')
+            //return date.toFormat('ccc dd/MM/yy')
+            return value
           },
-          formatter: function (cell, formatterParams, onRendered) {
-            let el = cell.getElement()
-            let value = cell.getValue()
-            let dateString = cell.getField()
-            let row = cell.getRow().getElement()
 
-            // Saturday and Sunday column background colour
-            let date = luxon.DateTime.fromISO(dateString)
-            if (date.weekday === 6 || date.weekday === 7) {
-              if (row.classList.contains('tabulator-row-even')) {
-                el.style.backgroundColor = '#b1b1b1'
-              } else if (row.classList.contains('tabulator-row-odd')) {
-                el.style.backgroundColor = '#c6c6c6'
-              }
+        },
+        rowFormatter: function (row) {
+          //row - row component
+          const data = row.getData();
+          const el = row.getElement();
+
+          let date = luxon.DateTime.fromISO(data.date)
+
+          if (date.weekday === 6 || date.weekday === 7) {
+            if (el.classList.contains('tabulator-row-even')) {
+              el.style.backgroundColor = '#b1b1b1'
+            } else if (el.classList.contains('tabulator-row-odd')) {
+              el.style.backgroundColor = '#c6c6c6'
             }
-
-            // Highlight shifts and leaves
-            let leaves = ['Annual', 'Education', 'Parental', 'Lieu', 'Sick']
-            let shifts = ['Long', 'Night']
-            if (typeof value === 'string') {
-              content = value.split(',')[0]
-
-              if (leaves.some((substr) => content.includes(substr))) {
-                el.style.backgroundColor = '#90ee90'
-              } else if (value.includes('extra')) {
-                el.style.backgroundColor = '#e8e17a'
-              } else if (shifts.some((substr) => content.includes(substr))) {
-                el.style.backgroundColor = '#ffcccb'
-              }
-            } else {
-              content = value
-            }
-
-            return content
           }
         },
-        initialSort: [
-          { column: 'year', dir: 'asc' }, //sort by this first
-          { column: 'username', dir: 'asc' } //then sort by this second
-        ],
-        groupBy: 'year',
-        groupToggleElement: false
       })
     }
 

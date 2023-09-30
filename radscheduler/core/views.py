@@ -36,7 +36,7 @@ def get_roster_events(request):
             start = form.cleaned_data["start"]
             end = form.cleaned_data["end"]
             events = retrieve_roster_events(start, end)
-            events_json = events.to_json(orient="table", index=False)
+            events_json = json.dumps(events)
             return HttpResponse(events_json, content_type="application/json")
 
 
