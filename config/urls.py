@@ -22,6 +22,7 @@ from radscheduler.core.views import (
     table_view,
     get_roster_events,
     get_workload,
+    get_date_annotations,
 )
 
 urlpatterns = [
@@ -29,5 +30,6 @@ urlpatterns = [
     path("roster/", table_view, name="roster"),
     path("roster/events/", get_roster_events, name="roster_events"),
     path("roster/workload/", get_workload, name="roster_workload"),
+    path("roster/dates/", get_date_annotations, name="roster_dates"),
     path("admin/", admin.site.urls),
 ]

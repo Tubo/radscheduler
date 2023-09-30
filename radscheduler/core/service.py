@@ -11,7 +11,7 @@ from radscheduler.core.models import (
     LeaveType,
     ISOWeekday,
 )
-from radscheduler.core.roster import canterbury_holidays
+from radscheduler.core.roster import canterbury_holidays, daterange
 
 
 def format_date(date):
@@ -154,8 +154,22 @@ def retrieve_workload_breakdown(start: date = None, end: date = None):
     return workload
 
 
-def retrieve_special_dates(start: date = None, end: date = None):
-    pass
+def retrieve_date_annotations(start: date = None, end: date = None):
+    start, end = default_start_and_end(start, end)
+    dates = list(daterange(start, end))
+    result = []
+    for day in dates:
+        holiday = canterbury_holidays.get(day)
+        if holiday:
+            result.append(
+                {
+                    "date": str(day),
+                    "holiday": holiday,
+                }
+            )
+
+    df = DataFrame(result)
+    return df
 
 
 def generate_buddy_shifts(start, end):

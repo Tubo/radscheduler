@@ -6,6 +6,7 @@ from radscheduler.core.service import (
     retrieve_fullcalendar_events,
     retrieve_roster_events,
     retrieve_workload_breakdown,
+    retrieve_date_annotations,
 )
 from radscheduler.core.forms import DateRangeForm
 
@@ -51,6 +52,17 @@ def get_workload(request):
             end = form.cleaned_data["end"]
             workload = retrieve_workload_breakdown(start, end)
             events_json = workload.to_json(orient="table", index=False)
+            return HttpResponse(events_json, content_type="application/json")
+
+
+def get_date_annotations(request):
+    if request.method == "GET":
+        form = DateRangeForm(request.GET)
+        if form.is_valid():
+            start = form.cleaned_data["start"]
+            end = form.cleaned_data["end"]
+            workload = retrieve_date_annotations(start, end)
+            events_json = workload.to_json(orient="records", index=False)
             return HttpResponse(events_json, content_type="application/json")
 
 

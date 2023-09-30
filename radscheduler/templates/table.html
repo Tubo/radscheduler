@@ -1,145 +1,169 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Shift Schedule</title>
-    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
-    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
-    <script src=" https://cdn.jsdelivr.net/npm/luxon@3.4.3/build/global/luxon.min.js "></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.0/dist/cdn.min.js"></script>
-    <style></style>
-  </head>
-  <body>
-    <h2>Shift Schedule</h2>
-    <div x-data>
-      <input x-model="$store.state.start" type="date" />
-      <input x-model="$store.state.end" type="date" />
-      <button x-on:click="$store.state.refresh()">Refresh</button>
-    </div>
-    <br />
-    <div id="roster-table"></div>
-    <div id="workload-table"></div>
+<html lang="en">
 
-    <script>
-      const DateTime = luxon.DateTime
-      
-      document.addEventListener('alpine:init', () => {
-        Alpine.store('state', {
-          start: DateTime.now().minus({ days: 28 }).toISODate(),
-          end: DateTime.now().plus({ days: 28 }).toISODate(),
-          rosterTable: rosterTable('#roster-table'),
-          workloadTable: workloadTable('#workload-table'),
-          refresh: function () {
-            this.rosterTable.setData()
-            this.workloadTable.setData()
-          }
-        })
+<head>
+  <title>Shift Schedule</title>
+  <meta keywords="tabulator, table, javascript, html, css" />
+  <meta charset="utf-8" />
+  <meta description="Fast and powerful table data manipulation library for JavaScript" />
+  <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
+  <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+  <script src=" https://cdn.jsdelivr.net/npm/luxon@3.4.3/build/global/luxon.min.js "></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.0/dist/cdn.min.js"></script>
+  <style></style>
+</head>
+
+<body>
+  <h2>Shift Schedule</h2>
+  <div x-data>
+    <input x-model="$store.state.start" type="date" />
+    <input x-model="$store.state.end" type="date" />
+    <button x-on:click="$store.state.refresh()">Refresh</button>
+  </div>
+  <br />
+  <div id="roster-table"></div>
+  <div id="workload-table"></div>
+  <script>
+    const DateTime = luxon.DateTime
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('state', {
+        start: DateTime.now().minus({ days: 28 }).toISODate(),
+        end: DateTime.now().plus({ days: 28 }).toISODate(),
+        rosterTable: rosterTable('#roster-table'),
+        workloadTable: workloadTable('#workload-table'),
+        dates: null,
+        refresh: function () {
+          fetchDateAnnotation()
+          //this.rosterTable.setData()
+          this.workloadTable.setData()
+        }
       })
-      
-      function rosterTable(id) {
-        return new Tabulator(id, {
-          ajaxURL: '/roster/events/',
-          ajaxContentType: 'json',
-          ajaxParams: () => ({ start: Alpine.store('state').start, end: Alpine.store('state').end }),
-          ajaxResponse: function (url, params, response) {
-            return response.data
-          },
-          layout: 'fitData', //fit columns to width of table (optional)
+    })
+
+    function fetchDateAnnotation() {
+      fetch('/roster/dates/')
+        .then((response) => response.json())
+        .then((data) => {
+          for (i = 0; i < data.length; i++) {
+            day = data[i]
+            Alpine.store('state').rosterTable.updateColumnDefinition(day.date, {
+              title: function (columnDefinition) {
+                return columnDefinition.title + ' (' + day.holiday + ')'
+              }
+            })
+          }
+        }
+        )
+    }
+
+    function rosterTable(id) {
+      return new Tabulator(id, {
+        ajaxURL: '/roster/events/',
+        ajaxContentType: 'json',
+        ajaxParams: () => ({ start: Alpine.store('state').start, end: Alpine.store('state').end }),
+        ajaxResponse: function (url, params, response) {
+          return response.data
+        },
+        layout: 'fitData', //fit columns to width of table (optional)
+        headerSort: false,
+        autoColumnsDefinitions: [
+          { title: 'Registrar', field: 'username', frozen: true, width: 200, formatter: 'plaintext', titleFormatter: 'plaintext' },
+          { field: 'year', visible: false }
+        ],
+        autoColumns: true,
+        columnDefaults: {
+          hozAlign: 'center',
           headerSort: false,
-          autoColumnsDefinitions: [
-            { title: 'Registrar', field: 'username', frozen: true, width: 200, formatter: 'plaintext', titleFormatter: 'plaintext' },
-            { field: 'year', visible: false }
-          ],
-          autoColumns: true,
-          columnDefaults: {
-            hozAlign: 'center',
-            headerSort: false,
-            resizable: false,
-            width: 150,
-            headerHozAlign: 'center',
-            titleFormatter: function (cell, formatterParams, onRendered) {
-              let el = cell.getElement()
-              let value = cell.getValue()
-              let date = DateTime.fromISO(value)
-      
-              if (date.toISODate() === DateTime.now().toISODate()) {
-                el.style.backgroundColor = '#ffff00'
-              }
-      
-              return date.toFormat('ccc dd/MM/yy')
-            },
-            formatter: function (cell, formatterParams, onRendered) {
-              let el = cell.getElement()
-              let value = cell.getValue()
-              let dateString = cell.getField()
-              let row = cell.getRow().getElement()
-      
-              // Saturday and Sunday column background colour
-              let date = luxon.DateTime.fromISO(dateString)
-              if (date.weekday === 6 || date.weekday === 7) {
-                if (row.classList.contains('tabulator-row-even')) {
-                  el.style.backgroundColor = '#b1b1b1'
-                } else if (row.classList.contains('tabulator-row-odd')) {
-                  el.style.backgroundColor = '#c6c6c6'
-                }
-              }
-      
-              // Highlight shifts and leaves
-              let leaves = ['Annual', 'Education', 'Parental', 'Lieu', 'Sick']
-              let shifts = ['Long', 'Night']
-              if (typeof value === 'string') {
-                content = value.split(',')[0]
-      
-                if (leaves.some((substr) => content.includes(substr))) {
-                  el.style.backgroundColor = '#90ee90'
-                } else if (value.includes('extra')) {
-                  el.style.backgroundColor = '#e8e17a'
-                } else if (shifts.some((substr) => content.includes(substr))) {
-                  el.style.backgroundColor = '#ffcccb'
-                }
-              } else {
-                content = value
-              }
-      
-              return content
+          resizable: false,
+          width: 150,
+          headerHozAlign: 'center',
+          titleFormatter: function (cell, formatterParams, onRendered) {
+            const el = cell.getElement()
+            const value = cell.getValue()
+            const date = DateTime.fromISO(value)
+            const specialDays = Alpine.store('state').dates
+
+            if (date.toISODate() === DateTime.now().toISODate()) {
+              el.style.backgroundColor = '#ffff00'
             }
+
+            return date.toFormat('ccc dd/MM/yy')
           },
-          initialSort: [
-            { column: 'year', dir: 'asc' }, //sort by this first
-            { column: 'username', dir: 'asc' } //then sort by this second
-          ],
-          groupBy: 'year',
-          groupToggleElement: false
-        })
-      }
-      
-      function workloadTable(id) {
-        return new Tabulator(id, {
-          layout: 'fitDataStretch',
-          ajaxURL: '/roster/workload/',
-          ajaxContentType: 'json',
-          ajaxParams: () => ({ start: Alpine.store('state').start, end: Alpine.store('state').end }),
-          ajaxResponse: function (url, params, response) {
-            return response.data
-          },
-          headerSort: false,
-          columns: [
-            { title: 'Weekday Long', field: 'LONG', width: 200 },
-            { title: 'Weekend Long', field: 'WEEKEND', width: 200 },
-            { title: 'Weekday Night', field: 'NIGHT', width: 200 },
-            { title: 'Weekend Night', field: 'WKD NIGHT', width: 200 },
-            { title: 'Social Credit', field: 'FATIGUE', width: 150 },
-            { title: 'Registrar', field: 'username', formatter: 'plaintext', titleFormatter: 'plaintext' }
-          ],
-          columnDefaults: {
-            sorter: 'number',
-            hozAlign: 'center',
-            headerHozAlign: 'center'
-          },
-          initialSort: [
-            { column: 'FATIGUE', dir: 'desc' } //sort by this first
-          ]
-        })
-      }
-    </script>
-  </body>
+          formatter: function (cell, formatterParams, onRendered) {
+            let el = cell.getElement()
+            let value = cell.getValue()
+            let dateString = cell.getField()
+            let row = cell.getRow().getElement()
+
+            // Saturday and Sunday column background colour
+            let date = luxon.DateTime.fromISO(dateString)
+            if (date.weekday === 6 || date.weekday === 7) {
+              if (row.classList.contains('tabulator-row-even')) {
+                el.style.backgroundColor = '#b1b1b1'
+              } else if (row.classList.contains('tabulator-row-odd')) {
+                el.style.backgroundColor = '#c6c6c6'
+              }
+            }
+
+            // Highlight shifts and leaves
+            let leaves = ['Annual', 'Education', 'Parental', 'Lieu', 'Sick']
+            let shifts = ['Long', 'Night']
+            if (typeof value === 'string') {
+              content = value.split(',')[0]
+
+              if (leaves.some((substr) => content.includes(substr))) {
+                el.style.backgroundColor = '#90ee90'
+              } else if (value.includes('extra')) {
+                el.style.backgroundColor = '#e8e17a'
+              } else if (shifts.some((substr) => content.includes(substr))) {
+                el.style.backgroundColor = '#ffcccb'
+              }
+            } else {
+              content = value
+            }
+
+            return content
+          }
+        },
+        initialSort: [
+          { column: 'year', dir: 'asc' }, //sort by this first
+          { column: 'username', dir: 'asc' } //then sort by this second
+        ],
+        groupBy: 'year',
+        groupToggleElement: false
+      })
+    }
+
+    function workloadTable(id) {
+      return new Tabulator(id, {
+        layout: 'fitDataStretch',
+        ajaxURL: '/roster/workload/',
+        ajaxContentType: 'json',
+        ajaxParams: () => ({ start: Alpine.store('state').start, end: Alpine.store('state').end }),
+        ajaxResponse: function (url, params, response) {
+          return response.data
+        },
+        headerSort: false,
+        columns: [
+          { title: 'Weekday Long', field: 'LONG', width: 200 },
+          { title: 'Weekend Long', field: 'WEEKEND', width: 200 },
+          { title: 'Weekday Night', field: 'NIGHT', width: 200 },
+          { title: 'Weekend Night', field: 'WKD NIGHT', width: 200 },
+          { title: 'Social Credit', field: 'FATIGUE', width: 150 },
+          { title: 'Registrar', field: 'username', formatter: 'plaintext', titleFormatter: 'plaintext' }
+        ],
+        columnDefaults: {
+          sorter: 'number',
+          hozAlign: 'center',
+          headerHozAlign: 'center'
+        },
+        initialSort: [
+          { column: 'FATIGUE', dir: 'desc' } //sort by this first
+        ]
+      })
+    }
+  </script>
+</body>
+
 </html>
