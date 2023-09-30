@@ -89,6 +89,7 @@ class StatusType(models.IntegerChoices):
     PART_TIME = auto(), "Part time non-working day"
     PRE_EXAM = auto(), "Pre-exam"
     BUDDY = auto(), "Buddy required"
+    NA = auto(), "Not available"
 
 
 class Status(models.Model):

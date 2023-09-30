@@ -8,12 +8,15 @@ import csv
 import yaml
 
 from radscheduler.core.models import Shift, ShiftType, Leave, LeaveType, Registrar
+from radscheduler.core.roster import canterbury_holidays
 
 shift_types = {
     "Long day": ShiftType.LONG,
     "Sleep": ShiftType.SLEEP,
     "Nights": ShiftType.NIGHT,
     "RDO": ShiftType.RDO,
+    "Extra duty - long day": ShiftType.LONG,
+    "Extra duty - nights": ShiftType.NIGHT,
 }
 
 leave_types = {
@@ -70,8 +73,12 @@ def parse_row(date, username, shift_type_str, start, end, users):
 
     if shift_type_str in shift_types:
         shift_type = shift_types[shift_type_str]
+        extra = "Extra duty" in shift_type_str
+        stat = date in canterbury_holidays
         user = users[username]
-        return Shift(date=date, type=shift_type, registrar=user)
+        return Shift(
+            date=date, type=shift_type, registrar=user, extra_duty=extra, stat_day=stat
+        )
 
     elif shift_type_str in leave_types:
         leave_type = leave_types[shift_type_str]

@@ -11,6 +11,7 @@ from radscheduler.core.models import (
     LeaveType,
     ISOWeekday,
 )
+from radscheduler.core.roster import canterbury_holidays
 
 
 def format_date(date):
@@ -48,14 +49,7 @@ def retrieve_fullcalendar_events():
     return result
 
 
-def retrieve_roster_events(start: date = None, end: date = None):
-    registrars = Registrar.objects.exclude(start=None).annotate(
-        days=(Now() - F("start"))
-    )
-
-    shifts = Shift.objects.values("date", "type", "registrar")
-    leaves = Leave.objects.values("date", "type", "registrar", "portion")
-
+def default_start_and_end(start, end):
     if not (start and end):
         start = date.today() - timedelta(days=14 * 2)
         end = date.today() + timedelta(days=31)
@@ -63,6 +57,18 @@ def retrieve_roster_events(start: date = None, end: date = None):
         end = date.today() + timedelta(days=31 * 6)
     elif not start and end:
         start = date.today() - timedelta(days=31 * 3)
+    return (start, end)
+
+
+def retrieve_roster_events(start: date = None, end: date = None):
+    start, end = default_start_and_end(start, end)
+
+    registrars = Registrar.objects.exclude(start=None).annotate(
+        days=(Now() - F("start"))
+    )
+
+    shifts = Shift.objects.values("date", "type", "registrar", "extra_duty")
+    leaves = Leave.objects.values("date", "type", "registrar", "portion")
 
     registrars = registrars.exclude(Q(finish__lt=start) | Q(start__gt=end))
     shifts = shifts.filter(date__range=[start, end])
@@ -74,9 +80,13 @@ def retrieve_roster_events(start: date = None, end: date = None):
 
     df_shifts = DataFrame(shifts)
     df_shifts["type"] = df_shifts.type.apply(lambda x: ShiftType(x).label)
+    # Mark shift type with EXTRA DUTY
+    df_shifts["extra_duty"] = df_shifts.extra_duty.apply(lambda x: "extra" if x else "")
+    df_shifts["type"] = df_shifts["type"] + "," + df_shifts.extra_duty
 
     df_leaves = DataFrame(leaves)
     df_leaves["type"] = df_leaves.type.apply(lambda x: LeaveType(x).label)
+    # Mark leave type with PORTION
     df_leaves["type"] = df_leaves.apply(
         lambda row: row["type"] + " " + row["portion"].lower()
         if row["portion"] != "ALL"
@@ -85,10 +95,16 @@ def retrieve_roster_events(start: date = None, end: date = None):
     )
 
     df = concat([df_shifts, df_leaves])
+
+    holidays = df["date"].drop_duplicates().apply(lambda x: canterbury_holidays.get(x))
+
     df["date"] = df.date.astype("str")
 
     pivot = df.pivot_table(
-        index="date", columns="registrar", values="type", aggfunc=lambda x: ",".join(x)
+        index="date",
+        columns="registrar",
+        values="type",
+        aggfunc=lambda x: ",".join(x),
     )
     pivot = df_registrars.merge(pivot.T, right_index=True, left_on="id", how="left")
     pivot.drop(["id", "days"], axis=1, inplace=True)
@@ -97,13 +113,8 @@ def retrieve_roster_events(start: date = None, end: date = None):
 
 
 def retrieve_workload_breakdown(start: date = None, end: date = None):
-    if not (start and end):
-        start = date.today() - timedelta(days=14 * 2)
-        end = date.today() + timedelta(days=31)
-    elif start and not end:
-        end = date.today() + timedelta(days=31 * 6)
-    elif not start and end:
-        start = date.today() - timedelta(days=31 * 3)
+    start, end = default_start_and_end(start, end)
+
     registrars = Registrar.objects.exclude(start=None)
     shifts = Shift.objects.filter(
         date__range=[start, end], type__in=[ShiftType.LONG, ShiftType.NIGHT]
@@ -141,6 +152,10 @@ def retrieve_workload_breakdown(start: date = None, end: date = None):
     workload = workload.merge(df_registrars, left_index=True, right_on="id", how="left")
     workload.drop(["id"], axis=1, inplace=True)
     return workload
+
+
+def retrieve_special_dates(start: date = None, end: date = None):
+    pass
 
 
 def generate_buddy_shifts(start, end):

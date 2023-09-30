@@ -357,6 +357,9 @@ class DefaultRoster:
 
         If the shift has a fatigue override, then use that value.
 
+        If the shift lands on a stat day, then it has higher fatigue weighting.
+        Even if it is a rest day, it would have otherwise been an holiday.
+
         Otherwise if the shift is a LONG shift, then it is more tiring on Friday.
         If the registrar is not senior, then Wednesday is also more tiring.
 

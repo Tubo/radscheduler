@@ -24,7 +24,7 @@
       
       document.addEventListener('alpine:init', () => {
         Alpine.store('state', {
-          start: DateTime.now().minus({ days: 7 }).toISODate(),
+          start: DateTime.now().minus({ days: 28 }).toISODate(),
           end: DateTime.now().plus({ days: 28 }).toISODate(),
           rosterTable: rosterTable('#roster-table'),
           workloadTable: workloadTable('#workload-table'),
@@ -37,7 +37,6 @@
       
       function rosterTable(id) {
         return new Tabulator(id, {
-          renderHorizontal: 'virtual',
           ajaxURL: '/roster/events/',
           ajaxContentType: 'json',
           ajaxParams: () => ({ start: Alpine.store('state').start, end: Alpine.store('state').end }),
@@ -70,7 +69,7 @@
             },
             formatter: function (cell, formatterParams, onRendered) {
               let el = cell.getElement()
-              let content = cell.getValue()
+              let value = cell.getValue()
               let dateString = cell.getField()
               let row = cell.getRow().getElement()
       
@@ -87,12 +86,18 @@
               // Highlight shifts and leaves
               let leaves = ['Annual', 'Education', 'Parental', 'Lieu', 'Sick']
               let shifts = ['Long', 'Night']
-              if (typeof content === 'string') {
+              if (typeof value === 'string') {
+                content = value.split(',')[0]
+      
                 if (leaves.some((substr) => content.includes(substr))) {
                   el.style.backgroundColor = '#90ee90'
+                } else if (value.includes('extra')) {
+                  el.style.backgroundColor = '#e8e17a'
                 } else if (shifts.some((substr) => content.includes(substr))) {
                   el.style.backgroundColor = '#ffcccb'
                 }
+              } else {
+                content = value
               }
       
               return content
@@ -109,6 +114,7 @@
       
       function workloadTable(id) {
         return new Tabulator(id, {
+          layout: 'fitDataStretch',
           ajaxURL: '/roster/workload/',
           ajaxContentType: 'json',
           ajaxParams: () => ({ start: Alpine.store('state').start, end: Alpine.store('state').end }),
@@ -116,8 +122,22 @@
             return response.data
           },
           headerSort: false,
-          autoColumnsDefinitions: [{ title: 'Registrar', field: 'username', frozen: true, width: 200, formatter: 'plaintext', titleFormatter: 'plaintext' }],
-          autoColumns: true
+          columns: [
+            { title: 'Weekday Long', field: 'LONG', width: 200 },
+            { title: 'Weekend Long', field: 'WEEKEND', width: 200 },
+            { title: 'Weekday Night', field: 'NIGHT', width: 200 },
+            { title: 'Weekend Night', field: 'WKD NIGHT', width: 200 },
+            { title: 'Social Credit', field: 'FATIGUE', width: 150 },
+            { title: 'Registrar', field: 'username', formatter: 'plaintext', titleFormatter: 'plaintext' }
+          ],
+          columnDefaults: {
+            sorter: 'number',
+            hozAlign: 'center',
+            headerHozAlign: 'center'
+          },
+          initialSort: [
+            { column: 'FATIGUE', dir: 'desc' } //sort by this first
+          ]
         })
       }
     </script>

@@ -15,13 +15,19 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 
-from radscheduler.core.views import roster_view
+from radscheduler.core.views import (
+    calendar_view,
+    table_view,
+    get_roster_events,
+    get_workload,
+)
 
 urlpatterns = [
     path("calendar/", calendar_view, name="calendar"),
     path("roster/", table_view, name="roster"),
     path("roster/events/", get_roster_events, name="roster_events"),
+    path("roster/workload/", get_workload, name="roster_workload"),
     path("admin/", admin.site.urls),
 ]
