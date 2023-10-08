@@ -534,6 +534,16 @@ def shifts_to_assignments(shifts: list[Shift]) -> list[Assignment]:
     ]
 
 
+def assignment_to_shift(assignment: Assignment) -> Shift:
+    shift = assignment.shift
+    shift.registrar = assignment.registrar
+    return shift
+
+
+def assignments_to_shifts(assignments: list[Assignment]) -> list[Shift]:
+    return [assignment_to_shift(assignment) for assignment in assignments]
+
+
 def daterange(start_date, end_date):
     for n in range(int((end_date - start_date).days)):
         yield start_date + timedelta(n)

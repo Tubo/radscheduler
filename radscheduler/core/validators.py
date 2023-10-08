@@ -40,7 +40,9 @@ class Validator:
 
 
 def validate_roster(assignments, leaves, statuses):
-    registrars = set(a.registrar.username for a in assignments)
+    registrars = set(
+        a.registrar.username for a in assignments if a.registrar is not None
+    )
 
     for registrar in registrars:
         shifts = [

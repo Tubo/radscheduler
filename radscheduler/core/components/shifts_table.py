@@ -1,14 +1,14 @@
 from django_unicorn.components import UnicornView
 from radscheduler.core.service import (
     retrieve_fullcalendar_events,
-    retrieve_roster_events,
+    retrieve_roster,
 )
 
 
 class ShiftsTableView(UnicornView):
     start = "2022-01-01"
     end = "2022-12-31"
-    events = retrieve_roster_events(start, end).to_json(orient="table", index=False)
+    events = retrieve_roster(start, end).to_json(orient="table", index=False)
 
     class Meta:
         safe = ("events",)

@@ -7,7 +7,15 @@ from datetime import date, datetime
 import csv
 import yaml
 
-from radscheduler.core.models import Shift, ShiftType, Leave, LeaveType, Registrar
+from radscheduler.core.models import (
+    Shift,
+    ShiftType,
+    Leave,
+    LeaveType,
+    Registrar,
+    Status,
+    StatusType,
+)
 from radscheduler.core.roster import canterbury_holidays
 
 shift_types = {
@@ -31,6 +39,13 @@ leave_types = {
     "Sick leave - a.m.": LeaveType.SICK,
     "Sick leave - p.m.": LeaveType.SICK,
     "Parental leave": LeaveType.PARENTAL,
+}
+
+status_types = {
+    "reliever": StatusType.RELIEVER,
+    "buddy": StatusType.BUDDY,
+    "na": StatusType.NA,
+    "pre-oncall": StatusType.PRE_ONCALL,
 }
 
 
@@ -103,4 +118,17 @@ def import_users(fname):
         result[username] = Registrar(
             username=username, senior=senior, start=start, finish=finish
         )
+    return result
+
+
+def import_status(fname):
+    with open(fname) as f:
+        data = yaml.safe_load(f)
+    result = []
+    for username, profile in data.items():
+        type = status_types[profile["type"]]
+        start = datetime.strptime(profile["start"], "%d/%m/%Y").date()
+        end = datetime.strptime(profile["finish"], "%d/%m/%Y").date()
+        registrar = Registrar.objects.get(username=username)
+        result.append(Status(registrar=registrar, type=type, start=start, end=end))
     return result

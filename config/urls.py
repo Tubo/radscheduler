@@ -19,17 +19,19 @@ from django.urls import path, include
 
 from radscheduler.core.views import (
     calendar_view,
-    table_view,
-    get_roster_events,
+    roster_table_view,
+    roster_generation_view,
+    get_roster_table,
     get_workload,
-    get_date_annotations,
+    get_generated_roster,
 )
 
 urlpatterns = [
     path("calendar/", calendar_view, name="calendar"),
-    path("roster/", table_view, name="roster"),
-    path("roster/events/", get_roster_events, name="roster_events"),
+    path("roster/", roster_table_view, name="roster_table_view"),
+    path("roster/events/", get_roster_table, name="roster_events"),
     path("roster/workload/", get_workload, name="roster_workload"),
-    path("roster/dates/", get_date_annotations, name="roster_dates"),
+    path("generate/", roster_generation_view, name="roster_generate_view"),
+    path("generate/results/", get_generated_roster, name="roster_generate_results"),
     path("admin/", admin.site.urls),
 ]

@@ -3,6 +3,7 @@ from datetime import date
 
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.contrib.postgres.fields import ArrayField
 
 
 class Weekday(IntEnum):
@@ -82,6 +83,9 @@ class Shift(models.Model):
             registrar = "N/A"
         return f"<{ShiftType(self.type).name} Shift {self.date} ({Weekday(self.date.weekday()).name}): {registrar}>"
 
+    class Meta:
+        unique_together = ["date", "type", "registrar", "extra_duty"]
+
 
 class StatusType(models.IntegerChoices):
     PRE_ONCALL = auto(), "Pre-oncall"
@@ -111,6 +115,14 @@ class Status(models.Model):
     )
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
+    weekdays = ArrayField(
+        models.IntegerField(choices=[(x.value, x.name) for x in ISOWeekday]),
+        default=list,
+        size=7,
+    )
+    shift_types = ArrayField(
+        models.CharField(max_length=10, choices=ShiftType.choices), default=list
+    )
 
     @property
     def not_oncall(self):
@@ -151,6 +163,9 @@ class Leave(models.Model):
 
     def __repr__(self) -> str:
         return f"<Leave: {self.registrar.username} {self.date} ({LeaveType(self.type).name})>"
+
+    class Meta:
+        unique_together = ["date", "type", "registrar"]
 
 
 class LeaveApplication(models.Model):

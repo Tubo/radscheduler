@@ -9,9 +9,17 @@ from radscheduler.core.models import (
     ShiftType,
     Leave,
     LeaveType,
+    Status,
+    StatusType,
     ISOWeekday,
 )
-from radscheduler.core.roster import canterbury_holidays, daterange
+from radscheduler.core.roster import (
+    canterbury_holidays,
+    daterange,
+    DefaultRoster,
+    shifts_to_assignments,
+    assignments_to_shifts,
+)
 
 
 def format_date(date):
@@ -60,67 +68,153 @@ def default_start_and_end(start, end):
     return (start, end)
 
 
-def retrieve_roster_events(start: date = None, end: date = None):
+def active_registrars(start: date = None, end: date = None):
     start, end = default_start_and_end(start, end)
-
     registrars = Registrar.objects.exclude(start=None).annotate(
         days=(Now() - F("start"))
     )
-
-    shifts = Shift.objects.values("date", "type", "registrar", "extra_duty")
-    leaves = Leave.objects.values("date", "type", "registrar", "portion")
-
     registrars = registrars.exclude(Q(finish__lt=start) | Q(start__gt=end))
-    shifts = shifts.filter(date__range=[start, end])
-    leaves = leaves.filter(date__range=[start, end])
+    return registrars
 
-    df_registrars = DataFrame(registrars.values("id", "username", "days"))
+
+def shift_to_dict(shift):
+    return {
+        "date": str(shift.date),
+        "type": ShiftType(shift.type).label,
+        "registrar": shift.registrar.pk if shift.registrar else None,
+        "username": shift.registrar.username if shift.registrar else None,
+        "extra_duty": shift.extra_duty,
+    }
+
+
+def leave_to_dict(leave):
+    return {
+        "date": str(leave.date),
+        "type": LeaveType(leave.type).label,
+        "registrar": leave.registrar.pk if leave.registrar else None,
+        "portion": leave.portion,
+    }
+
+
+def status_to_dict(status):
+    return {
+        "start": str(status.start),
+        "end": str(status.end),
+        "type": StatusType(status.type).label,
+        "registrar": status.registrar.pk,
+        "week": status.weekdays,
+        "shift_types": status.shift_types,
+    }
+
+
+def build_registrar_table(registrars):
+    df_registrars = DataFrame(registrars)
     df_registrars["year"] = df_registrars.days.dt.days // 365 + 1
-    # df_registrars["year"] = "Year " + df_registrars.year.astype("str")
     df_registrars.drop(["days"], axis=1, inplace=True)
+    return df_registrars
 
-    df_shifts = DataFrame(shifts)
-    df_shifts["type"] = df_shifts.type.apply(lambda x: ShiftType(x).label)
-    # Mark shift type with EXTRA DUTY
-    df_shifts["extra_duty"] = df_shifts.extra_duty.apply(lambda x: "extra" if x else "")
-    df_shifts["type"] = df_shifts.apply(
-        lambda row: row["type"] + "," + row["extra_duty"]
-        if row["extra_duty"]
-        else row["type"],
-        axis=1,
-    )
 
-    df_leaves = DataFrame(leaves)
-    df_leaves["type"] = df_leaves.type.apply(lambda x: LeaveType(x).label)
-    # Mark leave type with PORTION
-    df_leaves["type"] = df_leaves.apply(
-        lambda row: row["type"] + " " + row["portion"].lower()
-        if row["portion"] != "ALL"
-        else row["type"],
-        axis=1,
+def build_pivot_table(start, end, shifts, leaves, registrars):
+    date_range = DataFrame(
+        {"date": [date for date in daterange(start, end + timedelta(days=1))]}
     )
+    columns = ["id", "date", "registrar"]
+
+    df_shifts = DataFrame(shifts, columns=columns)
+    if not df_shifts.empty:
+        df_shifts["id"] = "shift:" + df_shifts.id.astype("str")
+
+    df_leaves = DataFrame(leaves, columns=columns)
+    if not df_leaves.empty:
+        df_leaves["id"] = "leave:" + df_leaves["id"].astype("str")
 
     df = concat([df_shifts, df_leaves])
 
-    df["date"] = df.date.astype("str")
-
-    pivot = df.pivot_table(
-        index="date",
-        columns="registrar",
-        values="type",
-        aggfunc=lambda x: ",".join(x),
-    )
-    pivot["holiday"] = pivot.index.map(lambda d: canterbury_holidays.get(d, ""))
-    pivot.fillna("", inplace=True)
+    if df.empty:
+        pivot = DataFrame(
+            date_range,
+            index=date_range["date"],
+            columns=registrars.id.astype("str").values,
+        )
+        pivot.reset_index(inplace=True, names=["date"])
+    else:
+        pivot = df.pivot_table(
+            index="date", columns="registrar", values="id", aggfunc="first"
+        )
+        pivot = pivot.merge(date_range, left_index=True, right_on="date", how="right")
     pivot.reset_index(inplace=True)
-    # pivot = pivot.rename(columns=df_registrars.set_index("id").username.to_dict())
-    # pivot.drop(["id", "days"], axis=1, inplace=True)
+    pivot.fillna("", inplace=True)
+    pivot["holiday"] = pivot.date.map(lambda d: canterbury_holidays.get(d, ""))
+    pivot.date = pivot.date.astype("str")
+    return pivot
+
+
+def retrieve_roster(start: date = None, end: date = None):
+    start, end = default_start_and_end(start, end)
+
+    shifts = Shift.objects.filter(date__range=[start, end])
+    shift_dict = {shift.id: shift_to_dict(shift) for shift in shifts}
+
+    leaves = Leave.objects.filter(date__range=[start, end])
+    leave_dict = {leave.id: leave_to_dict(leave) for leave in leaves}
+
+    statuses = Status.objects.exclude(Q(end__lt=start) | Q(start__gt=end))
+    status_dict = [status_to_dict(status) for status in statuses]
+
+    registrars = active_registrars(start, end)
+    df_registrars = build_registrar_table(registrars.values("id", "username", "days"))
+
+    pivot = build_pivot_table(
+        start,
+        end,
+        shifts.values("id", "date", "registrar"),
+        leaves.values("id", "date", "registrar"),
+        df_registrars,
+    )
+    if pivot.empty:
+        pivot = DataFrame(columns=["date", "holiday"])
 
     result = {
         "columns": df_registrars.to_dict(orient="records"),
-        "data": pivot.to_dict(orient="records"),
+        "table": pivot.to_dict(orient="records"),
+        "shifts": shift_dict,
+        "leaves": leave_dict,
+        "statuses": status_dict,
     }
     return result
+
+
+def generate_roster(start: date = None, end: date = None):
+    active_registrars = Registrar.objects.exclude(
+        Q(finish__lt=start) | Q(start__gt=end)
+    )
+    prev_assignments = shifts_to_assignments(
+        Shift.objects.filter(date__range=[start - timedelta(days=30 * 6), start])
+    )
+    leaves = Leave.objects.filter(date__range=[start, end])
+    status = Status.objects.exclude(Q(end__lt=start) | Q(start__gt=end))
+    roster = DefaultRoster(
+        registrars=active_registrars,
+        prev_assignments=prev_assignments,
+        leaves=leaves,
+        statuses=status,
+    )
+    roster.generate_shifts(start, end)
+    result = assignments_to_shifts(roster.fill_roster())
+    result = shifts_table(result)
+    return result
+
+
+def shifts_table(shifts):
+    shifts = [shift_to_dict(shift) for shift in shifts]
+    df = DataFrame(shifts)
+    pivot = df.pivot_table(
+        index="date", columns="type", values="username", aggfunc="first"
+    )
+    pivot.reset_index(inplace=True)
+    pivot.fillna("", inplace=True)
+    pivot["date"] = pivot.date.astype("str")
+    return pivot.to_dict(orient="records")
 
 
 def retrieve_workload_breakdown(start: date = None, end: date = None):
@@ -128,7 +222,9 @@ def retrieve_workload_breakdown(start: date = None, end: date = None):
 
     registrars = Registrar.objects.exclude(start=None)
     shifts = Shift.objects.filter(
-        date__range=[start, end], type__in=[ShiftType.LONG, ShiftType.NIGHT]
+        date__range=[start, end],
+        type__in=[ShiftType.LONG, ShiftType.NIGHT],
+        extra_duty=False,
     ).annotate(
         type_=Case(
             When(
@@ -163,24 +259,6 @@ def retrieve_workload_breakdown(start: date = None, end: date = None):
     workload = workload.merge(df_registrars, left_index=True, right_on="id", how="left")
     workload.drop(["id"], axis=1, inplace=True)
     return workload
-
-
-def retrieve_date_annotations(start: date = None, end: date = None):
-    start, end = default_start_and_end(start, end)
-    dates = list(daterange(start, end))
-    result = []
-    for day in dates:
-        holiday = canterbury_holidays.get(day)
-        if holiday:
-            result.append(
-                {
-                    "date": str(day),
-                    "holiday": holiday,
-                }
-            )
-
-    df = DataFrame(result)
-    return df
 
 
 def generate_buddy_shifts(start, end):
