@@ -39,6 +39,6 @@
     "dev": "concurrently npm:dev:*",
     "build": "webpack --config webpack/prod.config.js",
     "dev:webpack": "webpack serve --config webpack/dev.config.js",
-    "dev:django": "python manage.py runserver_plus"
+    "dev:django": "python manage.py runserver_plus 0.0.0.0:8000"
   }
 }

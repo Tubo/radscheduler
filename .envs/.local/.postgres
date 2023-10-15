@@ -1,0 +1,7 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=radscheduler
+POSTGRES_USER=GUFctNinRgoXhColYrDbHRmXjxPjYUOY
+POSTGRES_PASSWORD=7aBvi09pW5Pi1iOMwZBAt9X3Fb26KwDFMtscaQ6BIB2nKfqXmwBVOMcrFPFR9VGQ
