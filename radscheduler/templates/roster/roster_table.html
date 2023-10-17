@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% load render_bundle from webpack_loader %}
+{% load static %}
+
+{% block title %}Roster Overview{% endblock %}
+
+{% block content %}
+<h1>Overview</h1>
+
+<div x-data>
+  <input x-model="$store.state.start" type="date" />
+  <input x-model="$store.state.end" type="date" />
+  <button x-on:click="$store.state.refresh()">Refresh</button>
+</div>
+
+<br />
+
+<div id="roster-table"></div>
+
+{% render_bundle 'roster_table' %}
+
+{% endblock %}

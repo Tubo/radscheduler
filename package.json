@@ -8,8 +8,8 @@
     "autoprefixer": "^10.4.0",
     "babel-loader": "^9.1.2",
     "bootstrap": "^5.2.3",
-    "css-loader": "^6.5.1",
     "concurrently": "^8.0.1",
+    "css-loader": "^6.5.1",
     "mini-css-extract-plugin": "^2.4.5",
     "node-sass-tilde-importer": "^1.0.2",
     "pixrem": "^5.0.0",
@@ -40,5 +40,10 @@
     "build": "webpack --config webpack/prod.config.js",
     "dev:webpack": "webpack serve --config webpack/dev.config.js",
     "dev:django": "python manage.py runserver_plus 0.0.0.0:8000"
+  },
+  "dependencies": {
+    "alpinejs": "^3.13.1",
+    "luxon": "^3.4.3",
+    "tabulator-tables": "^5.5.2"
   }
 }
