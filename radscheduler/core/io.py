@@ -3,20 +3,14 @@ Imports the history of shifts and leaves from a CSV file.
 
 The file was exported from Google Sheets designed by the previous roster master (Dr. Ed Ganly).
 """
-from datetime import date, datetime
 import csv
+from datetime import date, datetime
+
 import yaml
 
-from radscheduler.core.models import (
-    Shift,
-    ShiftType,
-    Leave,
-    LeaveType,
-    Registrar,
-    Status,
-    StatusType,
-)
-from radscheduler.core.roster import canterbury_holidays
+from radscheduler.core.models import Leave, Registrar, Shift, Status
+from radscheduler.roster import LeaveType, ShiftType, StatusType, canterbury_holidays
+from radscheduler.users.models import User
 
 shift_types = {
     "Long day": ShiftType.LONG,
@@ -86,38 +80,37 @@ def parse_row(date, username, shift_type_str, start, end, users):
         if not (start <= date <= end) or not keep:
             return None
 
+    user = User.objects.get(username=username)
+
     if shift_type_str in shift_types:
         shift_type = shift_types[shift_type_str]
         extra = "Extra duty" in shift_type_str
         stat = date in canterbury_holidays
-        user = users[username]
-        return Shift(
-            date=date, type=shift_type, registrar=user, extra_duty=extra, stat_day=stat
-        )
+        return Shift(date=date, type=shift_type, registrar=user.registrar, extra_duty=extra, stat_day=stat)
 
     elif shift_type_str in leave_types:
         leave_type = leave_types[shift_type_str]
-        user = users[username]
         if "a.m." in shift_type_str:
             portion = "AM"
         elif "p.m." in shift_type_str:
             portion = "PM"
         else:
             portion = "ALL"
-        return Leave(date=date, type=leave_type, registrar=user, portion=portion)
+        return Leave(date=date, type=leave_type, registrar=user.registrar, portion=portion)
 
 
 def import_users(fname):
     with open(fname) as f:
         data = yaml.safe_load(f)
-    result = {}
+    result = {"users": [], "registrars": []}
     for username, profile in data.items():
+        user, _ = User.objects.get_or_create(username=username)
         senior = profile["senior"]
         start = datetime.strptime(profile["start"], "%d/%m/%Y").date()
         finish = datetime.strptime(profile["finish"], "%d/%m/%Y").date()
-        result[username] = Registrar(
-            username=username, senior=senior, start=start, finish=finish
-        )
+        registrar = Registrar(senior=senior, start=start, finish=finish, user=user)
+        result["users"].append(user)
+        result["registrars"].append(registrar)
     return result
 
 
@@ -129,6 +122,6 @@ def import_status(fname):
         type = status_types[profile["type"]]
         start = datetime.strptime(profile["start"], "%d/%m/%Y").date()
         end = datetime.strptime(profile["finish"], "%d/%m/%Y").date()
-        registrar = Registrar.objects.get(username=username)
+        registrar = User.objects.get(username=username).registrar
         result.append(Status(registrar=registrar, type=type, start=start, end=end))
     return result

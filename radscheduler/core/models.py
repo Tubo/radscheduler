@@ -1,19 +1,11 @@
-from enum import Enum, IntEnum, auto
 from datetime import date
+from enum import IntEnum
 
-from django.db import models
-from django.contrib.auth.models import AbstractUser
 from django.contrib.postgres.fields import ArrayField
+from django.db import models
 
-
-class Weekday(IntEnum):
-    MON = 0
-    TUE = 1
-    WED = 2
-    THUR = 3
-    FRI = 4
-    SAT = 5
-    SUN = 6
+from radscheduler import roster
+from radscheduler.users.models import User
 
 
 class ISOWeekday(IntEnum):
@@ -26,15 +18,16 @@ class ISOWeekday(IntEnum):
     SUN = 7
 
 
-class Registrar(AbstractUser):
+class Registrar(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     senior = models.BooleanField(default=False)
-    start = models.DateField("start date", null=True, blank=True)
-    finish = models.DateField("finish date", null=True, blank=True)
+    start = models.DateField("start date", null=True, blank=True, help_text="Date started training")
+    finish = models.DateField("finish date", null=True, blank=True, help_text="Date finished training")
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
 
     def __repr__(self) -> str:
-        return f"<Registrar: {self.username}>"
+        return f"<Registrar: {self.user.username}>"
 
     @property
     def year(self):
@@ -45,16 +38,9 @@ class Registrar(AbstractUser):
         return ((date.today() - self.start).days // 365) + 1
 
 
-class ShiftType(models.TextChoices):
-    LONG = "LONG", "Long day"  # from 8am to 10pm
-    NIGHT = "NIGHT", "Night"  # from 10pm to 8am
-    RDO = "RDO", "RDO"
-    SLEEP = "SLP", "Sleep day"
-
-
 class Shift(models.Model):
     date = models.DateField("shift date")
-    type = models.CharField("shift type", max_length=10, choices=ShiftType.choices)
+    type = models.CharField("shift type", max_length=10, choices=roster.ShiftType.choices)
     registrar = models.ForeignKey(
         Registrar,
         blank=True,
@@ -67,33 +53,15 @@ class Shift(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
 
-    @property
-    def is_weekend(self) -> bool:
-        """Determine if a LONG day shift is on a weekend"""
-        if self.type == ShiftType.LONG:
-            return self.date.weekday() in [Weekday.SAT, Weekday.SUN]
-        elif self.type == ShiftType.NIGHT:
-            return self.date.weekday() in [Weekday.FRI, Weekday.SAT, Weekday.SUN]
-        return False
-
     def __repr__(self) -> str:
         if self.registrar:
             registrar = self.registrar.username
         else:
             registrar = "N/A"
-        return f"<{ShiftType(self.type).name} Shift {self.date} ({Weekday(self.date.weekday()).name}): {registrar}>"
+        return f"<{roster.ShiftType(self.type).name} Shift {self.date} ({roster.Weekday(self.date.weekday()).name}): {registrar}>"
 
     class Meta:
         unique_together = ["date", "type", "registrar", "extra_duty"]
-
-
-class StatusType(models.IntegerChoices):
-    PRE_ONCALL = auto(), "Pre-oncall"
-    RELIEVER = auto(), "Reliever"
-    PART_TIME = auto(), "Part time non-working day"
-    PRE_EXAM = auto(), "Pre-exam"
-    BUDDY = auto(), "Buddy required"
-    NA = auto(), "Not available"
 
 
 class Status(models.Model):
@@ -109,10 +77,8 @@ class Status(models.Model):
 
     start = models.DateField("start date")
     end = models.DateField("end date")
-    type = models.IntegerField(choices=StatusType.choices)
-    registrar = models.ForeignKey(
-        Registrar, blank=False, null=False, on_delete=models.CASCADE
-    )
+    type = models.IntegerField(choices=roster.StatusType.choices)
+    registrar = models.ForeignKey(Registrar, blank=False, null=False, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
     weekdays = ArrayField(
@@ -120,31 +86,17 @@ class Status(models.Model):
         default=list,
         size=7,
     )
-    shift_types = ArrayField(
-        models.CharField(max_length=10, choices=ShiftType.choices), default=list
-    )
-
-    @property
-    def not_oncall(self):
-        return self.type != StatusType.BUDDY
+    shift_types = ArrayField(models.CharField(max_length=10, choices=roster.ShiftType.choices), default=list)
 
     def __repr__(self) -> str:
-        return f"<Status: {self.registrar.username} {self.start}--{self.end} ({StatusType(self.type).name})>"
-
-
-class LeaveType(models.IntegerChoices):
-    ANNUAL = auto(), "Annual"
-    EDU = auto(), "Education"
-    CONF = auto(), "Conference"
-    BE = auto(), "Bereavement"
-    LIEU = auto(), "Lieu day"
-    PARENTAL = auto(), "Parental"
-    SICK = auto(), "Sick"
+        return (
+            f"<Status: {self.registrar.user.username} {self.start}--{self.end} ({roster.StatusType(self.type).label})>"
+        )
 
 
 class Leave(models.Model):
     date = models.DateField("date of leave")
-    type = models.IntegerField(choices=LeaveType.choices)
+    type = models.IntegerField(choices=roster.LeaveType.choices)
     portion = models.CharField(
         "portion of day",
         max_length=5,
@@ -155,14 +107,12 @@ class Leave(models.Model):
     cancelled = models.BooleanField(default=False)
     comment = models.TextField()
 
-    registrar = models.ForeignKey(
-        Registrar, blank=False, null=False, on_delete=models.CASCADE
-    )
+    registrar = models.ForeignKey(Registrar, blank=False, null=False, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
 
     def __repr__(self) -> str:
-        return f"<Leave: {self.registrar.username} {self.date} ({LeaveType(self.type).name})>"
+        return f"<Leave: {self.registrar.username} {self.date} ({roster.LeaveType(self.type).name})>"
 
     class Meta:
         unique_together = ["date", "type", "registrar"]
