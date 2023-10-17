@@ -2,8 +2,9 @@ import Alpine from 'alpinejs'
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
 const { DateTime, Interval } = require("luxon");
 
-import "tabulator-tables/dist/css/tabulator.min.css"
+// import "tabulator-tables/dist/css/tabulator.min.css"
 import "tabulator-tables/dist/css/tabulator_bootstrap5.min.css"
+import "../css/roster_table.scss"
 
 window.Alpine = Alpine
 window.table = rosterTable('#roster-table')
@@ -220,7 +221,7 @@ function rosterTable(id) {
             hozAlign: 'center',
             headerSort: false,
             resizable: false,
-            minWidth: 100,
+            minWidth: 120,
             headerHozAlign: 'center',
         },
         rowFormatter: function (row) {

@@ -5,17 +5,16 @@
 {% block title %}Roster Overview{% endblock %}
 
 {% block content %}
-<h1>Overview</h1>
 
-<div x-data>
-  <input x-model="$store.state.start" type="date" />
-  <input x-model="$store.state.end" type="date" />
-  <button x-on:click="$store.state.refresh()">Refresh</button>
+<div class="container-fluid">
+  <h1>Overview</h1>
+  <div class="mb-4" x-data>
+    <input x-model="$store.state.start" type="date" />
+    <input x-model="$store.state.end" type="date" />
+    <button class="btn btn-primary" x-on:click="$store.state.refresh()">Refresh</button>
+  </div>
+  <div id="roster-table"></div>
 </div>
-
-<br />
-
-<div id="roster-table"></div>
 
 {% render_bundle 'roster_table' %}
 
