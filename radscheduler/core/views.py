@@ -1,14 +1,15 @@
 import json
 from datetime import date
-from django.shortcuts import render, HttpResponse
 
+from django.shortcuts import HttpResponse, render
+
+from radscheduler.core.forms import DateRangeForm
 from radscheduler.core.service import (
+    generate_roster,
     retrieve_fullcalendar_events,
     retrieve_roster,
     retrieve_workload_breakdown,
-    generate_roster,
 )
-from radscheduler.core.forms import DateRangeForm
 
 
 def calendar_view(request):
@@ -18,13 +19,6 @@ def calendar_view(request):
     events = retrieve_fullcalendar_events()
     events_json = json.dumps(events)
     return render(request, "calendar.html", {"events": events_json})
-
-
-def roster_table_view(request):
-    """
-    Display the roster in a table format.
-    """
-    return render(request, "roster_table.html")
 
 
 def roster_generation_view(request):
@@ -45,7 +39,7 @@ def get_generated_roster(request):
             return HttpResponse(events_json, content_type="application/json")
 
 
-def get_roster_table(request):
+def get_roster(request):
     if request.method == "GET":
         form = DateRangeForm(request.GET)
         if form.is_valid():
