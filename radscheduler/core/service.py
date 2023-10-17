@@ -101,7 +101,6 @@ def build_registrar_table(registrars):
 
 
 def build_pivot_table(start, end, shifts, leaves, registrars):
-    date_range = DataFrame({"date": [date for date in daterange(start, end + timedelta(days=1))]})
     columns = ["id", "date", "registrar"]
 
     df_shifts = DataFrame(shifts, columns=columns)
@@ -115,15 +114,9 @@ def build_pivot_table(start, end, shifts, leaves, registrars):
     df = concat([df_shifts, df_leaves])
 
     if df.empty:
-        pivot = DataFrame(
-            date_range,
-            index=date_range["date"],
-            columns=registrars.id.astype("str").values,
-        )
-        pivot.reset_index(inplace=True, names=["date"])
+        pivot = DataFrame(columns=["date", "holiday"])
     else:
         pivot = df.pivot_table(index="date", columns="registrar", values="id", aggfunc="first")
-        pivot = pivot.merge(date_range, left_index=True, right_on="date", how="right")
     pivot.reset_index(inplace=True)
     pivot.fillna("", inplace=True)
     pivot["holiday"] = pivot.date.map(lambda d: canterbury_holidays.get(d, ""))
@@ -153,8 +146,6 @@ def retrieve_roster(start: date = None, end: date = None):
         leaves.values("id", "date", "registrar"),
         df_registrars,
     )
-    if pivot.empty:
-        pivot = DataFrame(columns=["date", "holiday"])
 
     result = {
         "columns": df_registrars.to_dict(orient="records"),
