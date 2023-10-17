@@ -1,2 +1,5 @@
 __pycache__/
 resources/
+node_modules
+bash_history
+.envs
