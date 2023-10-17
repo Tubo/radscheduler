@@ -20,6 +20,7 @@ class ISOWeekday(IntEnum):
 
 class Registrar(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
+    employee_number = models.CharField(max_length=20, blank=True, null=True)
     senior = models.BooleanField(default=False)
     start = models.DateField("start date", null=True, blank=True, help_text="Date started training")
     finish = models.DateField("finish date", null=True, blank=True, help_text="Date finished training")
@@ -28,6 +29,9 @@ class Registrar(models.Model):
 
     def __repr__(self) -> str:
         return f"<Registrar: {self.user.username}>"
+
+    def __str__(self) -> str:
+        return self.user.username
 
     @property
     def year(self):
@@ -108,6 +112,8 @@ class Leave(models.Model):
     comment = models.TextField()
 
     registrar = models.ForeignKey(Registrar, blank=False, null=False, on_delete=models.CASCADE)
+    form = models.ForeignKey("leave_application.LeaveForm", on_delete=models.PROTECT, null=True, blank=True)
+
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
 
@@ -116,18 +122,3 @@ class Leave(models.Model):
 
     class Meta:
         unique_together = ["date", "type", "registrar"]
-
-
-class LeaveApplication(models.Model):
-    """
-    - Generate printable PDF
-    - Triggers an email after creation
-    """
-
-    registrar = models.ForeignKey(Registrar, on_delete=models.CASCADE)
-    created = models.DateTimeField(auto_now_add=True)
-    last_edited = models.DateTimeField(auto_now=True)
-
-
-class SwapApplication(models.Model):
-    pass

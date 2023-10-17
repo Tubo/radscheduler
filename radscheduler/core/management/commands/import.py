@@ -45,7 +45,7 @@ class Command(BaseCommand):
 
         shifts, leaves = import_history(fname, users, start, end)
         statuses = import_status(statuses)
-        Shift.objects.bulk_create(shifts)
-        Leave.objects.bulk_create(leaves)
-        Status.objects.bulk_create(statuses)
+        Shift.objects.bulk_create(shifts, ignore_conflicts=True)
+        Leave.objects.bulk_create(leaves, ignore_conflicts=True)
+        Status.objects.bulk_create(statuses, ignore_conflicts=True)
         self.stdout.write(self.style.SUCCESS("Successfully imported roster"))

@@ -105,6 +105,8 @@ def import_users(fname):
     result = {"users": [], "registrars": []}
     for username, profile in data.items():
         user, _ = User.objects.get_or_create(username=username)
+        user.set_password("cdhbxray1")
+        user.save()
         senior = profile["senior"]
         start = datetime.strptime(profile["start"], "%d/%m/%Y").date()
         finish = datetime.strptime(profile["finish"], "%d/%m/%Y").date()

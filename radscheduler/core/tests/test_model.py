@@ -46,3 +46,8 @@ class TestStatus:
         assert s.weekdays == []
         assert s.shift_types == [ShiftType.NIGHT]
         assert s.registrar == reg
+
+
+class TestLeave:
+    def test_cancelled_leaves_filtered_by_default(self):
+        pass
