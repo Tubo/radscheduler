@@ -1,29 +1,16 @@
 from datetime import date, timedelta
 
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
 from django.db.models import Q
-
 from rangefilter.filters import (
     DateRangeFilterBuilder,
+    DateRangeQuickSelectListFilterBuilder,
     DateTimeRangeFilterBuilder,
     NumericRangeFilterBuilder,
-    DateRangeQuickSelectListFilterBuilder,
 )
 
-from radscheduler.core.models import Registrar, Shift, ISOWeekday, Weekday, ShiftType
-
-
-@admin.register(Registrar)
-class RegistrarAdmin(UserAdmin):
-    list_display = (
-        "username",
-        "year",
-        "senior",
-        "start",
-        "finish",
-    )
-    ordering = ("-start", "username")
+from radscheduler.core.models import ISOWeekday, Registrar, Shift
+from radscheduler.roster.models import ShiftType, Weekday
 
 
 # Register your models here.

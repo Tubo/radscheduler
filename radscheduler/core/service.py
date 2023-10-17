@@ -1,25 +1,12 @@
 from datetime import date, timedelta
-from django.db.models import F, Q, When, Case, Value
+
+from django.db.models import Case, F, Q, Value, When
 from django.db.models.functions import Now, TruncYear
 from pandas import DataFrame, concat
 
-from radscheduler.core.models import (
-    Registrar,
-    Shift,
-    ShiftType,
-    Leave,
-    LeaveType,
-    Status,
-    StatusType,
-    ISOWeekday,
-)
-from radscheduler.core.roster import (
-    canterbury_holidays,
-    daterange,
-    DefaultRoster,
-    shifts_to_assignments,
-    assignments_to_shifts,
-)
+from radscheduler.core.models import Leave, Registrar, Shift, Status
+from radscheduler.roster import LeaveType, ShiftType, SingleOnCallRoster, StatusType, Weekday, canterbury_holidays
+from radscheduler.roster.utils import daterange
 
 
 def format_date(date):
@@ -70,9 +57,7 @@ def default_start_and_end(start, end):
 
 def active_registrars(start: date = None, end: date = None):
     start, end = default_start_and_end(start, end)
-    registrars = Registrar.objects.exclude(start=None).annotate(
-        days=(Now() - F("start"))
-    )
+    registrars = Registrar.objects.exclude(start=None).annotate(days=(Now() - F("start")))
     registrars = registrars.exclude(Q(finish__lt=start) | Q(start__gt=end))
     return registrars
 
@@ -82,7 +67,7 @@ def shift_to_dict(shift):
         "date": str(shift.date),
         "type": ShiftType(shift.type).label,
         "registrar": shift.registrar.pk if shift.registrar else None,
-        "username": shift.registrar.username if shift.registrar else None,
+        "username": shift.registrar.user.username if shift.registrar else None,
         "extra_duty": shift.extra_duty,
     }
 
@@ -111,13 +96,11 @@ def build_registrar_table(registrars):
     df_registrars = DataFrame(registrars)
     df_registrars["year"] = df_registrars.days.dt.days // 365 + 1
     df_registrars.drop(["days"], axis=1, inplace=True)
+    df_registrars.rename(columns={"user__username": "username"}, inplace=True)
     return df_registrars
 
 
 def build_pivot_table(start, end, shifts, leaves, registrars):
-    date_range = DataFrame(
-        {"date": [date for date in daterange(start, end + timedelta(days=1))]}
-    )
     columns = ["id", "date", "registrar"]
 
     df_shifts = DataFrame(shifts, columns=columns)
@@ -131,17 +114,9 @@ def build_pivot_table(start, end, shifts, leaves, registrars):
     df = concat([df_shifts, df_leaves])
 
     if df.empty:
-        pivot = DataFrame(
-            date_range,
-            index=date_range["date"],
-            columns=registrars.id.astype("str").values,
-        )
-        pivot.reset_index(inplace=True, names=["date"])
+        pivot = DataFrame(columns=["date", "holiday"])
     else:
-        pivot = df.pivot_table(
-            index="date", columns="registrar", values="id", aggfunc="first"
-        )
-        pivot = pivot.merge(date_range, left_index=True, right_on="date", how="right")
+        pivot = df.pivot_table(index="date", columns="registrar", values="id", aggfunc="first")
     pivot.reset_index(inplace=True)
     pivot.fillna("", inplace=True)
     pivot["holiday"] = pivot.date.map(lambda d: canterbury_holidays.get(d, ""))
@@ -162,7 +137,7 @@ def retrieve_roster(start: date = None, end: date = None):
     status_dict = [status_to_dict(status) for status in statuses]
 
     registrars = active_registrars(start, end)
-    df_registrars = build_registrar_table(registrars.values("id", "username", "days"))
+    df_registrars = build_registrar_table(registrars.values("id", "user__username", "days"))
 
     pivot = build_pivot_table(
         start,
@@ -171,8 +146,6 @@ def retrieve_roster(start: date = None, end: date = None):
         leaves.values("id", "date", "registrar"),
         df_registrars,
     )
-    if pivot.empty:
-        pivot = DataFrame(columns=["date", "holiday"])
 
     result = {
         "columns": df_registrars.to_dict(orient="records"),
@@ -184,13 +157,17 @@ def retrieve_roster(start: date = None, end: date = None):
     return result
 
 
+def generate_shifts(start: date, end: date):
+    unfilled_shifts = [
+        Shift(date=shift.date, type=shift.type, stat_day=shift.stat_day)
+        for shift in SingleOnCallRoster().generate_shifts(start, end)
+    ]
+    return Shift.objects.bulk_create(unfilled_shifts, ignore_conflicts=True)
+
+
 def generate_roster(start: date = None, end: date = None):
-    active_registrars = Registrar.objects.exclude(
-        Q(finish__lt=start) | Q(start__gt=end)
-    )
-    prev_assignments = shifts_to_assignments(
-        Shift.objects.filter(date__range=[start - timedelta(days=30 * 6), start])
-    )
+    active_registrars = Registrar.objects.exclude(Q(finish__lt=start) | Q(start__gt=end))
+    prev_assignments = shifts_to_assignments(Shift.objects.filter(date__range=[start - timedelta(days=30 * 6), start]))
     leaves = Leave.objects.filter(date__range=[start, end])
     status = Status.objects.exclude(Q(end__lt=start) | Q(start__gt=end))
     roster = DefaultRoster(
@@ -208,9 +185,7 @@ def generate_roster(start: date = None, end: date = None):
 def shifts_table(shifts):
     shifts = [shift_to_dict(shift) for shift in shifts]
     df = DataFrame(shifts)
-    pivot = df.pivot_table(
-        index="date", columns="type", values="username", aggfunc="first"
-    )
+    pivot = df.pivot_table(index="date", columns="type", values="username", aggfunc="first")
     pivot.reset_index(inplace=True)
     pivot.fillna("", inplace=True)
     pivot["date"] = pivot.date.astype("str")
@@ -228,17 +203,16 @@ def retrieve_workload_breakdown(start: date = None, end: date = None):
     ).annotate(
         type_=Case(
             When(
-                Q(type=ShiftType.LONG)
-                & Q(date__iso_week_day__in=[ISOWeekday.SAT, ISOWeekday.SUN]),
+                Q(type=ShiftType.LONG) & Q(date__iso_week_day__in=[Weekday.SAT, Weekday.SUN]),
                 then=Value("WEEKEND"),
             ),
             When(
                 Q(type=ShiftType.NIGHT)
                 & Q(
                     date__iso_week_day__in=[
-                        ISOWeekday.FRI,
-                        ISOWeekday.SAT,
-                        ISOWeekday.SUN,
+                        Weekday.FRI,
+                        Weekday.SAT,
+                        Weekday.SUN,
                     ]
                 ),
                 then=Value("WKD NIGHT"),
@@ -251,10 +225,7 @@ def retrieve_workload_breakdown(start: date = None, end: date = None):
     df_shifts = DataFrame(shifts.values("registrar", "type_"))
     workload = df_shifts.groupby(["registrar", "type_"]).size().unstack().fillna(0)
     workload["FATIGUE"] = (
-        workload["LONG"] * 1
-        + workload["NIGHT"] * 7
-        + workload["WEEKEND"] * 4
-        + workload["WKD NIGHT"] * 5
+        workload["LONG"] * 1 + workload["NIGHT"] * 7 + workload["WEEKEND"] * 4 + workload["WKD NIGHT"] * 5
     )
     workload = workload.merge(df_registrars, left_index=True, right_on="id", how="left")
     workload.drop(["id"], axis=1, inplace=True)

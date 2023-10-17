@@ -3,14 +3,35 @@
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
+    "compounds": [
+        {
+            "name": "Front + Back",
+            "configurations": [
+                "npm dev",
+                "django runserver"
+            ]
+        }
+    ],
     "configurations": [
         {
-            "name": "Python: Django",
+            "name": "npm dev",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceRoot}",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run",
+                "dev:webpack"
+            ],
+        },
+        {
+            "name": "django runserver",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manage.py",
             "args": [
-                "runserver"
+                "runserver_plus",
+                "0.0.0.0:8000"
             ],
             "django": true,
             "justMyCode": true
