@@ -5,7 +5,7 @@ from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic import TemplateView
 
-from radscheduler.core.views import calendar_view, get_roster, get_workload
+from radscheduler.core.views import get_calendar, get_roster, get_workload
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
@@ -16,7 +16,8 @@ urlpatterns = [
     path("users/", include("radscheduler.users.urls", namespace="users")),
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
-    path("calendar/", calendar_view, name="calendar"),
+    path("calendar/", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"),
+    path("calendar/events/", get_calendar, name="calendar_events"),
     path("roster/", TemplateView.as_view(template_name="roster/roster_table.html"), name="roster"),
     path("roster/events/", get_roster, name="roster_events"),
     path("roster/workload/", get_workload, name="roster_workload"),

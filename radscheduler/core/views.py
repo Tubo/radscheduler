@@ -12,13 +12,14 @@ from radscheduler.core.service import (
 )
 
 
-def calendar_view(request):
+def get_calendar(request):
     """
     Display the roster in a calendar format.
     """
-    events = retrieve_fullcalendar_events()
-    events_json = json.dumps(events)
-    return render(request, "calendar.html", {"events": events_json})
+    if request.method == "GET":
+        events = retrieve_fullcalendar_events()
+        events_json = json.dumps(events)
+        return HttpResponse(events_json, content_type="application/json")
 
 
 def roster_generation_view(request):

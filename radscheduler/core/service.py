@@ -26,8 +26,8 @@ def retrieve_fullcalendar_events():
     result = []
     shifts = (
         Shift.objects.all()
-        .annotate(username=F("registrar__username"))
-        .select_related("registrar")
+        .annotate(username=F("registrar__user__username"))
+        .select_related("registrar", "user")
         .values("id", "date", "type", "username")
     )
     for shift in shifts:

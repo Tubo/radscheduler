@@ -1,22 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-    <script>
+{% extends 'base.html' %}
+{% load render_bundle from webpack_loader %}
 
-      document.addEventListener('DOMContentLoaded', function() {
-        var calendarEl = document.getElementById('calendar');
-        var calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            events: {{ events | safe}}
-        });
-        calendar.render();
-      });
+{% block content %}
 
-    </script>
-  </head>
-  <body>
-    <div id="calendar"></div>
-  </body>
-</html>
+<div class="container">
+  <div id="calendar"></div>
+</div>
+
+{% render_bundle 'calendar' %}
+
+{% endblock %}

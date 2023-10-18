@@ -78,7 +78,8 @@
 				"GitHub.copilot-chat",
 				"ms-toolsai.jupyter",
 				"ms-toolsai.jupyter-renderers",
-				"ms-toolsai.jupyter-keymap"
+				"ms-toolsai.jupyter-keymap",
+				"monosans.djlint"
 			]
         }
     },

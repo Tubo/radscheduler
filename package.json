@@ -42,7 +42,11 @@
     "dev:django": "python manage.py runserver_plus 0.0.0.0:8000"
   },
   "dependencies": {
+    "@fullcalendar/bootstrap5": "^6.1.9",
+    "@fullcalendar/core": "^6.1.9",
+    "@fullcalendar/daygrid": "^6.1.9",
     "alpinejs": "^3.13.1",
+    "bootstrap-icons": "^1.11.1",
     "luxon": "^3.4.3",
     "tabulator-tables": "^5.5.2"
   }
