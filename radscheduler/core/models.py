@@ -81,7 +81,7 @@ class Status(models.Model):
 
     start = models.DateField("start date")
     end = models.DateField("end date")
-    type = models.IntegerField(choices=roster.StatusType.choices)
+    type = models.CharField(choices=roster.StatusType.choices, max_length=10)
     registrar = models.ForeignKey(Registrar, blank=False, null=False, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
@@ -100,7 +100,7 @@ class Status(models.Model):
 
 class Leave(models.Model):
     date = models.DateField("date of leave")
-    type = models.IntegerField(choices=roster.LeaveType.choices)
+    type = models.CharField(choices=roster.LeaveType.choices, max_length=10)
     portion = models.CharField(
         "portion of day",
         max_length=5,

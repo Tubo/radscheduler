@@ -15,14 +15,14 @@ class Weekday(IntEnum):
     SUN = 6
 
 
-class LeaveType(models.IntegerChoices):
-    ANNUAL = auto(), "Annual"
-    EDU = auto(), "Education"
-    CONF = auto(), "Conference"
-    BE = auto(), "Bereavement"
-    LIEU = auto(), "Lieu day"
-    PARENTAL = auto(), "Parental"
-    SICK = auto(), "Sick"
+class LeaveType(models.TextChoices):
+    ANNUAL = "ANNUAL", "Annual"
+    EDU = "EDU", "Education"
+    CONF = "CONF", "Conference"
+    BE = "BE", "Bereavement"
+    LIEU = "LIEU", "Lieu day"
+    PARENTAL = "PAR", "Parental"
+    SICK = "SICK", "Sick"
 
 
 class ShiftType(models.TextChoices):
@@ -58,13 +58,13 @@ class DetailedShiftType(models.TextChoices):
             return cls.SLEEP
 
 
-class StatusType(models.IntegerChoices):
-    PRE_ONCALL = auto(), "Pre-oncall"
-    RELIEVER = auto(), "Reliever"
-    PART_TIME = auto(), "Part time non-working day"
-    PRE_EXAM = auto(), "Pre-exam"
-    BUDDY = auto(), "Buddy required"
-    NA = auto(), "Not available"
+class StatusType(models.TextChoices):
+    PRE_ONCALL = "PRECALL", "Pre-oncall"
+    RELIEVER = "RELIEVER", "Reliever"
+    PART_TIME = "PART", "Part time non-working day"
+    PRE_EXAM = "PREEXAM", "Pre-exam"
+    BUDDY = "BUDDY", "Buddy required"
+    NA = "NA", "Not available"
 
 
 @dataclass
