@@ -99,6 +99,7 @@ class Status(models.Model):
 
 
 class Leave(models.Model):
+    registrar = models.ForeignKey(Registrar, blank=False, null=False, on_delete=models.CASCADE)
     date = models.DateField("date of leave")
     type = models.CharField(choices=roster.LeaveType.choices, max_length=10)
     portion = models.CharField(
@@ -107,12 +108,11 @@ class Leave(models.Model):
         choices=[("ALL", "All day"), ("AM", "AM"), ("PM", "PM")],
         default="ALL",
     )
-    approved = models.BooleanField(default=False)
-    cancelled = models.BooleanField(default=False)
     comment = models.TextField()
 
-    registrar = models.ForeignKey(Registrar, blank=False, null=False, on_delete=models.CASCADE)
-    form = models.ForeignKey("leave_application.LeaveForm", on_delete=models.PROTECT, null=True, blank=True)
+    reg_approved = models.BooleanField(null=True, blank=True)
+    dot_approved = models.BooleanField(null=True, blank=True)
+    cancelled = models.BooleanField(default=False)
 
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
@@ -121,4 +121,4 @@ class Leave(models.Model):
         return f"<Leave: {self.registrar.username} {self.date} ({roster.LeaveType(self.type).name})>"
 
     class Meta:
-        unique_together = ["date", "type", "registrar"]
+        unique_together = ["date", "registrar"]

@@ -5,7 +5,7 @@ from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic import TemplateView
 
-from radscheduler.core.views import get_calendar, get_roster, get_workload
+from radscheduler.core.views import get_calendar, get_roster, get_workload, leaves_view
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
@@ -21,6 +21,8 @@ urlpatterns = [
     path("roster/", TemplateView.as_view(template_name="roster/roster_table.html"), name="roster"),
     path("roster/events/", get_roster, name="roster_events"),
     path("roster/workload/", get_workload, name="roster_workload"),
+    path("leaves/", leaves_view, name="leaves"),
+    path("unicorn/", include("django_unicorn.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 

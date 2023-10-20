@@ -78,13 +78,12 @@ THIRD_PARTY_APPS = [
     "allauth.socialaccount",
     "webpack_loader",
     "rangefilter",
+    "django_unicorn",
 ]
 
 LOCAL_APPS = [
     "radscheduler.users",
-    # Your stuff: custom apps go here
     "radscheduler.core",
-    "radscheduler.leave_application",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

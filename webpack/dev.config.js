@@ -7,7 +7,7 @@ module.exports = merge(commonConfig, {
   devServer: {
     port: 3000,
     proxy: {
-      '/': 'http://django:8000',
+      '/': 'http://127.0.0.1:8000',
     },
     // We need hot=false (Disable HMR) to set liveReload=true
     hot: false,
