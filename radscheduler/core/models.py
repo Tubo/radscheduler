@@ -108,17 +108,19 @@ class Leave(models.Model):
         choices=[("ALL", "All day"), ("AM", "AM"), ("PM", "PM")],
         default="ALL",
     )
-    comment = models.TextField()
+    comment = models.TextField(blank=True)
 
     reg_approved = models.BooleanField(null=True, blank=True)
     dot_approved = models.BooleanField(null=True, blank=True)
+    printed = models.BooleanField(default=False)
+    microster = models.BooleanField(default=False)
     cancelled = models.BooleanField(default=False)
 
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
 
     def __repr__(self) -> str:
-        return f"<Leave: {self.registrar.username} {self.date} ({roster.LeaveType(self.type).name})>"
+        return f"<Leave: {self.registrar.user.username} {self.date} ({roster.LeaveType(self.type).name})>"
 
     class Meta:
         unique_together = ["date", "registrar"]
