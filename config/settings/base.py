@@ -78,7 +78,7 @@ THIRD_PARTY_APPS = [
     "allauth.socialaccount",
     "webpack_loader",
     "rangefilter",
-    "django_unicorn",
+    "django_htmx"
 ]
 
 LOCAL_APPS = [
@@ -138,7 +138,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "allauth.account.middleware.AccountMiddleware",
+    "allauth.account.middleware.AccountMiddleware",    
+    "django_htmx.middleware.HtmxMiddleware",
 ]
 
 # STATIC

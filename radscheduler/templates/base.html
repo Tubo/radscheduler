@@ -1,6 +1,5 @@
 {% load static i18n %}
 {% load render_bundle from webpack_loader %}
-{% load unicorn %}
 
 <!DOCTYPE html>
 {% get_current_language as LANGUAGE_CODE %}
@@ -27,7 +26,6 @@
     ================================================== -->
     {# Placed at the top of the document so pages load faster with defer #}
     {% block javascript %}
-      {% unicorn_scripts %}
       <!-- Vendor dependencies bundled as one file -->
       {% render_bundle 'vendors' 'js' attrs='defer' %}
       <!-- place project specific Javascript in this file -->
