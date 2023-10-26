@@ -1,0 +1,17 @@
+<table class="table mt-4 p-4 border">
+    <thead>
+        <tr class="text-center">
+            <th scope="col" style="width: 15%">Date</th>
+            <th scope="col" style="width: 15%">Type</th>
+            <th scope="col" style="width: 10%">Portion</th>
+            <th scope="col">Comment</th>
+            <th scope="col" style="width: 15%">Status</th>
+            <th scope="col" style="width: 15%"></th>
+        </tr>
+    </thead>
+    <tbody class="text-center">
+        {% for row in rows %}
+            {% include "leaves/row.html" with row=row %}
+        {% endfor %}
+    </tbody>
+</table>

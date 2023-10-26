@@ -104,9 +104,9 @@ class Leave(models.Model):
     type = models.CharField(choices=roster.LeaveType.choices, max_length=10)
     portion = models.CharField(
         "portion of day",
-        max_length=5,
         choices=[("ALL", "All day"), ("AM", "AM"), ("PM", "PM")],
         default="ALL",
+        max_length=5,
     )
     comment = models.TextField(blank=True)
 
@@ -121,6 +121,9 @@ class Leave(models.Model):
 
     def __repr__(self) -> str:
         return f"<Leave: {self.registrar.user.username} {self.date} ({roster.LeaveType(self.type).name})>"
+
+    def is_past(self):
+        return self.date < date.today()
 
     class Meta:
         unique_together = ["date", "registrar"]

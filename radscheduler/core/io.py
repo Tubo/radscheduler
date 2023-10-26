@@ -96,7 +96,14 @@ def parse_row(date, username, shift_type_str, start, end, users):
             portion = "PM"
         else:
             portion = "ALL"
-        return Leave(date=date, type=leave_type, registrar=user.registrar, portion=portion)
+        return Leave(
+            date=date,
+            type=leave_type,
+            registrar=user.registrar,
+            portion=portion,
+            reg_approved=True,
+            dot_approved=True,
+        )
 
 
 def import_users(fname):

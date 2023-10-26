@@ -1,0 +1,24 @@
+<tr class="{% if row.is_past %}table-secondary{% endif %}">
+    <th scope="row" class="font-monospace">{{ row.date|date:"d-m-Y, D" }}</th>
+    <td>{{ row.get_type_display }}</td>
+    <td>{{ row.get_portion_display }}</td>
+    <td>{{ row.comment }}</td>
+    <td>
+        <span class="badge {% if row.reg_approved == None %}text-bg-secondary{% elif row.reg_approved %}text-bg-success{% else %}text-bg-danger{% endif %}">Registrar</span>
+        <span class="badge {% if row.dot_approved == None %}text-bg-secondary{% elif row.dot_approved %}text-bg-success{% else %}text-bg-danger{% endif %}">DOT</span>
+    </td>
+    <td>
+        {% if row.reg_approved == None and row.dot_approved == None %}
+            <button class="btn btn-primary"
+                    hx-get="{% url 'leave_form_inline' row.pk %}"
+                    hx-swap="outerHTML"
+                    hx-target="closest tr">
+                <i class="bi bi-pencil-square"></i>
+            </button>
+        {% else %}
+            <button class="btn btn-secondary disabled">
+                <i class="bi bi-pencil-square"></i>
+            </button>
+        {% endif %}
+    </td>
+</tr>

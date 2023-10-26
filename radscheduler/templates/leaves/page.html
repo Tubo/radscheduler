@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+    <div class="container">
+        <form class="row g-3 border mt-4 p-4"
+              id="leave-form"
+              hx-post="{% url 'leave_form' %}"
+              hx-trigger="submit"
+              hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+            {{ form }}
+        </form>
+        <div id="leave-list"
+             hx-get="{% url 'leave_list' %}"
+             hx-trigger="submit from:#leave-form">{% include "leaves/list.html" %}</div>
+    </div>
+{% endblock content %}

@@ -1,0 +1,57 @@
+<h3>Add new leave</h3>
+<div class="col-md-2">
+    {% with form.errors.date as error %}
+        <label for="inputDate" class="form-label">Date</label>
+        <input type="date"
+               class="form-control {% if error %}is-invalid{% endif %}"
+               id="inputDate"
+               name="date"
+               value="{{ form.date.value|date:'Y-m-d' }}"
+               required />
+        {% if error %}<div class="invalid-feedback">{{ error }}</div>{% endif %}
+    {% endwith %}
+</div>
+<div class="col-md-2">
+    {% with form.errors.type as error %}
+        <label for="inputType" class="form-label">Type of leave</label>
+        <select id="inputType"
+                class="form-select {% if error %}is-invalid{% endif %}"
+                name="type"
+                required>
+            {% for type in form.fields.type.choices %}
+                <option value="{{ type.0 }}"
+                        {% if form.type.value == type.0 %}selected{% endif %}>{{ type.1 }}</option>
+            {% endfor %}
+        </select>
+        {% if error %}<div class="invalid-feedback">{{ error }}</div>{% endif %}
+    {% endwith %}
+</div>
+<div class="col-md-2">
+    {% with form.errors.portion as error %}
+        <label for="inputPortion" class="form-label">Portion</label>
+        <select id="inputPortion"
+                class="form-select {% if error %}is-invalid{% endif %}"
+                name="portion"
+                required>
+            {% for portion in form.fields.portion.choices %}
+                <option value="{{ portion.0 }}"
+                        {% if form.type.value == type.0 %}selected{% endif %}>{{ portion.1 }}</option>
+            {% endfor %}
+        </select>
+        {% if error %}<div class="invalid-feedback">{{ error }}</div>{% endif %}
+    {% endwith %}
+</div>
+<div class="col-md-5">
+    {% with form.errors.comment as error %}
+        <label for="inputComment" class="form-label" name="comment">Comment</label>
+        <input type="text"
+               class="form-control {% if error %}is-invalid{% endif %}"
+               id="inputComment" />
+        {% if error %}<div class="invalid-feedback">{{ error }}</div>{% endif %}
+    {% endwith %}
+</div>
+<div class="col-md-1 d-inline-flex align-items-end justify-content-end">
+    <button class="btn btn-primary ml-auto">
+        <i class="bi bi-plus-lg"></i>
+    </button>
+</div>

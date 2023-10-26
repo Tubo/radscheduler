@@ -5,7 +5,17 @@ from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic import TemplateView
 
-from radscheduler.core.views import get_calendar, get_roster, get_workload, leaves_view
+import radscheduler.core.views as views
+import radscheduler.core.views.leaves as leaves_views
+
+leave_view_urls = [
+    path("", leaves_views.leave_page, name="leave_page"),
+    path("list/", leaves_views.leave_list, name="leave_list"),
+    path("form/", leaves_views.leave_form, name="leave_form"),
+    path("inline/<int:pk>/", leaves_views.leave_row, name="leave_row"),
+    path("inline/<int:pk>/form/", leaves_views.leave_form_inline, name="leave_form_inline"),
+    path("inline/<int:pk>/delete/", leaves_views.leave_delete, name="leave_delete"),
+]
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
@@ -17,12 +27,11 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
     path("calendar/", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"),
-    path("calendar/events/", get_calendar, name="calendar_events"),
+    path("calendar/events/", views.get_calendar, name="calendar_events"),
     path("roster/", TemplateView.as_view(template_name="roster/roster_table.html"), name="roster"),
-    path("roster/events/", get_roster, name="roster_events"),
-    path("roster/workload/", get_workload, name="roster_workload"),
-    path("leaves/", leaves_view, name="leaves"),
-    path("unicorn/", include("django_unicorn.urls")),
+    path("roster/events/", views.get_roster, name="roster_events"),
+    path("roster/workload/", views.get_workload, name="roster_workload"),
+    path("leaves/", include(leave_view_urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
