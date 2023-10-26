@@ -12,6 +12,11 @@ def media_storage(settings, tmpdir):
 
 
 @pytest.fixture
+def app(django_app_factory):
+    return django_app_factory(csrf_checks=False)
+
+
+@pytest.fixture
 def user(db) -> User:
     return UserFactory()
 
