@@ -48,8 +48,7 @@
                 hx-confirm="Are you sure you wish to delete this?">
             <i class="bi bi-trash"></i>
         </button>
-        <button class="btn btn-secondary"
-                type="button"
+        <button class="d-inline-block btn"
                 hx-get="{% url 'leave_row' form.instance.pk %}"
                 hx-target="closest tr"
                 hx-swap="outerHTML">
