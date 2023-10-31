@@ -38,5 +38,5 @@ pytest-django==4.5.2  # https://github.com/pytest-dev/pytest-django
 
 # External
 # ------------------------------------------------------------------------------
-webtest==3.0.0
 django-webtest==1.9.11
+django-functest==1.5.4
