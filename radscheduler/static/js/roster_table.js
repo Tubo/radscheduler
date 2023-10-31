@@ -25,7 +25,7 @@ function rosterTable(id) {
     return new Tabulator(id, {
         layout: 'fitDataFill',
         height: "80vh",
-        ajaxURL: '/roster/events/',
+        ajaxURL: '/api/table/events/',
         ajaxContentType: 'json',
         ajaxParams: () => ({ start: Alpine.store("state").start, end: Alpine.store("state").end }),
         ajaxResponse: function (url, params, response) {
@@ -137,8 +137,12 @@ function rosterTable(id) {
                                     const start = DateTime.fromISO(status.start)
                                     const end = DateTime.fromISO(status.end)
                                     const thisDate = DateTime.fromISO(date)
+                                    const weekdays = status.weekdays
+                                    const thisWeekday = thisDate.toFormat('c') - 1
                                     const interval = Interval.fromDateTimes(start, end)
-                                    return interval.contains(thisDate) && status.registrar === parseInt(reg_id)
+                                    return interval.contains(thisDate)
+                                        && status.registrar === parseInt(reg_id)
+                                        && (weekdays.includes(thisWeekday) || weekdays.length === 0)
                                 })
 
                                 if (relevantStatus.length > 0) {
@@ -179,8 +183,12 @@ function rosterTable(id) {
                                     const start = DateTime.fromISO(status.start)
                                     const end = DateTime.fromISO(status.end)
                                     const thisDate = DateTime.fromISO(date)
+                                    const weekdays = status.weekdays
+                                    const thisWeekday = thisDate.toFormat('c') - 1
                                     const interval = Interval.fromDateTimes(start, end)
-                                    return interval.contains(thisDate) && status.registrar === parseInt(reg_id)
+                                    return interval.contains(thisDate)
+                                        && status.registrar === parseInt(reg_id)
+                                        && (weekdays.includes(thisWeekday) || weekdays.length === 0)
                                 })
                                 if (relevantStatus.length > 0) {
                                     const tip = document.createElement("div");
@@ -221,7 +229,8 @@ function rosterTable(id) {
             hozAlign: 'center',
             headerSort: false,
             resizable: false,
-            minWidth: 120,
+            minWidth: 80,
+            maxWidth: 100,
             headerHozAlign: 'center',
         },
         rowFormatter: function (row) {

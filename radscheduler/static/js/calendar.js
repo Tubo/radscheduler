@@ -9,7 +9,7 @@ let calendar = new Calendar(calendarEl, {
     plugins: [dayGridPlugin, bootstrap5Plugin],
     initialView: 'dayGridMonth',
     themeSystem: 'bootstrap5',
-    events: "/calendar/events/",
+    events: "/api/calendar/events/",
     locale: nzLocale,
     height: "90vh"
 });

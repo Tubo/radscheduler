@@ -1,21 +1,20 @@
 {% extends 'base.html' %}
+
 {% load render_bundle from webpack_loader %}
 {% load static %}
 
-{% block title %}Roster Overview{% endblock %}
-
+{% block title %}
+  Roster Overview
+{% endblock title %}
 {% block content %}
-
-<div class="container-fluid">
-  <h1>Overview</h1>
-  <div class="mb-4" x-data>
-    <input x-model="$store.state.start" type="date" />
-    <input x-model="$store.state.end" type="date" />
-    <button class="btn btn-primary" x-on:click="$store.state.refresh()">Refresh</button>
+  <div class="container-fluid">
+    <h1>Roster Overview</h1>
+    <div class="mb-4" x-data>
+      <input x-model="$store.state.start" type="date" />
+      <input x-model="$store.state.end" type="date" />
+      <button class="btn btn-primary" x-on:click="$store.state.refresh()">Refresh</button>
+    </div>
+    <div id="roster-table"></div>
   </div>
-  <div id="roster-table"></div>
-</div>
-
-{% render_bundle 'roster_table' %}
-
-{% endblock %}
+  {% render_bundle 'roster_table' %}
+{% endblock content %}
