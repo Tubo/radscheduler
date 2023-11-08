@@ -6,7 +6,9 @@ from django.views import defaults as default_views
 from django.views.generic import TemplateView
 
 import radscheduler.core.views as views
+import radscheduler.core.views.generator as generator_views
 import radscheduler.core.views.leaves as leaves_views
+import radscheduler.core.views.roster as roster_views
 
 leave_view_urls = [
     path("", leaves_views.leave_page, name="leave_page"),
@@ -15,6 +17,22 @@ leave_view_urls = [
     path("inline/<int:pk>/", leaves_views.leave_row, name="leave_row"),
     path("inline/<int:pk>/form/", leaves_views.leave_form_inline, name="leave_form_inline"),
     path("inline/<int:pk>/delete/", leaves_views.leave_delete, name="leave_delete"),
+]
+
+roster_view_urls = [
+    path("", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"),
+    path("table/", TemplateView.as_view(template_name="roster/roster_table.html"), name="roster"),
+    path("workload/", roster_views.get_workload, name="workload"),
+]
+
+api_view_urls = [
+    path("calendar/events/", views.get_calendar, name="calendar_events"),
+    path("table/events/", roster_views.get_roster, name="table_events"),
+]
+
+generator_view_urls = [
+    path("", generator_views.page, name="roster_generator"),
+    path("fill/", generator_views.fill_shifts, name="fill_shifts"),
 ]
 
 urlpatterns = [
@@ -26,18 +44,17 @@ urlpatterns = [
     path("users/", include("radscheduler.users.urls", namespace="users")),
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
-    path("calendar/", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"),
-    path("calendar/events/", views.get_calendar, name="calendar_events"),
-    path("roster/", TemplateView.as_view(template_name="roster/roster_table.html"), name="roster"),
-    path("roster/events/", views.get_roster, name="roster_events"),
-    path("roster/workload/", views.get_workload, name="roster_workload"),
     path("leaves/", include(leave_view_urls)),
+    path("roster/", include(roster_view_urls)),
+    path("generator/", include(generator_view_urls)),
+    path("api/", include(api_view_urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
 if settings.DEBUG:
     # This allows the error pages to be debugged during development, just visit
     # these url in browser to see how these error pages look like.
+    urlpatterns += [path("django_functest/", include("django_functest.urls"))]
     urlpatterns += [
         path(
             "400/",
