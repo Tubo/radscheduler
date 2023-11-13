@@ -71,6 +71,8 @@ class StatusType(models.TextChoices):
 class Registrar:
     username: str
     senior: bool
+    start: date
+    finish: date = None
 
 
 @dataclass
@@ -79,7 +81,10 @@ class Shift:
     type: ShiftType
     registrar: Registrar = None
     stat_day: bool = False
+    extra_duty: bool = False
     fatigue_override: float = 0.0
+    series: int = 1
+    pk: int = None  # if shift is already in database
 
     @property
     def is_weekend(self) -> bool:
@@ -90,45 +95,13 @@ class Shift:
             return self.date.weekday() in [Weekday.FRI, Weekday.SAT, Weekday.SUN]
         return False
 
-    def is_start_of_set(self) -> bool:
-        """
-        Determines if the shift is the first day of a shift block.
-
-        If NIGHT shift, then Monday and Friday are first days.
-        If WEEKEND shift, then Saturday is the first day.
-        If RDO shift, then Monday is the first day.
-        """
-        if self.type == ShiftType.NIGHT:
-            return self.date.weekday() in [Weekday.MON, Weekday.FRI]
-        elif (self.type == ShiftType.LONG) and self.is_weekend:
-            return self.date.weekday() == Weekday.SAT
-        elif self.type == ShiftType.RDO:
-            return self.date.weekday() == Weekday.MON
-        return False
-
-    def fatigue_wgt(self) -> float:
-        """
-        Calculates the fatigue weighting for a shift.
-
-        If the shift has a fatigue override, then use that value.
-
-        If the shift lands on a stat day, then it has higher fatigue weighting.
-        Even if it is a rest day, it would have otherwise been an holiday.
-
-        Otherwise if the shift is a LONG shift, then it is more tiring on Friday.
-        If the registrar is not senior, then Wednesday is also more tiring.
-
-        Note: WEEKEND and NIGHT has no fatigue weighting, because their RDOs are counted as shifts.
-        """
-
-        if self.fatigue_override:
-            return self.fatigue_override
-        elif self.stat_day:
-            return 2.0
-        elif self.type == ShiftType.LONG:
-            if self.date.weekday() in [Weekday.FRI, Weekday.WED, Weekday.MON]:
-                return 1.5
-        return 1.0
+    def same_shift(self, shift):
+        return (
+            self.date == shift.date
+            and self.type == shift.type
+            and self.series == shift.series
+            and self.extra_duty == shift.extra_duty
+        )
 
 
 @dataclass
@@ -136,16 +109,6 @@ class Leave:
     date: date
     type: LeaveType
     registrar: Registrar
-
-    def fatigue_wgt(self, base_wgt=1.0) -> float:
-        """
-        Only parental leave is given fatigue weighting.
-
-        Every 5 day of parental leave is counted as 1 shift.
-        """
-        if self.type == LeaveType.PARENTAL:
-            return 0.2 * base_wgt
-        return 0.0
 
 
 @dataclass

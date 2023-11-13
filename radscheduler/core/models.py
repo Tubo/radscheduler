@@ -1,5 +1,4 @@
 from datetime import date
-from enum import IntEnum
 
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
@@ -8,21 +7,10 @@ from radscheduler import roster
 from radscheduler.users.models import User
 
 
-class ISOWeekday(IntEnum):
-    MON = 1
-    TUE = 2
-    WED = 3
-    THUR = 4
-    FRI = 5
-    SAT = 6
-    SUN = 7
-
-
 class Registrar(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    employee_number = models.CharField(max_length=20, blank=True, null=True)
     senior = models.BooleanField(default=False)
-    start = models.DateField("start date", null=True, blank=True, help_text="Date started training")
+    start = models.DateField("start date", help_text="Date started training")
     finish = models.DateField("finish date", null=True, blank=True, help_text="Date finished training")
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
@@ -45,27 +33,24 @@ class Registrar(models.Model):
 class Shift(models.Model):
     date = models.DateField("shift date")
     type = models.CharField("shift type", max_length=10, choices=roster.ShiftType.choices)
-    registrar = models.ForeignKey(
-        Registrar,
-        blank=True,
-        null=True,
-        on_delete=models.SET_NULL,
-    )
+    registrar = models.ForeignKey(Registrar, blank=True, null=True, on_delete=models.CASCADE)
     stat_day = models.BooleanField(default=False)
     extra_duty = models.BooleanField(default=False)
     fatigue_override = models.FloatField(default=0.0)
+    series = models.IntegerField(default=1)
+
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
 
     def __repr__(self) -> str:
         if self.registrar:
-            registrar = self.registrar.username
+            registrar = self.registrar.user.username
         else:
             registrar = "N/A"
         return f"<{roster.ShiftType(self.type).name} Shift {self.date} ({roster.Weekday(self.date.weekday()).name}): {registrar}>"
 
     class Meta:
-        unique_together = ["date", "type", "registrar", "extra_duty"]
+        unique_together = [["date", "registrar"]]
 
 
 class Status(models.Model):
@@ -83,19 +68,24 @@ class Status(models.Model):
     end = models.DateField("end date")
     type = models.CharField(choices=roster.StatusType.choices, max_length=10)
     registrar = models.ForeignKey(Registrar, blank=False, null=False, on_delete=models.CASCADE)
-    created = models.DateTimeField(auto_now_add=True)
-    last_edited = models.DateTimeField(auto_now=True)
     weekdays = ArrayField(
-        models.IntegerField(choices=[(x.value, x.name) for x in ISOWeekday]),
+        models.IntegerField(choices=[(x.value, x.name) for x in roster.Weekday]),
         default=list,
         size=7,
     )
     shift_types = ArrayField(models.CharField(max_length=10, choices=roster.ShiftType.choices), default=list)
+    comment = models.TextField(blank=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+    last_edited = models.DateTimeField(auto_now=True)
 
     def __repr__(self) -> str:
         return (
             f"<Status: {self.registrar.user.username} {self.start}--{self.end} ({roster.StatusType(self.type).label})>"
         )
+
+    class Meta:
+        verbose_name_plural = "statuses"
 
 
 class Leave(models.Model):
