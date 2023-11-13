@@ -26,10 +26,11 @@ def filter_shifts(shifts, date, shift_type) -> [Shift]:
     return [shift for shift in shifts if (shift.date == date) and (shift.type == shift_type)]
 
 
-def find_registrar_from_shifts(filtered, date, shift_type) -> Registrar:
-    filtered = filter_shifts(filtered, date, shift_type)
-    if len(filtered) == 1:
-        return filtered[0].registrar
+def find_registrar_from_shifts(shifts, date, shift_type, series=1) -> Registrar:
+    filtered = filter_shifts(shifts, date, shift_type)
+    result = [shift.registrar for shift in filtered if shift.series == series]
+    if len(result) == 1:
+        return result[0]
     return None
 
 
@@ -54,8 +55,8 @@ def filter_shifts_by_types(shifts: list[Shift], shift_types: list[ShiftType]) ->
     return list(filter(lambda s: s.type in shift_types, shifts))
 
 
-def filter_shifts_by_date_and_type(shifts: list[Shift], date: date, shift_type: ShiftType) -> list[Shift]:
-    return list(filter(lambda s: s.date == date and s.type == shift_type, shifts))
+def filter_shifts_by_date_range(shifts, start, end):
+    return list(filter(lambda s: start <= s.date <= end, shifts))
 
 
 def registrar_shift_distance(registrar, shifts):

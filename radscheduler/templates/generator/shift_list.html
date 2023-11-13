@@ -1,0 +1,9 @@
+{% for date, shifts in days.items %}
+    <tr class="{% if date|date:'D' in 'Sat,Sun' %}table-success{% endif %}">
+        <th scope="row" class="font-monospace">{{ date|date:'Y-m-d D' }}</th>
+        <td>{% include "generator/shift_cell.html" with shifts=shifts.LONG %}</td>
+        <td>{% include "generator/shift_cell.html" with shifts=shifts.NIGHT %}</td>
+        <td>{% include "generator/shift_cell.html" with shifts=shifts.RDO %}</td>
+        <td>{% include "generator/shift_cell.html" with shifts=shifts.SLEEP %}</td>
+    </tr>
+{% endfor %}

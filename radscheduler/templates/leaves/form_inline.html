@@ -1,12 +1,14 @@
 <tr>
-    <th scope="row" class="font-monospace">
-        {{ form.date.value|date:"d-m-Y, D" }}
+    {% with date=form.date.value %}
+        <th scope="row" class="font-monospace">{{ date|date:"Y" }}</th>
+        <td class="font-monospace">{{ date|date:"M" }}</td>
+        <td class="font-monospace">{{ date|date:"d, D" }}</td>
+    {% endwith %}
+    <td>
         <input type="date"
                class="d-none"
                name="date"
                value="{{ form.date.value|date:'Y-m-d' }}" />
-    </th>
-    <td>
         <select id="inputType" class="form-select mx-auto" name="type"  required>
             {% for type in form.fields.type.choices %}
                 <option value="{{ type.0 }}"

@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
-from radscheduler.roster.models import Shift, ShiftType, StatusType, Weekday
+from radscheduler.roster.models import DetailedShiftType, Shift, ShiftType, StatusType, Weekday
+from radscheduler.roster.rosters import SingleOnCallRoster
 
 
 class StonzMecaValidator:
@@ -25,6 +26,27 @@ class StonzMecaValidator:
         same_date = [s for s in self.relevant_shifts if s.date == self.shift.date]
         return len(same_date) == 0
 
+    def validate_night_shift_not_overlapping_long_shift(self):
+        if self.shift.type == ShiftType.NIGHT and SingleOnCallRoster.is_start_of_set(self.shift):
+            if DetailedShiftType.from_shift(self.shift) == DetailedShiftType.WEEKEND_NIGHT:
+                days = [s for s in self.relevant_shifts if self.shift.date <= s.date <= self.shift.date + timedelta(5)]
+            elif DetailedShiftType.from_shift(self.shift) == DetailedShiftType.NIGHT:
+                days = [s for s in self.relevant_shifts if self.shift.date <= s.date <= self.shift.date + timedelta(7)]
+            return len(days) == 0
+        return True
+
+    def validate_has_started_working(self):
+        """
+        Return False if a registrar was placed on a shift before their start date.
+        """
+        return self.shift.date >= self.registrar.start
+
+    def validate_has_not_finished_working(self):
+        """
+        Return False if a registrar was placed on a shift after their finish date.
+        """
+        return self.registrar.finish is None or self.shift.date <= self.registrar.finish
+
     def validate_not_on_leave(self):
         """
         Return False if a registrar was placed on a shift while on leave.
@@ -46,24 +68,24 @@ class StonzMecaValidator:
         17.2.2 RMOs shall not be rostered on duty for more than 2 long days in 7.
         For the purposes of this clause, a “long day” shall be a duty where in excess of 10 hours are worked.
         """
-        if self.shift.type != ShiftType.LONG:
-            return True
+        shifts_within_7_days = [
+            shift
+            for shift in self.relevant_shifts
+            if (self.shift.date - timedelta(7) <= shift.date <= self.shift.date + timedelta(7))
+            and (shift.type == ShiftType.LONG)
+        ]
+        if DetailedShiftType.from_shift(self.shift) == DetailedShiftType.WEEKEND:
+            return len(shifts_within_7_days) == 0
+        return len(shifts_within_7_days) < 2
 
-        shifts_within_7_days = sorted(
-            [
-                shift
-                for shift in self.relevant_shifts
-                if (self.shift.date - timedelta(7) <= shift.date <= self.shift.date + timedelta(7))
-                and (shift.type == ShiftType.LONG)
-            ],
-            key=lambda s: s.date,
-        )
-        for idx, shift in enumerate(shifts_within_7_days):
-            next_shift = shifts_within_7_days[idx + 1] if idx + 1 < len(shifts_within_7_days) else None
-            if next_shift is None:
-                return True
-            if shift.date - next_shift.date <= timedelta(7):
-                return False
+    def validate_no_long_day_before_night(self):
+        if DetailedShiftType.from_shift(self.shift) == DetailedShiftType.WEEKEND_NIGHT:
+            this_week = [
+                s
+                for s in self.relevant_shifts
+                if (self.shift.date - timedelta(5) <= s.date <= self.shift.date) and s.type == ShiftType.LONG
+            ]
+            return len(this_week) == 0
         return True
 
     def validate_no_back2back_long_days(self):
@@ -83,34 +105,49 @@ class StonzMecaValidator:
         - Friday long is not considered a weekend shift, but a Friday night shift is part of a weekend.
         - Lieu days are not considered in this clause
         """
-        if self.shift.type == ShiftType.RDO:
-            # This is a Monday RDO
-            assert self.shift.date.weekday() == Weekday.MON, "Must be a Monday RDO"
-            # Other shifts are deteremined by the shift generation algorithm
-            leaves_next_fri_or_mon = [
-                l
-                for l in self.relevant_leaves
-                if (l.date == self.shift.date + timedelta(4)) or (l.date == self.shift.date + timedelta(7))
-            ]
-            return leaves_next_fri_or_mon == []
+        match DetailedShiftType.from_shift(self.shift):
+            case DetailedShiftType.WEEKEND:
+                friday_td = self.shift.date.weekday() - 4
+                monday_td = 7 - self.shift.date.weekday()
+                last_friday = self.shift.date - timedelta(friday_td)
+                next_monday = self.shift.date + timedelta(monday_td)
 
-        elif self.shift.type == ShiftType.NIGHT:
-            if self.shift.date.weekday() == Weekday.MON:
-                # Monday night is handled by validate_not_on_leave
-                pass
-            elif self.shift.date.weekday() == Weekday.FRI:
+                if [
+                    leaves
+                    for leaves in self.relevant_leaves
+                    if (leaves.date == last_friday) or (leaves.date == next_monday)
+                ]:
+                    return False
+                return True
+
+            case DetailedShiftType.WEEKEND_NIGHT:
                 # Cannot work this weekend night if on leave on Monday
                 leaves_next_mon = [l for l in self.relevant_leaves if (l.date == self.shift.date + timedelta(3))]
                 return leaves_next_mon == []
-        return True
+            case _:
+                return True
 
     def validate_every_2nd_weekend_free(self):
         """
         17.3.5 Employees shall have, as a minimum, every second weekend completely free from duty.
         """
         if self.shift.date.weekday() in [Weekday.SAT, Weekday.SUN]:
-            last_weekend = [shift for shift in self.relevant_shifts if shift.date == self.shift.date - timedelta(7)]
-            return len(last_weekend) == 0
+            adjacent_weekend = [
+                shift
+                for shift in self.relevant_shifts
+                if (shift.date == self.shift.date - timedelta(7)) or (shift.date == self.shift.date + timedelta(7))
+            ]
+
+            return len(adjacent_weekend) == 0
+
+        if self.shift.type == ShiftType.NIGHT and self.shift.date.weekday() == Weekday.FRI:
+            adjacent_weekend = [
+                shift
+                for shift in self.relevant_shifts
+                if (shift.date == self.shift.date + timedelta(8)) or (shift.date == self.shift.date - timedelta(8))
+            ]
+            return len(adjacent_weekend) == 0
+
         return True
 
     def validate_shift_validate_post_night_RDOs(self):

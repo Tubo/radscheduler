@@ -1,0 +1,29 @@
+<div class="col-md-2">
+    {% with form.errors.date as error %}
+        <label for="inputDate" class="form-label">Start</label>
+        <input type="date"
+               class="form-control {% if error %}is-invalid{% endif %}"
+               id="inputDate"
+               name="start"
+               value="{{ form.start.value|date:'Y-m-d' }}"
+               required />
+        {% if error %}<div class="invalid-feedback">{{ error }}</div>{% endif %}
+    {% endwith %}
+</div>
+<div class="col-md-2">
+    {% with form.errors.date as error %}
+        <label for="inputDate" class="form-label">End</label>
+        <input type="date"
+               class="form-control {% if error %}is-invalid{% endif %}"
+               id="inputDate"
+               name="end"
+               value="{{ form.end.value|date:'Y-m-d' }}"
+               required />
+        {% if error %}<div class="invalid-feedback">{{ error }}</div>{% endif %}
+    {% endwith %}
+</div>
+<div class="col-md-2 d-inline-flex align-items-end gap-1">
+    <button type="submit" class="btn btn-primary shadow">View</button>
+    <button type="button" class="btn btn-danger shadow">Auto fill shifts</button>
+    <button type="button" class="btn btn-secondary shadow">Create extra duty</button>
+</div>

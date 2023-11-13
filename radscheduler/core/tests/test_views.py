@@ -23,3 +23,15 @@ class TestLeaves:
         form = app.get(reverse("leave_page")).form
         r = form.submit()
         assert "required" in r
+
+
+class TestAccess:
+    def ordinary_user_cannot_access_roster_generation(self):
+        # Cannot see the button on the menu
+        # Cannot access the page
+        pass
+
+
+class TestRosterGeneration:
+    def test_generate_empty_schedule(self, app, juniors_db):
+        pass

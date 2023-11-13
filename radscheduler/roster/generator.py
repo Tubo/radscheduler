@@ -2,115 +2,54 @@ from datetime import date, timedelta
 
 import holidays
 
-from .models import Shift, ShiftType, Weekday
-from .utils import daterange
+from .models import DetailedShiftType, LeaveType, Shift, ShiftType, Weekday
+from .rosters import SingleOnCallRoster
+from .utils import daterange, filter_shifts, sort_shifts_by_date
 
 canterbury_holidays = holidays.country_holidays("NZ", subdiv="CAN")
 
 
-class SingleOnCallRoster:
-    STAT_DAY_SHIFTS = [
-        ShiftType.LONG,
-        ShiftType.NIGHT,
-        ShiftType.RDO,
-    ]
-    STAT_NIGHT_SHIFTS = [
-        ShiftType.NIGHT,
-    ]
+def generate_shifts(roster, start: date, end: date, filled: [Shift] = []) -> list[Shift]:
+    """
+    Generate a list of shifts from Start to End date.
+    Public holidys should be stat days.
 
-    def generate_shifts(self, start: date, end: date) -> list[Shift]:
-        """
-        Generate a list of shifts from Start to End date.
-        Public holidys should be stat days.
+    If a shift is already filled, then it is not generated.
+    """
+    results = []
 
-        This is the roster requirement as of 2023:
+    for day in daterange(start, end + timedelta(days=1)):
+        match day.weekday():
+            case Weekday.MON:
+                results.extend(_gen_shifts(day, roster.MON, filled))
+            case Weekday.TUE:
+                results.extend(_gen_shifts(day, roster.TUE, filled))
+            case Weekday.WED:
+                results.extend(_gen_shifts(day, roster.WED, filled))
+            case Weekday.THUR:
+                results.extend(_gen_shifts(day, roster.THUR, filled))
+            case Weekday.FRI:
+                results.extend(_gen_shifts(day, roster.FRI, filled))
+            case Weekday.SAT:
+                results.extend(_gen_shifts(day, roster.SAT, filled))
+            case Weekday.SUN:
+                results.extend(_gen_shifts(day, roster.SUN, filled))
 
-        Monday and Tuesday:
-        - Long day and night
-        - RDO (Pre-weekend)
-        - Sleep (Post-weekend)
+    results = [mark_stat_day(shift, roster.STAT_DAY_SHIFTS, roster.STAT_NIGHT_SHIFTS) for shift in results]
+    return results
 
-        Wednesday:
-        - Long day and night
 
-        Thursday:
-        - Long day and night
-        - RDO (Post-weekend)
-
-        Friday:
-        - Long day and night
-        - Sleep (Post weekday night)
-        - RDO (Post-weekend)
-
-        Saturday and Sunday:
-        - Long day and night
-        - Sleep (Post weekday night)
-        """
-        self.start, self.end = start, end
-        results = []
-
-        for day in daterange(self.start, self.end):
-            match day.weekday():
-                case Weekday.MON:
-                    results.extend(self._gen_monday(day))
-                case Weekday.TUE:
-                    results.extend(self._gen_tuesday(day))
-                case Weekday.WED:
-                    results.extend(self._gen_wednesday(day))
-                case Weekday.THUR:
-                    results.extend(self._gen_thursday(day))
-                case Weekday.FRI:
-                    results.extend(self._gen_friday(day))
-                case Weekday.SAT:
-                    results.extend(self._gen_saturday(day))
-                case Weekday.SUN:
-                    results.extend(self._gen_sunday(day))
-
-        results = [mark_stat_day(shift, self.STAT_DAY_SHIFTS, self.STAT_NIGHT_SHIFTS) for shift in results]
-        self.shifts = results
-        return results
-
-    def _gen_common_shifts(self, day) -> [Shift]:
-        return [
-            Shift(date=day, type=ShiftType.LONG),
-            Shift(date=day, type=ShiftType.NIGHT),
-        ]
-
-    def _gen_monday(self, day) -> [Shift]:
-        shifts = self._gen_common_shifts(day)
-        shifts.append(Shift(date=day, type=ShiftType.RDO))
-        if self.start <= day - timedelta(2):
-            shifts.append(Shift(date=day, type=ShiftType.SLEEP))
-        return shifts
-
-    def _gen_tuesday(self, day) -> [Shift]:
-        return self._gen_monday(day)
-
-    def _gen_wednesday(self, day) -> [Shift]:
-        return self._gen_common_shifts(day)
-
-    def _gen_thursday(self, day) -> [Shift]:
-        shifts = self._gen_common_shifts(day)
-        if self.start <= day - timedelta(5):
-            shifts.append(Shift(date=day, type=ShiftType.RDO))
-        return shifts
-
-    def _gen_friday(self, day) -> [Shift]:
-        shifts = self._gen_common_shifts(day)
-        if self.start <= day - timedelta(5):
-            shifts.append(Shift(date=day, type=ShiftType.RDO))
-        if self.start <= day - timedelta(2):
-            shifts.append(Shift(date=day, type=ShiftType.SLEEP))
-        return shifts
-
-    def _gen_saturday(self, day) -> [Shift]:
-        shifts = self._gen_common_shifts(day)
-        if self.start <= day - timedelta(2):
-            shifts.append(Shift(date=day, type=ShiftType.SLEEP))
-        return shifts
-
-    def _gen_sunday(self, day) -> [Shift]:
-        return self._gen_saturday(day)
+def _gen_shifts(day, shifts, filled) -> [Shift]:
+    result = []
+    for shiftType, count in shifts:
+        for i in range(count):
+            series = i + 1
+            identical_shifts = [
+                shift for shift in filled if shift.same_shift(Shift(date=day, type=shiftType, series=series))
+            ]
+            if not identical_shifts:
+                result.append(Shift(date=day, type=shiftType, series=series))
+    return result
 
 
 def mark_stat_day(shift: Shift, day_shifts: [ShiftType], night_shifts: [ShiftType]) -> Shift:
@@ -131,3 +70,23 @@ def mark_stat_day(shift: Shift, day_shifts: [ShiftType], night_shifts: [ShiftTyp
             shift.stat_day = True
 
     return shift
+
+
+def merge_shifts(*args) -> list[Shift]:
+    """
+    Merge shifts that are the same date and type.
+
+    If the shift has a registrar, then the registrar is kept.
+    """
+    shifts = [shift for arg in args for shift in arg]
+    result = []
+    sorted_shifts = sorted(shifts, key=lambda shift: (shift.date, shift.type, shift.series))
+    for i, shift in enumerate(sorted_shifts):
+        if next_shift := sorted_shifts[i + 1] if i + 1 < len(sorted_shifts) else None:
+            if shift.same_shift(next_shift):
+                if shift.registrar:
+                    next_shift.registrar = shift.registrar
+                    next_shift.pk = shift.pk
+                continue
+        result.append(shift)
+    return sort_shifts_by_date(result)

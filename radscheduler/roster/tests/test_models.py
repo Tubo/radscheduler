@@ -4,7 +4,7 @@ from radscheduler.roster.models import Registrar, Shift, ShiftType, Status, Stat
 
 
 def test_status_not_oncall():
-    registrar = Registrar(username="Waleed", senior=True)
+    registrar = Registrar(username="Waleed", senior=True, start=date(2020, 1, 1))
     mon_long = Shift(date=date(2021, 3, 15), type=ShiftType.LONG, registrar=registrar)
     fri_long = Shift(date=date(2021, 3, 19), type=ShiftType.LONG, registrar=registrar)
     mon_night = Shift(date=date(2021, 3, 15), type=ShiftType.NIGHT, registrar=registrar)
@@ -46,5 +46,16 @@ def test_status_not_oncall():
     )
     assert status.not_oncall(mon_long) == False
     assert status.not_oncall(fri_long) == False
+    assert status.not_oncall(mon_night) == True
+    assert status.not_oncall(fri_night) == True
+
+    status = Status(
+        type=StatusType.PRE_ONCALL,
+        start=date(2021, 3, 1),
+        end=date(2021, 5, 15),
+        registrar=registrar,
+    )
+    assert status.not_oncall(mon_long) == True
+    assert status.not_oncall(fri_long) == True
     assert status.not_oncall(mon_night) == True
     assert status.not_oncall(fri_night) == True

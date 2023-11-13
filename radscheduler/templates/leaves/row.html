@@ -1,11 +1,24 @@
 <tr class="{% if row.is_past %}table-secondary{% endif %}">
-    <th scope="row" class="font-monospace">{{ row.date|date:"d-m-Y, D" }}</th>
+    <th scope="row" class="font-monospace">{{ row.date|date:"Y" }}</th>
+    <td class="font-monospace">{{ row.date|date:"M" }}</td>
+    <td class="font-monospace">{{ row.date|date:"d, D" }}</td>
     <td>{{ row.get_type_display }}</td>
     <td>{{ row.get_portion_display }}</td>
     <td>{{ row.comment }}</td>
     <td>
-        <span class="badge {% if row.reg_approved == None %}text-bg-secondary{% elif row.reg_approved %}text-bg-success{% else %}text-bg-danger{% endif %}">Registrar</span>
-        <span class="badge {% if row.dot_approved == None %}text-bg-secondary{% elif row.dot_approved %}text-bg-success{% else %}text-bg-danger{% endif %}">DOT</span>
+        {% if row.reg_approved == None %}
+            <span class="badge text-bg-secondary">Not processed</span>
+        {% elif row.reg_approved %}
+            {% if row.dot_approved == None %}
+                <span class="badge text-bg-warning">Processing</span>
+            {% elif row.dot_approved %}
+                <span class="badge text-bg-success">Approved</span>
+            {% elif not row.dot_approved %}
+                <span class="badge text-bg-danger">Declined</span>
+            {% endif %}
+        {% elif not row.reg_approved %}
+            <span class="badge text-bg-danger">Declined</span>
+        {% endif %}
     </td>
     <td>
         {% if row.reg_approved == None and row.dot_approved == None %}

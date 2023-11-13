@@ -1,12 +1,16 @@
 from datetime import date, timedelta
 
 from django.db.models import Case, F, Q, Value, When
-from django.db.models.functions import Now, TruncYear
+from django.db.models.functions import Now
 from pandas import DataFrame, concat
 
+from radscheduler.core import mapper
 from radscheduler.core.models import Leave, Registrar, Shift, Status
 from radscheduler.roster import LeaveType, ShiftType, SingleOnCallRoster, StatusType, Weekday, canterbury_holidays
-from radscheduler.roster.utils import daterange
+from radscheduler.roster.assigner import AutoAssigner
+from radscheduler.roster.generator import generate_shifts, merge_shifts
+from radscheduler.roster.models import DetailedShiftType
+from radscheduler.roster.utils import daterange, filter_shifts_by_date_range
 
 
 def format_date(date):
@@ -56,40 +60,14 @@ def default_start_and_end(start, end):
 
 
 def active_registrars(start: date = None, end: date = None):
+    """
+    Given a date range, return all registrars who are active during that period.
+    Active registrars are those that have not finished training yet.
+    """
     start, end = default_start_and_end(start, end)
     registrars = Registrar.objects.exclude(start=None).annotate(days=(Now() - F("start")))
     registrars = registrars.exclude(Q(finish__lt=start) | Q(start__gt=end))
     return registrars
-
-
-def shift_to_dict(shift):
-    return {
-        "date": str(shift.date),
-        "type": ShiftType(shift.type).label,
-        "registrar": shift.registrar.pk if shift.registrar else None,
-        "username": shift.registrar.user.username if shift.registrar else None,
-        "extra_duty": shift.extra_duty,
-    }
-
-
-def leave_to_dict(leave):
-    return {
-        "date": str(leave.date),
-        "type": LeaveType(leave.type).label,
-        "registrar": leave.registrar.pk if leave.registrar else None,
-        "portion": leave.portion,
-    }
-
-
-def status_to_dict(status):
-    return {
-        "start": str(status.start),
-        "end": str(status.end),
-        "type": StatusType(status.type).label,
-        "registrar": status.registrar.pk,
-        "week": status.weekdays,
-        "shift_types": status.shift_types,
-    }
 
 
 def build_registrar_table(registrars):
@@ -128,13 +106,13 @@ def retrieve_roster(start: date = None, end: date = None):
     start, end = default_start_and_end(start, end)
 
     shifts = Shift.objects.filter(date__range=[start, end])
-    shift_dict = {shift.id: shift_to_dict(shift) for shift in shifts}
+    shift_dict = {shift.id: mapper.shift_to_dict(shift) for shift in shifts}
 
     leaves = Leave.objects.filter(date__range=[start, end])
-    leave_dict = {leave.id: leave_to_dict(leave) for leave in leaves}
+    leave_dict = {leave.id: mapper.leave_to_dict(leave) for leave in leaves}
 
     statuses = Status.objects.exclude(Q(end__lt=start) | Q(start__gt=end))
-    status_dict = [status_to_dict(status) for status in statuses]
+    status_dict = [mapper.status_to_dict(status) for status in statuses]
 
     registrars = active_registrars(start, end)
     df_registrars = build_registrar_table(registrars.values("id", "user__username", "days"))
@@ -157,33 +135,76 @@ def retrieve_roster(start: date = None, end: date = None):
     return result
 
 
-def generate_shifts(start: date, end: date):
-    unfilled_shifts = [
-        Shift(date=shift.date, type=shift.type, stat_day=shift.stat_day)
-        for shift in SingleOnCallRoster().generate_shifts(start, end)
-    ]
-    return Shift.objects.bulk_create(unfilled_shifts, ignore_conflicts=True)
+def fill_shifts(start: date, end: date):
+    registrars = Registrar.objects.exclude(finish__lte=start).select_related("user")
+    registrars = list(map(mapper.registrar_from_db, registrars))
 
+    leaves = Leave.objects.filter(date__range=[start, end]).select_related("registrar", "registrar__user")
+    leaves = list(map(mapper.leave_from_db, leaves))
 
-def generate_roster(start: date = None, end: date = None):
-    active_registrars = Registrar.objects.exclude(Q(finish__lt=start) | Q(start__gt=end))
-    prev_assignments = shifts_to_assignments(Shift.objects.filter(date__range=[start - timedelta(days=30 * 6), start]))
-    leaves = Leave.objects.filter(date__range=[start, end])
-    status = Status.objects.exclude(Q(end__lt=start) | Q(start__gt=end))
-    roster = DefaultRoster(
-        registrars=active_registrars,
-        prev_assignments=prev_assignments,
-        leaves=leaves,
-        statuses=status,
+    statuses = (
+        Status.objects.filter(Q(end__gte=start) | Q(start__lte=end))
+        .annotate(username=F("registrar__user__username"))
+        .select_related("registrar", "registrar__user")
     )
-    roster.generate_shifts(start, end)
-    result = assignments_to_shifts(roster.fill_roster())
-    result = shifts_table(result)
+    statuses = list(map(mapper.status_from_db, statuses))
+
+    shifts_in_db = Shift.objects.filter(date__range=[start - timedelta(days=7), end]).select_related(
+        "registrar", "registrar__user"
+    )
+    filled = list(map(mapper.shift_from_db, shifts_in_db))
+    unfilled = generate_shifts(SingleOnCallRoster, start, end, filled)
+
+    assigner = AutoAssigner(registrars=registrars, unfilled=unfilled, filled=filled, leaves=leaves, statuses=statuses)
+    result = assigner.fill_roster()
+    result = filter_shifts_by_date_range(result, start, end)
+    return result
+
+
+def group_shifts_by_date_and_type(start: date, end: date, shifts):
+    """
+    Group shifts by date and type. If the shift is outside the date range, it is ignored.
+    """
+    result = {
+        day: {shiftType.value: [] for shiftType in ShiftType} for day in daterange(start, end + timedelta(days=1))
+    }
+
+    for shift in shifts:
+        result[shift.date][shift.type].append(shift)
+
+    result = dict(sorted(result.items(), key=lambda item: item[0]))
+    return result
+
+
+def breakdown_before_and_after(shifts, start, _):
+    result = {}
+    for shift in shifts:
+        shift_type = DetailedShiftType.from_shift(shift).value
+        before = shift.date < start
+
+        if shift.registrar is None:
+            continue
+
+        if result.get(shift.registrar.username):
+            if before:
+                result[shift.registrar.username]["before"][shift_type] += 1
+            else:
+                result[shift.registrar.username]["after"][shift_type] += 1
+        else:
+            registrar = {
+                "before": {shift_type.value: 0 for shift_type in DetailedShiftType},
+                "after": {shift_type.value: 0 for shift_type in DetailedShiftType},
+            }
+            if before:
+                registrar["before"][shift_type] = 1
+            else:
+                registrar["after"][shift_type] = 1
+            result[shift.registrar.username] = registrar
     return result
 
 
 def shifts_table(shifts):
-    shifts = [shift_to_dict(shift) for shift in shifts]
+    shifts = [mapper.shift_to_dict(shift) for shift in shifts]
     df = DataFrame(shifts)
     pivot = df.pivot_table(index="date", columns="type", values="username", aggfunc="first")
     pivot.reset_index(inplace=True)

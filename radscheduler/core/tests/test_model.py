@@ -1,18 +1,37 @@
 from datetime import date
 
+import pytest
+from django.db import IntegrityError
 from freezegun import freeze_time
 
 from radscheduler.core.models import Leave, Registrar, Shift, Status
 from radscheduler.roster.models import ShiftType, StatusType, Weekday
 
+pytestmark = pytest.mark.django_db
 
-@freeze_time("2023-8-01")
-def test_year(db, user):
-    r = Registrar(user=user, start=date(2023, 2, 1), finish=date(2024, 12, 1))
-    assert r.year == 1
 
-    r = Registrar(user=user, start=date(2019, 12, 1), finish=date(2024, 12, 1))
-    assert r.year == 4
+class TestRegistrar:
+    @freeze_time("2023-8-01")
+    def test_year(self, user):
+        r = Registrar(user=user, start=date(2023, 2, 1), finish=date(2024, 12, 1))
+        assert r.year == 1
+
+        r = Registrar(user=user, start=date(2019, 12, 1), finish=date(2024, 12, 1))
+        assert r.year == 4
+
+
+class TestShift:
+    def test_one_shift_per_day(self, juniors_db):
+        # Only one type of shift allowed per day, other than extra-duty
+        # This may need to be changed in future if double oncall
+        pass
+
+    def test_one_shift_per_registrar(self, juniors_db):
+        reg = juniors_db[0]
+        # TODO: Test that only one shift per day is allowed
+        Shift.objects.create(date=date(2023, 8, 1), type=ShiftType.LONG, registrar=reg)
+        with pytest.raises(IntegrityError):
+            Shift.objects.create(date=date(2023, 8, 1), type=ShiftType.LONG, registrar=reg)
 
 
 class TestStatus:

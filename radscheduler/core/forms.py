@@ -31,3 +31,12 @@ class LeaveForm(forms.ModelForm):
     class Meta:
         model = Leave
         fields = ["date", "type", "portion", "comment"]
+
+
+class ShiftForm(forms.ModelForm):
+    class Meta:
+        model = Shift
+        fields = ["id", "date", "type", "registrar", "extra_duty", "stat_day"]
+
+
+ShiftFormSet = formset_factory(ShiftForm, extra=0)

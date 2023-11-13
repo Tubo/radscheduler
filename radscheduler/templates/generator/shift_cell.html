@@ -1,0 +1,14 @@
+<div class="d-flex gap-1 justify-content-start">
+    {% if not shifts %}
+        -
+    {% else %}
+        {% for shift in shifts %}
+            <div>
+                <input type="hidden" value="{{ date|date:'Y-m-d' }}" />
+                <span>{{ shift.registrar.username }}
+                    {% if shift.pk %}(db){% endif %}
+                </span>
+            </div>
+        {% endfor %}
+    {% endif %}
+</div>
