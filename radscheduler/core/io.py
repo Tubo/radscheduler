@@ -9,7 +9,7 @@ from datetime import date, datetime
 import yaml
 
 from radscheduler.core.models import Leave, Registrar, Shift, Status
-from radscheduler.roster import LeaveType, ShiftType, StatusType, canterbury_holidays
+from radscheduler.roster import LeaveType, ShiftType, StatusType, Weekday, canterbury_holidays
 from radscheduler.users.models import User
 
 shift_types = {
@@ -40,6 +40,7 @@ status_types = {
     "buddy": StatusType.BUDDY,
     "na": StatusType.NA,
     "pre-oncall": StatusType.PRE_ONCALL,
+    "part-time": StatusType.PART_TIME,
 }
 
 
@@ -103,6 +104,8 @@ def parse_row(date, username, shift_type_str, start, end, users):
             portion=portion,
             reg_approved=True,
             dot_approved=True,
+            microster=True,
+            printed=True,
         )
 
 
@@ -132,5 +135,25 @@ def import_status(fname):
         start = datetime.strptime(profile["start"], "%d/%m/%Y").date()
         end = datetime.strptime(profile["finish"], "%d/%m/%Y").date()
         registrar = User.objects.get(username=username).registrar
-        result.append(Status(registrar=registrar, type=type, start=start, end=end))
+
+        if profile.get("weekdays"):
+            weekdays = [Weekday(x) for x in profile["weekdays"]]
+        else:
+            weekdays = []
+
+        if profile.get("shift_types"):
+            shift_types = [ShiftType(x) for x in profile["shift_types"]]
+        else:
+            shift_types = []
+
+        result.append(
+            Status(
+                registrar=registrar,
+                type=type,
+                start=start,
+                end=end,
+                weekdays=weekdays,
+                shift_types=shift_types,
+            )
+        )
     return result
