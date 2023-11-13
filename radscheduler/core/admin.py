@@ -1,16 +1,25 @@
 from datetime import date, timedelta
+from enum import IntEnum
+from typing import Any
 
 from django.contrib import admin
 from django.db.models import Q
-from rangefilter.filters import (
-    DateRangeFilterBuilder,
-    DateRangeQuickSelectListFilterBuilder,
-    DateTimeRangeFilterBuilder,
-    NumericRangeFilterBuilder,
-)
+from django.db.models.query import QuerySet
+from django.http.request import HttpRequest
+from rangefilter.filters import DateRangeFilterBuilder, NumericRangeFilterBuilder
 
-from radscheduler.core.models import ISOWeekday, Registrar, Shift
+from radscheduler.core.models import Leave, Registrar, Shift, Status
 from radscheduler.roster.models import ShiftType, Weekday
+
+
+class ISOWeekday(IntEnum):
+    MON = 1
+    TUE = 2
+    WED = 3
+    THUR = 4
+    FRI = 5
+    SAT = 6
+    SUN = 7
 
 
 # Register your models here.
@@ -50,6 +59,8 @@ class ShiftTypeListFilter(admin.SimpleListFilter):
         """
         # Compare the requested value (either '80s' or '90s')
         # to decide how to filter the queryset.
+        queryset = queryset.select_related("registrar", "registrar__user")
+
         if self.value() == "weekdays":
             return queryset.filter(
                 type=ShiftType.LONG,
@@ -113,9 +124,9 @@ class ShiftAdmin(admin.ModelAdmin):
         "registrar",
     )
 
-    ordering = ("date", "registrar")
+    ordering = ("-date", "registrar")
 
-    list_editable = ("registrar",)
+    list_select_related = ["registrar", "registrar__user"]
 
     list_filter = (
         (
@@ -127,8 +138,15 @@ class ShiftAdmin(admin.ModelAdmin):
             ),
         ),
         ShiftTypeListFilter,
-        "registrar",
     )
+
+
+@admin.register(Leave)
+class LeaveAdmin(admin.ModelAdmin):
+    list_display = ("date", "registrar", "type", "reg_approved", "dot_approved", "microster", "printed", "cancelled")
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
+        return super().get_queryset(request).select_related("registrar", "registrar__user")
 
 
 """
@@ -147,3 +165,8 @@ Leave form details view:
 Custom actions
 - Swap shifts
 """
+
+
+@admin.register(Status)
+class StatusAdmin(admin.ModelAdmin):
+    list_display = ("start", "end", "type", "registrar")
