@@ -16,12 +16,9 @@ def leave_page(request):
         form = LeaveForm(request.POST)
         if form.is_valid():
             leave = form.save()
+            next_date = leave.date + timedelta(days=1) if leave.date.weekday() < 4 else leave.date + timedelta(days=3)
             form = LeaveForm(
-                initial={
-                    "date": leave.date + timedelta(days=1),
-                    "type": leave.type,
-                    "registrar": request.user.registrar,
-                }
+                initial={"date": next_date, "type": leave.type, "registrar": request.user.registrar},
             )
             messages.info(request, f"Leave added for {leave.date.strftime('%d/%m/%Y')}")
         else:

@@ -24,6 +24,9 @@ class TestLeaves:
         r = form.submit()
         assert "required" in r
 
+    def test_inline_form(self, app, juniors_db):
+        pass
+
 
 class TestAccess:
     def ordinary_user_cannot_access_roster_generation(self):

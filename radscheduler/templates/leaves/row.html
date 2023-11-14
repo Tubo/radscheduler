@@ -1,4 +1,5 @@
-<tr class="{% if row.is_past %}table-secondary{% endif %}">
+<tr class="{% if row.is_past %}table-secondary{% endif %}"
+    id="leave-{{ row.pk }}">
     <th scope="row" class="font-monospace">{{ row.date|date:"Y" }}</th>
     <td class="font-monospace">{{ row.date|date:"M" }}</td>
     <td class="font-monospace">{{ row.date|date:"d, D" }}</td>

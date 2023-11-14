@@ -27,7 +27,7 @@ class DateRangeForm(forms.Form):
 
 class LeaveForm(forms.ModelForm):
     template_name = "leaves/form.html"
-    registrar = forms.IntegerField(widget=forms.HiddenInput(), required=True)
+    registrar = forms.IntegerField(widget=forms.HiddenInput(), required=False)
 
     def clean_date(self) -> str:
         leave_date = self.cleaned_data["date"]
@@ -42,8 +42,10 @@ class LeaveForm(forms.ModelForm):
         return leave_date
 
     def clean_registrar(self) -> Registrar:
+        if self.instance.registrar_id:
+            return self.instance.registrar
         registrar_id = self.cleaned_data["registrar"]
-        return Registrar.objects.get(id=registrar_id)
+        return Registrar.objects.get(id=registrar_id) if registrar_id else None
 
     class Meta:
         model = Leave
