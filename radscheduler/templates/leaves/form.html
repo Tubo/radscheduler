@@ -35,7 +35,7 @@
                 required>
             {% for portion in form.fields.portion.choices %}
                 <option value="{{ portion.0 }}"
-                        {% if form.type.value == type.0 %}selected{% endif %}>{{ portion.1 }}</option>
+                        {% if form.portion.value == type.0 %}selected{% endif %}>{{ portion.1 }}</option>
             {% endfor %}
         </select>
         {% if error %}<div class="invalid-feedback">{{ error }}</div>{% endif %}
