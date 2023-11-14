@@ -50,6 +50,7 @@ def test_generate_double_oncall():
 
 
 def test_mark_stat_day_in_generated_shifts():
+    # todo: unpredictability of this test... investigate later
     shifts = generate_shifts(SingleOnCallRoster, date(2022, 12, 22), date(2022, 12, 29))
 
     # 24th is Saturday, not a stat day. Only NIGHT should be stat_day

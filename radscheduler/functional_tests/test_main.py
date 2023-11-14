@@ -1,6 +1,7 @@
 import pytest
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from django.shortcuts import reverse
 from django.test import TestCase
 from django_functest import FuncBaseMixin, FuncSeleniumMixin, FuncWebTestMixin
 from selenium import webdriver
@@ -36,7 +37,5 @@ class SeleniumTestBase(FuncSeleniumMixin, StaticLiveServerTestCase):
         return {"command_executor": "http://firefox:4444/wd/hub", "options": webdriver.FirefoxOptions()}
 
 
-class ContactFormSeleniumTests(SeleniumTestBase):
-    def test_foo(self):
-        self.get_url("home")
-        self.assertTextPresent("Leaves")
+def test_generator_page(app):
+    app.get(reverse("generator"), status=200)

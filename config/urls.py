@@ -31,7 +31,7 @@ api_view_urls = [
 ]
 
 generator_view_urls = [
-    path("", generator_views.page, name="roster_generator"),
+    path("", generator_views.page, name="generator"),
     path("fill/", generator_views.fill_shifts, name="fill_shifts"),
 ]
 

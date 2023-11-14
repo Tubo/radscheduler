@@ -176,29 +176,19 @@ def group_shifts_by_date_and_type(start: date, end: date, shifts):
     return result
 
 
-def breakdown_before_and_after(shifts, start, _):
+def breakdown_before_and_after(shifts):
     result = {}
     for shift in shifts:
         shift_type = DetailedShiftType.from_shift(shift).value
-        before = shift.date < start
 
         if shift.registrar is None:
             continue
 
         if result.get(shift.registrar.username):
-            if before:
-                result[shift.registrar.username]["before"][shift_type] += 1
-            else:
-                result[shift.registrar.username]["after"][shift_type] += 1
+            result[shift.registrar.username][shift_type] += 1
         else:
-            registrar = {
-                "before": {shift_type.value: 0 for shift_type in DetailedShiftType},
-                "after": {shift_type.value: 0 for shift_type in DetailedShiftType},
-            }
-            if before:
-                registrar["before"][shift_type] = 1
-            else:
-                registrar["after"][shift_type] = 1
+            registrar = {shift_type.value: 0 for shift_type in DetailedShiftType}
+            registrar[shift_type] = 1
             result[shift.registrar.username] = registrar
     return result
 
