@@ -12,27 +12,25 @@ from radscheduler.core.models import Leave
 
 @login_required
 def leave_page(request):
-    form = LeaveForm()
-    rows = Leave.objects.filter(registrar__user=request.user).order_by("-date")
-    return render(request, "leaves/page.html", {"form": form, "rows": rows})
-
-
-@login_required
-def leave_form(request):
     if request.method == "POST":
         form = LeaveForm(request.POST)
         if form.is_valid():
-            leave = form.save(commit=False)
-            leave.registrar = request.user.registrar
-            try:
-                leave.save()
-                form = LeaveForm(initial={"date": leave.date + timedelta(days=1), "type": leave.type})
-            except IntegrityError as e:
-                messages.error(request, "Leave already exists for this date")
-                return HttpResponseClientRefresh()
+            leave = form.save()
+            form = LeaveForm(
+                initial={
+                    "date": leave.date + timedelta(days=1),
+                    "type": leave.type,
+                    "registrar": request.user.registrar,
+                }
+            )
+            messages.info(request, f"Leave added for {leave.date}")
+        else:
+            for error in form.non_field_errors():
+                messages.error(request, error)
     else:
-        form = LeaveForm()
-    return render(request, "leaves/form.html", {"form": form})
+        form = LeaveForm(initial={"registrar": request.user.registrar})
+    rows = Leave.objects.filter(registrar=request.user.registrar).order_by("-date")
+    return render(request, "leaves/page.html", {"form": form, "rows": rows})
 
 
 @login_required

@@ -1,9 +1,15 @@
+from collections.abc import Mapping
+from datetime import date
 from typing import Any
 
 from django import forms
+from django.core.files.base import File
+from django.db.models.base import Model
 from django.forms.formsets import formset_factory
+from django.forms.utils import ErrorList
 
-from radscheduler.core.models import Leave, Shift
+from radscheduler.core.models import Leave, Registrar, Shift
+from radscheduler.roster import canterbury_holidays
 
 
 class DateRangeForm(forms.Form):
@@ -21,16 +27,25 @@ class DateRangeForm(forms.Form):
 
 class LeaveForm(forms.ModelForm):
     template_name = "leaves/form.html"
+    registrar = forms.IntegerField(widget=forms.HiddenInput(), required=True)
 
     def clean_date(self) -> str:
         date = self.cleaned_data["date"]
+        if date < date.today():
+            raise forms.ValidationError("Unable to apply for leave in the past")
         if date.weekday() > 4:
-            raise forms.ValidationError("No need to apply for weekend leave")
+            raise forms.ValidationError(f"{date} is a weekend")
+        if date in canterbury_holidays:
+            raise forms.ValidationError(f"{date} is a public holiday: {canterbury_holidays[date]}")
         return date
+
+    def clean_registrar(self) -> Registrar:
+        registrar_id = self.cleaned_data["registrar"]
+        return Registrar.objects.get(id=registrar_id)
 
     class Meta:
         model = Leave
-        fields = ["date", "type", "portion", "comment"]
+        fields = ["date", "type", "portion", "comment", "registrar"]
 
 
 class ShiftForm(forms.ModelForm):

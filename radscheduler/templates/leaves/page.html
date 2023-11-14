@@ -1,19 +1,15 @@
 {% extends 'base.html' %}
 
-{% load crispy_forms_tags %}
-
 {% block content %}
     <div class="container">
-        <form class="row g-3 border mt-4 p-4"
+        <form class="border mt-4 p-4"
               id="leave-form"
-              hx-post="{% url 'leave_form' %}"
+              hx-post="."
               hx-trigger="submit"
+              hx-target="body"
               hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
             {{ form }}
         </form>
-        <div id="leave-list"
-             class="row g-3 border mt-4 p-4"
-             hx-get="{% url 'leave_list' %}"
-             hx-trigger="click from:#add-leave-button">{% include "leaves/list.html" %}</div>
+        <div id="leave-list" class=" mt-4 p-4">{% include "leaves/list.html" %}</div>
     </div>
 {% endblock content %}

@@ -13,7 +13,6 @@ import radscheduler.core.views.roster as roster_views
 leave_view_urls = [
     path("", leaves_views.leave_page, name="leave_page"),
     path("list/", leaves_views.leave_list, name="leave_list"),
-    path("form/", leaves_views.leave_form, name="leave_form"),
     path("inline/<int:pk>/", leaves_views.leave_row, name="leave_row"),
     path("inline/<int:pk>/form/", leaves_views.leave_form_inline, name="leave_form_inline"),
     path("inline/<int:pk>/delete/", leaves_views.leave_delete, name="leave_delete"),
