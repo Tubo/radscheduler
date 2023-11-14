@@ -30,14 +30,16 @@ class LeaveForm(forms.ModelForm):
     registrar = forms.IntegerField(widget=forms.HiddenInput(), required=True)
 
     def clean_date(self) -> str:
-        date = self.cleaned_data["date"]
-        if date < date.today():
+        leave_date = self.cleaned_data["date"]
+        if leave_date < date.today():
             raise forms.ValidationError("Unable to apply for leave in the past")
-        if date.weekday() > 4:
-            raise forms.ValidationError(f"{date} is a weekend")
-        if date in canterbury_holidays:
-            raise forms.ValidationError(f"{date} is a public holiday: {canterbury_holidays[date]}")
-        return date
+        if leave_date.weekday() > 4:
+            raise forms.ValidationError(f"{leave_date.strftime('%d/%m/%Y')} is a weekend")
+        if leave_date in canterbury_holidays:
+            raise forms.ValidationError(
+                f"{leave_date.strftime('%d/%m/%Y')} is a public holiday: {canterbury_holidays[leave_date]}"
+            )
+        return leave_date
 
     def clean_registrar(self) -> Registrar:
         registrar_id = self.cleaned_data["registrar"]

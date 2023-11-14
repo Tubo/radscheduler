@@ -23,7 +23,7 @@ def leave_page(request):
                     "registrar": request.user.registrar,
                 }
             )
-            messages.info(request, f"Leave added for {leave.date}")
+            messages.info(request, f"Leave added for {leave.date.strftime('%d/%m/%Y')}")
         else:
             for error in form.non_field_errors():
                 messages.error(request, error)
