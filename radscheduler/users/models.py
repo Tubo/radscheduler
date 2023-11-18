@@ -16,6 +16,7 @@ class User(AbstractUser):
     first_name = None  # type: ignore
     last_name = None  # type: ignore
     employee_number = CharField(max_length=20, blank=True, null=True)
+    phone = CharField(max_length=20, blank=True, null=True)
 
     def get_absolute_url(self) -> str:
         """Get URL for user's detail view.

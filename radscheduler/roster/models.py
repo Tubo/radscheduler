@@ -17,12 +17,12 @@ class Weekday(IntEnum):
 
 class LeaveType(models.TextChoices):
     ANNUAL = "ANNUAL", "Annual"
-    EDU = "EDU", "Education"
-    CONF = "CONF", "Conference"
     BE = "BE", "Bereavement"
     LIEU = "LIEU", "Lieu day"
-    PARENTAL = "PAR", "Parental"
     SICK = "SICK", "Sick"
+    PARENTAL = "PAR", "Parental"
+    EDU = "EDU", "Education"
+    CONF = "CONF", "Conference"
 
 
 class ShiftType(models.TextChoices):
