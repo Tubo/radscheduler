@@ -21,3 +21,7 @@ django-webpack-loader==2.0.1  # https://github.com/django-webpack/django-webpack
 django-admin-rangefilter==0.11.1
 django-htmx==1.17.0
 django-extensions==3.2.3  # https://github.com/django-extensions/django-extensions
+
+# PDF
+pypdf==3.17.1
+reportlab==4.0.7

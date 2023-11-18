@@ -2,9 +2,7 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import IntegrityError
 from django.shortcuts import get_object_or_404, redirect, render
-from django_htmx.http import HttpResponseClientRefresh
 
 from radscheduler.core.forms import LeaveForm
 from radscheduler.core.models import Leave
@@ -17,9 +15,7 @@ def leave_page(request):
         if form.is_valid():
             leave = form.save()
             next_date = leave.date + timedelta(days=1) if leave.date.weekday() < 4 else leave.date + timedelta(days=3)
-            form = LeaveForm(
-                initial={"date": next_date, "type": leave.type, "registrar": request.user.registrar},
-            )
+            form = LeaveForm(initial={"date": next_date, "type": leave.type, "registrar": request.user.registrar})
             messages.info(request, f"Leave added for {leave.date.strftime('%d/%m/%Y')}")
         else:
             for error in form.non_field_errors():

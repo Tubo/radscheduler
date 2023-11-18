@@ -19,7 +19,7 @@ user_detail_view = UserDetailView.as_view()
 
 class UserUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     model = User
-    fields = ["name", "employee_number"]
+    fields = ["name", "employee_number", "phone"]
     success_message = _("Information successfully updated")
 
     def get_success_url(self):
