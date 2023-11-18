@@ -282,3 +282,4 @@ webpack-stats.json
 !.envs/.local/
 
 resources/
+backups/
