@@ -5,10 +5,12 @@ from typing import Any
 from django.contrib import admin
 from django.db.models import Q
 from django.db.models.query import QuerySet
+from django.http import FileResponse
 from django.http.request import HttpRequest
 from rangefilter.filters import DateRangeFilterBuilder, NumericRangeFilterBuilder
 
 from radscheduler.core.models import Leave, Registrar, Shift, Status
+from radscheduler.paper_forms.pdf import leaves_to_buffer
 from radscheduler.roster.models import ShiftType, Weekday
 
 
@@ -143,10 +145,35 @@ class ShiftAdmin(admin.ModelAdmin):
 
 @admin.register(Leave)
 class LeaveAdmin(admin.ModelAdmin):
-    list_display = ("date", "registrar", "type", "reg_approved", "dot_approved", "microster", "printed", "cancelled")
+    list_display = (
+        "date",
+        "registrar",
+        "type",
+        "portion",
+        "comment",
+        "reg_approved",
+        "dot_approved",
+        "microster",
+        "printed",
+        "cancelled",
+    )
+    list_editable = ("dot_approved", "reg_approved", "microster")
+    list_filter = (
+        "reg_approved",
+        "dot_approved",
+        "printed",
+        "registrar__user",
+    )
+    list_select_related = ("registrar", "registrar__user")
+    actions = ["print_selected"]
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
         return super().get_queryset(request).select_related("registrar", "registrar__user")
+
+    @admin.action(description="Print the selected leave forms")
+    def print_selected(self, request, queryset):
+        buffer = leaves_to_buffer(queryset)
+        return FileResponse(buffer, as_attachment=False, filename="hello.pdf")
 
 
 """
