@@ -1,7 +1,8 @@
 import json
 from datetime import date, timedelta
 
-from django.shortcuts import HttpResponse, render
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render
 
 from radscheduler.core import mapper
 from radscheduler.core.forms import DateRangeForm
@@ -9,6 +10,7 @@ from radscheduler.core.models import Shift
 from radscheduler.core.service import breakdown_before_and_after, fill_shifts, group_shifts_by_date_and_type
 
 
+@staff_member_required
 def page(request):
     """
     Display the roster generation form.
