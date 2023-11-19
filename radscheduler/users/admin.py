@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import admin as auth_admin
 from django.contrib.auth import decorators, get_user_model
+from django.db.models.query import QuerySet
 from django.http.request import HttpRequest
 from django.utils.translation import gettext_lazy as _
 
@@ -43,7 +44,29 @@ class UserAdmin(auth_admin.UserAdmin):
         ),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
     )
-    list_display = ["username", "name", "is_superuser"]
+    list_display = [
+        "username",
+        "name",
+        "registrar_year",
+        "registrar_start",
+        "registrar_finish",
+        "employee_number",
+        "phone",
+    ]
     list_editable = ["name"]
     search_fields = ["name", "username"]
     inlines = [RegistrarInline]
+    ordering = ["-registrar__start"]
+    list_select_related = ["registrar"]
+
+    def registrar_year(self, obj: User) -> Any:
+        return obj.registrar.year
+
+    def registrar_start(self, obj: User) -> Any:
+        return obj.registrar.start
+
+    def registrar_finish(self, obj: User) -> Any:
+        return obj.registrar.finish
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
+        return super().get_queryset(request)
