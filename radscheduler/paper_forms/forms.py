@@ -2,11 +2,6 @@ import io
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
-from typing import ClassVar
-
-from pypdf import PdfReader, PdfWriter
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
 
 from radscheduler.roster.models import LeaveType
 
