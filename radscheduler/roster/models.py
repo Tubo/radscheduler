@@ -96,12 +96,7 @@ class Shift:
         return False
 
     def same_shift(self, shift):
-        return (
-            self.date == shift.date
-            and self.type == shift.type
-            and self.series == shift.series
-            and self.extra_duty == shift.extra_duty
-        )
+        return self.date == shift.date and self.type == shift.type and self.series == shift.series
 
 
 @dataclass
