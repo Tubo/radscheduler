@@ -146,7 +146,7 @@ class ShiftAdmin(admin.ModelAdmin):
 @admin.register(Leave)
 class LeaveAdmin(admin.ModelAdmin):
     list_display = (
-        "date",
+        "custom_date_format",
         "registrar",
         "type",
         "portion",
@@ -155,9 +155,9 @@ class LeaveAdmin(admin.ModelAdmin):
         "dot_approved",
         "microster",
         "printed",
-        "cancelled",
+        "no_abutting_weekend",
     )
-    list_editable = ("dot_approved", "reg_approved", "microster")
+    list_editable = ("dot_approved", "reg_approved", "microster", "no_abutting_weekend")
     list_filter = (
         "reg_approved",
         "dot_approved",
@@ -169,6 +169,11 @@ class LeaveAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
         return super().get_queryset(request).select_related("registrar", "registrar__user")
+
+    def custom_date_format(self, obj):
+        if obj.date:
+            return obj.date.strftime("%d-%m-%Y %a")
+        return ""
 
     @admin.action(description="Print the selected leave forms")
     def print_selected(self, request, queryset):
