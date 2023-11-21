@@ -156,9 +156,19 @@ class LeaveAdmin(admin.ModelAdmin):
         "microster",
         "printed",
         "no_abutting_weekend",
+        "created",
+        "last_edited",
     )
     list_editable = ("dot_approved", "reg_approved", "microster", "no_abutting_weekend")
     list_filter = (
+        (
+            "date",
+            DateRangeFilterBuilder(
+                title="Leave date",
+                default_start=date.today(),
+                default_end=date.today() + timedelta(days=31 * 3),
+            ),
+        ),
         "reg_approved",
         "dot_approved",
         "printed",
@@ -170,32 +180,16 @@ class LeaveAdmin(admin.ModelAdmin):
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
         return super().get_queryset(request).select_related("registrar", "registrar__user")
 
+    @admin.display(description="Date")
     def custom_date_format(self, obj):
         if obj.date:
-            return obj.date.strftime("%d-%m-%Y %a")
+            return obj.date.strftime("%d-%m-%Y, %a")
         return ""
 
     @admin.action(description="Print the selected leave forms")
     def print_selected(self, request, queryset):
         buffer = leaves_to_buffer(queryset)
         return FileResponse(buffer, as_attachment=False, filename="hello.pdf")
-
-
-"""
-
-
-Leave list view:
-- Day start, finish, return
-- Type of leave
-- Approval status (me, Chris, DOT)
-- Active or not (calculated by finish date)
-
-Leave form details view:
-- Hide special types
-
-Custom actions
-- Swap shifts
-"""
 
 
 @admin.register(Status)
