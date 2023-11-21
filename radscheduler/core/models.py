@@ -104,6 +104,7 @@ class Leave(models.Model):
         max_length=5,
     )
     comment = models.TextField(blank=True)
+    no_abutting_weekend = models.BooleanField(default=True)
 
     reg_approved = models.BooleanField(null=True, blank=True)
     dot_approved = models.BooleanField(null=True, blank=True)

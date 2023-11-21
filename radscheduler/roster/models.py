@@ -104,6 +104,7 @@ class Leave:
     date: date
     type: LeaveType
     registrar: Registrar
+    no_abutting_weekend: bool = True
 
 
 @dataclass

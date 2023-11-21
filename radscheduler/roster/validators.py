@@ -113,16 +113,20 @@ class StonzMecaValidator:
                 next_monday = self.shift.date + timedelta(monday_td)
 
                 if [
-                    leaves
-                    for leaves in self.relevant_leaves
-                    if (leaves.date == last_friday) or (leaves.date == next_monday)
+                    leave
+                    for leave in self.relevant_leaves
+                    if ((leave.date == last_friday) or (leave.date == next_monday)) and leave.no_abutting_weekend
                 ]:
                     return False
                 return True
 
             case DetailedShiftType.WEEKEND_NIGHT:
                 # Cannot work this weekend night if on leave on Monday
-                leaves_next_mon = [l for l in self.relevant_leaves if (l.date == self.shift.date + timedelta(3))]
+                leaves_next_mon = [
+                    leave
+                    for leave in self.relevant_leaves
+                    if (leave.date == self.shift.date + timedelta(3)) and leave.no_abutting_weekend
+                ]
                 return leaves_next_mon == []
             case _:
                 return True

@@ -17,6 +17,7 @@ def leave_from_db(leave):
         date=leave.date,
         type=py.LeaveType(leave.type),
         registrar=registrar_from_db(leave.registrar),
+        no_abutting_weekend=leave.no_abutting_weekend,
     )
     return l
 
