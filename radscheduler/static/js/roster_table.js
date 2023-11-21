@@ -36,7 +36,7 @@ function rosterTable(id) {
         autoColumns: true,
         autoColumnsDefinitions: function (definitions) {
             const registrars = Alpine.store('state').tableData.columns
-            const years = [...new Set(registrars.map(item => item.year))];
+            const years = [...new Set(registrars.map(item => item.year))].sort().reverse();
             let result = [];
 
             result.push({
