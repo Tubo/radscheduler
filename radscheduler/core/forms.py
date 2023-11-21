@@ -35,10 +35,6 @@ class LeaveForm(forms.ModelForm):
             raise forms.ValidationError("Unable to apply for leave in the past")
         if leave_date.weekday() > 4:
             raise forms.ValidationError(f"{leave_date.strftime('%d/%m/%Y')} is a weekend")
-        if leave_date in canterbury_holidays:
-            raise forms.ValidationError(
-                f"{leave_date.strftime('%d/%m/%Y')} is a public holiday: {canterbury_holidays[leave_date]}"
-            )
         return leave_date
 
     def clean_registrar(self) -> Registrar:
@@ -55,7 +51,7 @@ class LeaveForm(forms.ModelForm):
 class ShiftForm(forms.ModelForm):
     class Meta:
         model = Shift
-        fields = ["id", "date", "type", "registrar", "extra_duty", "stat_day"]
+        fields = ["date", "type", "registrar", "extra_duty", "stat_day"]
 
 
 ShiftFormSet = formset_factory(ShiftForm, extra=0)
