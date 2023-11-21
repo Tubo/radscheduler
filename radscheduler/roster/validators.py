@@ -72,7 +72,7 @@ class StonzMecaValidator:
             shift
             for shift in self.relevant_shifts
             if (self.shift.date - timedelta(7) <= shift.date <= self.shift.date + timedelta(7))
-            and (shift.type == ShiftType.LONG)
+            and (shift.type in [ShiftType.LONG, ShiftType.NIGHT])
         ]
         if DetailedShiftType.from_shift(self.shift) == DetailedShiftType.WEEKEND:
             return len(shifts_within_7_days) == 0

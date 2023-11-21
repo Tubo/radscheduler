@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from random import shuffle
+from random import choice, shuffle
 
 from .models import (
     DetailedShiftType,
@@ -44,6 +44,9 @@ class AutoAssigner:
         for shift in shifts:
             results.append(self._fill_shift(shift, results))
 
+        for idx, shift in enumerate(results):
+            shift.input_id = idx
+
         results = sort_shifts_by_date(results + self.filled)
         return results
 
@@ -86,15 +89,15 @@ class AutoAssigner:
 
     @classmethod
     def sort_shifts(cls, shifts: [Shift]) -> [Shift]:
-        shifts = shifts[:]
-        shuffle(shifts)
+        # shifts = shifts[:]
+        # shuffle(shifts)
         return sorted(shifts, key=lambda shift: (cls.shift_type_sort_key(shift), shift.date))
 
     @classmethod
     def shift_type_sort_key(cls, shift: Shift) -> int:
         match DetailedShiftType.from_shift(shift):
             case DetailedShiftType.WEEKEND:
-                return 1
+                return 2
             case DetailedShiftType.RDO:
                 return 10
             case DetailedShiftType.NIGHT:
@@ -104,7 +107,7 @@ class AutoAssigner:
             case DetailedShiftType.SLEEP:
                 return 10
             case DetailedShiftType.LONG:
-                return 1
+                return 3
 
     def next_registrar(self, shift, proposal) -> Registrar:
         """
@@ -113,22 +116,27 @@ class AutoAssigner:
         shifts = sort_shifts_by_date(proposal + self.filled)
         registrars = self.registrars_sorted_by_fatigue(shifts, shift)
 
-        for idx, (registrar, _) in enumerate(registrars):
-            if self.validate_shift(shift, registrar, proposal):
-                # Go to next registrar if this one is not valid for this shift
-                if idx + 1 < len(registrars):
-                    next_registrar = registrars[idx + 1][0]
-                    more_shifts = len(
-                        [shift for shift in shifts if shift.registrar == registrar and shift.type == shift.type]
-                    ) > len(
-                        [shift for shift in shifts if shift.registrar == next_registrar and shift.type == shift.type]
-                    )
-                    if more_shifts and self.validate_shift(shift, next_registrar, proposal):
-                        return next_registrar
-                return registrar
+        for registrar, fatigue in registrars:
+            similarly_fatigued_registrars = [(r, f) for r, f in registrars if 0 <= f - fatigue < 2]
+            shift_type_numbers = list(
+                map(lambda x: self.shift_type_number(x[0], shift, proposal), similarly_fatigued_registrars)
+            )
+            ranked = sorted(zip(similarly_fatigued_registrars, shift_type_numbers), key=lambda x: x[1])
+
+            for (registrar, _), _ in ranked:
+                if self.validate_shift(shift, registrar, proposal):
+                    return registrar
             continue
 
-        raise NoOneAvailable(f"No one available for {shift.type} on {shift.date}")
+        return None
+
+    def shift_type_number(self, registrar, shift, proposal) -> int:
+        result = [
+            s
+            for s in proposal
+            if (s.registrar == registrar) and (DetailedShiftType.from_shift(s) == DetailedShiftType.from_shift(shift))
+        ]
+        return len(result)
 
     def same_registrar_yesterday(self, shift, proposal) -> Registrar:
         yesterday = shift.date - timedelta(1)
@@ -201,16 +209,16 @@ class AutoAssigner:
             self.baseline_fatigue = self.registrars_baseline_fatigue()
 
         result = []
-        for registrar, fatigue in self.baseline_fatigue:
-            total: float = fatigue
+        for registrar, baseline in self.baseline_fatigue:
             shift_fatigue = [
                 self.shift_fatigue_with_recency_bias(shift, current)
                 for shift in proposal
                 if shift.registrar == registrar
             ]
-            total += sum(shift_fatigue)
+            total = baseline + sum(shift_fatigue)
             result.append((registrar, total))
-        return sorted(result, key=lambda x: x[1])
+        result = sorted(result, key=lambda x: x[1])
+        return result
 
     def shift_fatigue_with_recency_bias(self, shift, current_shift):
         fatigue = SingleOnCallRoster.shift_fatigue(shift)

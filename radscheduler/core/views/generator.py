@@ -7,7 +7,7 @@ from django.shortcuts import render
 from radscheduler.core import mapper
 from radscheduler.core.forms import DateRangeForm
 from radscheduler.core.models import Shift
-from radscheduler.core.service import breakdown_before_and_after, fill_shifts, group_shifts_by_date_and_type
+from radscheduler.core.service import canterbury_holidays, fill_shifts, group_shifts_by_date_and_type, shifts_breakdown
 
 
 @staff_member_required
@@ -23,9 +23,13 @@ def page(request):
             end = form.cleaned_data["end"]
             shifts = fill_shifts(start, end)
             days = group_shifts_by_date_and_type(start, end, shifts)
-            breakdown = breakdown_before_and_after(shifts)
+            workload = shifts_breakdown(shifts)
             form = DateRangeForm(initial={"start": start, "end": end})
-            return render(request, "generator/page.html", {"days": days, "breakdown": breakdown, "form": form})
+            return render(
+                request,
+                "generator/page.html",
+                {"days": days, "workload": workload, "form": form, "holidays": canterbury_holidays},
+            )
         else:
             start = date.today()
             shifts = (
@@ -35,8 +39,12 @@ def page(request):
             form = DateRangeForm(initial={"start": start, "end": end})
             shifts = list(map(mapper.shift_from_db, shifts))
             days = group_shifts_by_date_and_type(start, end, shifts)
-            breakdown = breakdown_before_and_after(shifts)
-    return render(request, "generator/page.html", {"days": days, "breakdown": breakdown, "form": form})
+            workload = shifts_breakdown(shifts)
+    return render(
+        request,
+        "generator/page.html",
+        {"days": days, "breakdown": workload, "form": form, "holidays": canterbury_holidays},
+    )
 
 
 def save_roster(request):

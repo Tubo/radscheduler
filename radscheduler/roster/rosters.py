@@ -74,8 +74,8 @@ class SingleOnCallRoster:
                 return 0
             case DetailedShiftType.LONG:
                 if shift.date.weekday() in [Weekday.WED, Weekday.FRI]:
-                    return 1.25
-                return 1.0
+                    return 1.5
+                return 1.25
 
     def leave_fatigue(leave, base_wgt=1.0) -> float:
         """
