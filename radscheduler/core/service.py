@@ -149,9 +149,7 @@ def fill_shifts(start: date, end: date):
     )
     statuses = list(map(mapper.status_from_db, statuses))
 
-    shifts_in_db = Shift.objects.filter(date__range=[start - timedelta(days=7), end]).select_related(
-        "registrar", "registrar__user"
-    )
+    shifts_in_db = Shift.objects.filter(date__range=[start, end]).select_related("registrar", "registrar__user")
     filled = list(map(mapper.shift_from_db, shifts_in_db))
     unfilled = generate_shifts(SingleOnCallRoster, start, end, filled)
 
@@ -176,7 +174,7 @@ def group_shifts_by_date_and_type(start: date, end: date, shifts):
     return result
 
 
-def breakdown_before_and_after(shifts):
+def shifts_breakdown(shifts):
     result = {}
     for shift in shifts:
         shift_type = DetailedShiftType.from_shift(shift).value
@@ -190,6 +188,16 @@ def breakdown_before_and_after(shifts):
             registrar = {shift_type.value: 0 for shift_type in DetailedShiftType}
             registrar[shift_type] = 1
             result[shift.registrar.username] = registrar
+
+    for registrar, breakdown in result.items():
+        workload = (
+            breakdown["LONG"] * 1
+            + breakdown["NIGHT"] * 7 / 4
+            + breakdown["WEEKEND"] * 6 / 2
+            + breakdown["WEEKEND_NIGHT"] * 5 / 3
+        )
+        breakdown["WORKLOAD"] = round(workload)
+    result = {k: v for k, v in sorted(result.items(), key=lambda item: item[1]["WORKLOAD"], reverse=True)}
     return result
 
 
