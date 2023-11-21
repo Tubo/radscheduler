@@ -72,8 +72,13 @@ class Status(models.Model):
         models.IntegerField(choices=[(x.value, x.name) for x in roster.Weekday]),
         default=list,
         size=7,
+        blank=True,
     )
-    shift_types = ArrayField(models.CharField(max_length=10, choices=roster.ShiftType.choices), default=list)
+    shift_types = ArrayField(
+        models.CharField(max_length=10, choices=roster.ShiftType.choices),
+        default=list,
+        blank=True,
+    )
     comment = models.TextField(blank=True)
 
     created = models.DateTimeField(auto_now_add=True)
