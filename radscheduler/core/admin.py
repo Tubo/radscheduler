@@ -186,7 +186,6 @@ Leave list view:
 - Active or not (calculated by finish date)
 
 Leave form details view:
-- Generate PDF
 - Hide special types
 
 Custom actions
@@ -196,4 +195,11 @@ Custom actions
 
 @admin.register(Status)
 class StatusAdmin(admin.ModelAdmin):
-    list_display = ("start", "end", "type", "registrar")
+    list_display = (
+        "registrar",
+        "start",
+        "end",
+        "type",
+        "comment",
+    )
+    list_filter = ("registrar",)
