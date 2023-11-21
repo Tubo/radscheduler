@@ -11,6 +11,23 @@
         <form class="row">
             {% include "generator/date_range_form.html" %}
         </form>
+        {% if workload %}
+            <table class="table mt-4 p-4">
+                <thead>
+                    <tr class="table-dark text-center">
+                        <th scope="col" style="width: 10%">Registrar</th>
+                        <th scope="col" style="width: 10%">Long day</th>
+                        <th scope="col" style="width: 10%">Weekend</th>
+                        <th scope="col" style="width: 10%">Weeday night</th>
+                        <th scope="col" style="width: 10%">Weekend night</th>
+                        <th scope="col" style="width: 10%">Workload</th>
+                    </tr>
+                </thead>
+                <tbody class="text-center">
+                    {% include "generator/workload.html" with workload=workload %}
+                </tbody>
+            </table>
+        {% endif %}
         <table class="table table-hover table-bordered table-striped-columns mt-4 p-4 ">
             <thead>
                 <tr class="table-dark text-center">

@@ -1,0 +1,10 @@
+{% for registrar, breakdown in workload.items %}
+    <tr>
+        <td>{{ registrar }}</td>
+        <td>{{ breakdown.LONG }}</td>
+        <td>{{ breakdown.WEEKEND }}</td>
+        <td>{{ breakdown.NIGHT }}</td>
+        <td>{{ breakdown.WEEKEND_NIGHT }}</td>
+        <td>{{ breakdown.WORKLOAD }}</td>
+    </tr>
+{% endfor %}
