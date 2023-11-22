@@ -4,9 +4,10 @@ from itertools import groupby
 from math import ceil
 
 from pypdf import PdfReader, PdfWriter
-from pypdf.annotations import FreeText
+from pypdf.annotations import FreeText, Rectangle
 
 from radscheduler.core.models import Leave
+from radscheduler.roster import canterbury_holidays
 from radscheduler.roster.models import LeaveType
 
 from .forms import AnnualLeaveForm, EducationLeaveForm, LeaveRow, UserInfo
@@ -134,6 +135,20 @@ def fill_row(pdf, page_number, row_number, form_class, row):
     pdf.add_annotation(page_number=page_number, annotation=leave_type)
 
 
+def add_stamp(pdf, page_number):
+    rect = (10, 10, 200, 50)
+    annotation = FreeText(
+        text="Registrar approved\nDirector of Training approved",
+        rect=rect,
+        font="Times",
+        font_size="16pt",
+        border_color="#FF0000",
+    )
+    rectange = Rectangle(rect)
+    pdf.add_annotation(page_number=page_number, annotation=rectange)
+    pdf.add_annotation(page_number=page_number, annotation=annotation)
+
+
 def same_user_same_leave_type(pdf, form_class, leaves):
     if not leaves:
         return pdf
@@ -153,16 +168,7 @@ def same_user_same_leave_type(pdf, form_class, leaves):
         fill_header(pdf, page_number, form_class.header_fields, user)
         for row_number, row in enumerate(rows):
             fill_row(pdf, page_number, row_number, form_class, row)
-
-    # for page_number in range(init_page_num, init_page_num + new_page_num):
-    #     pdf.add_page(form)
-    #     fill_header(pdf, page_number, form_class.header_fields, user)
-    #     for row_number in range(form_class.ROW_LIMIT):
-    #         try:
-    #             row = rows[page_number * form_class.ROW_LIMIT + row_number]
-    #             fill_row(pdf, page_number, row_number, form_class, row)
-    #         except IndexError:
-    #             break
+        add_stamp(pdf, page_number)
     return pdf
 
 
@@ -197,6 +203,10 @@ def leaves_to_pdf(leaves):
     return pdf
 
 
+def remove_stat_and_weekend_days(leaves):
+    return [leave for leave in leaves if leave.date.weekday() < 5 and leave.date not in canterbury_holidays]
+
+
 def leaves_to_buffer(leaves: [Leave]):
     """
     Converts a list of leaves from different users into a single PDF.
@@ -204,6 +214,7 @@ def leaves_to_buffer(leaves: [Leave]):
     The leaves are sorted by registrar.
     """
     buffer = io.BytesIO()
+    leaves = remove_stat_and_weekend_days(leaves)
     pdf = leaves_to_pdf(leaves)
     pdf.write(buffer)
     buffer.seek(0)

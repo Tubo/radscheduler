@@ -73,3 +73,11 @@ def test_leaves_to_pdf(juniors_db):
     l2 = Leave(date=date(2021, 1, 1), type=LeaveType.ANNUAL, registrar=juniors_db[1])  # Friday
     pdf = leaves_to_pdf([l1, l2])
     assert len(pdf.pages) == 2
+
+
+def test_remove_stat_and_weekend_days(juniors_db):
+    leaves = [
+        Leave(date=date(2023, 11, 18), type=LeaveType.ANNUAL, registrar=juniors_db[0]),  # Saturday
+        Leave(date=date(2021, 12, 25), type=LeaveType.ANNUAL, registrar=juniors_db[0]),  # Xmas
+    ]
+    assert remove_stat_and_weekend_days(leaves) == []
