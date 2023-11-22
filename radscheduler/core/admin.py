@@ -1,3 +1,5 @@
+from collections import OrderedDict
+from collections.abc import Sequence
 from datetime import date, timedelta
 from enum import IntEnum
 from typing import Any
@@ -159,7 +161,7 @@ class LeaveAdmin(admin.ModelAdmin):
         "created",
         "last_edited",
     )
-    list_editable = ("dot_approved", "reg_approved", "microster", "no_abutting_weekend")
+    list_editable = ("dot_approved", "reg_approved", "printed", "microster", "no_abutting_weekend")
     list_filter = (
         (
             "date",
@@ -175,12 +177,42 @@ class LeaveAdmin(admin.ModelAdmin):
         "registrar__user",
     )
     list_select_related = ("registrar", "registrar__user")
-    actions = ["print_selected"]
+    actions = ["mark_reg_approved", "mark_dot_approved", "mark_printed", "print_selected"]
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
         return super().get_queryset(request).select_related("registrar", "registrar__user")
 
-    @admin.display(description="Date")
+    def get_list_display(self, request: HttpRequest) -> Sequence[str]:
+        if request.user.username in ["dot", "office"]:
+            return (
+                "custom_date_format",
+                "registrar",
+                "type",
+                "portion",
+                "comment",
+                "reg_approved",
+                "dot_approved",
+                "printed",
+                "created",
+                "last_edited",
+            )
+        return self.list_display
+
+    def get_actions(self, request: HttpRequest) -> OrderedDict[Any, Any]:
+        actions = super().get_actions(request)
+        if request.user.username == "dot":
+            del actions["delete_selected"]
+            del actions["reg_approved"]
+            return actions
+        elif request.user.username == "office":
+            del actions["delete_selected"]
+            del actions["reg_approved"]
+            del actions["dot_approved"]
+            return actions
+        else:
+            return actions
+
+    @admin.display(description="Date", ordering="date")
     def custom_date_format(self, obj):
         if obj.date:
             return obj.date.strftime("%d-%m-%Y, %a")
@@ -190,6 +222,18 @@ class LeaveAdmin(admin.ModelAdmin):
     def print_selected(self, request, queryset):
         buffer = leaves_to_buffer(queryset)
         return FileResponse(buffer, as_attachment=False, filename="hello.pdf")
+
+    @admin.action(description="Mark selected leaves as registrar approved")
+    def mark_reg_approved(self, request, queryset):
+        queryset.update(reg_approved=True)
+
+    @admin.action(description="Mark selected leaves as DOT approved")
+    def mark_dot_approved(self, request, queryset):
+        queryset.update(dot_approved=True)
+
+    @admin.action(description="Mark selected leaves as printed")
+    def mark_printed(self, request, queryset):
+        queryset.update(printed=True)
 
 
 @admin.register(Status)
