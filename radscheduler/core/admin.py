@@ -201,11 +201,9 @@ class LeaveAdmin(admin.ModelAdmin):
     def get_actions(self, request: HttpRequest) -> OrderedDict[Any, Any]:
         actions = super().get_actions(request)
         if request.user.username == "dot":
-            del actions["delete_selected"]
             del actions["reg_approved"]
             return actions
         elif request.user.username == "office":
-            del actions["delete_selected"]
             del actions["reg_approved"]
             del actions["dot_approved"]
             return actions
