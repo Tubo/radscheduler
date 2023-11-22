@@ -73,6 +73,7 @@ class Registrar:
     senior: bool
     start: date
     finish: date = None
+    pk: int = None  # if registrar is already in database
 
 
 @dataclass

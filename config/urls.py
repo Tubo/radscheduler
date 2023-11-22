@@ -34,7 +34,7 @@ api_view_urls = [
 
 generator_view_urls = [
     path("", generator_views.page, name="generator"),
-    path("fill/", generator_views.fill_shifts, name="fill_shifts"),
+    path("save/", generator_views.save_roster, name="save_shifts"),
 ]
 
 ical_urls = [

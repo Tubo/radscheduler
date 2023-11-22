@@ -8,6 +8,7 @@ def registrar_from_db(registrar):
         senior=registrar.senior,
         start=registrar.start,
         finish=registrar.finish,
+        pk=registrar.pk,
     )
     return r
 
@@ -49,7 +50,16 @@ def shift_from_db(shift):
 
 
 def shift_to_db(shift):
-    pass
+    s = db.Shift(
+        registrar_id=shift.registrar.pk,
+        date=shift.date,
+        type=shift.type.value,
+        stat_day=shift.stat_day,
+        extra_duty=shift.extra_duty,
+        fatigue_override=shift.fatigue_override,
+        series=shift.series,
+    )
+    return s
 
 
 def shift_to_dict(shift):

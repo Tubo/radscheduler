@@ -3,11 +3,24 @@
         -
     {% else %}
         {% for shift in shifts %}
-            <div>
-                <input type="hidden" value="{{ date|date:'Y-m-d' }}" />
-                <span>{{ shift.registrar.username }}
-                    {% if shift.pk %}(db){% endif %}
-                </span>
+            <div class="p-1 {% if shift.pk %}border border-2 {% if shift.extra_duty %}border-warning{% else %}border-success{% endif %}{% endif %}">
+                {% if not shift.pk %}
+                    {% with input_id=shift.input_id %}
+                        <input type="hidden"
+                               name="form-{{ input_id }}-date"
+                               value="{{ date|date:'Y-m-d' }}" />
+                        <input type="hidden"
+                               name="form-{{ input_id }}-type"
+                               value="{{ shift.type }}" />
+                        <input type="hidden"
+                               name="form-{{ input_id }}-registrar"
+                               value="{{ shift.registrar.username }}" />
+                        <input type="hidden"
+                               name="form-{{ input_id }}-stat_day"
+                               value="{{ shift.stat_day }}" />
+                    {% endwith %}
+                {% endif %}
+                <span>{{ shift.registrar.username }}</span>
             </div>
         {% endfor %}
     {% endif %}

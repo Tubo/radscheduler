@@ -24,6 +24,10 @@
 </div>
 <div class="col-md-2:lg col-md-4 d-inline-flex align-items-end gap-1">
     <button type="submit" class="btn btn-primary shadow">View</button>
-    <button type="button" class="btn btn-danger shadow">Auto fill shifts</button>
+    <button type="button"
+            class="btn btn-danger shadow"
+            hx-post="{% url 'save_shifts' %}"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+            hx-confirm="Are you sure you wish to save these shifts?">Save shifts</button>
     <button type="button" class="btn btn-secondary shadow">Create extra duty</button>
 </div>

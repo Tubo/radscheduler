@@ -2,10 +2,11 @@ import json
 from datetime import date, timedelta
 
 from django.contrib.admin.views.decorators import staff_member_required
+from django.http import HttpResponse
 from django.shortcuts import render
 
 from radscheduler.core import mapper
-from radscheduler.core.forms import DateRangeForm
+from radscheduler.core.forms import DateRangeForm, ShiftFormSet
 from radscheduler.core.models import Shift
 from radscheduler.core.service import canterbury_holidays, fill_shifts, group_shifts_by_date_and_type, shifts_breakdown
 
@@ -48,4 +49,18 @@ def page(request):
 
 
 def save_roster(request):
-    pass
+    if request.method == "POST":
+        form = DateRangeForm(request.POST)
+        if form.is_valid():
+            start = form.cleaned_data["start"]
+            end = form.cleaned_data["end"]
+            shifts = fill_shifts(start, end)
+            to_save = []
+            for shift in shifts:
+                if not shift.pk and shift.registrar:
+                    to_save.append(mapper.shift_to_db(shift))
+            try:
+                Shift.objects.bulk_create(to_save)
+                return HttpResponse("<span>Success</span>")
+            except:
+                return HttpResponse("<span>Failed</span>")
