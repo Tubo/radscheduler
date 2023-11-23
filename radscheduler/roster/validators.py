@@ -51,6 +51,13 @@ class StonzMecaValidator:
         """
         Return False if a registrar was placed on a shift while on leave.
         """
+        if DetailedShiftType.from_shift(self.shift) == DetailedShiftType.NIGHT and SingleOnCallRoster.is_start_of_set(
+            self.shift
+        ):
+            leaves_spanning_night = [
+                l for l in self.relevant_leaves if (self.shift.date <= l.date <= self.shift.date + timedelta(3))
+            ]
+            return len(leaves_spanning_night) == 0
         leaves_on_this_day = [l for l in self.relevant_leaves if l.date == self.shift.date]
         return len(leaves_on_this_day) == 0
 

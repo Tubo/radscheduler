@@ -2,9 +2,9 @@ from datetime import date, timedelta
 
 from radscheduler.roster.assigner import AutoAssigner
 from radscheduler.roster.generator import generate_shifts
-from radscheduler.roster.models import LeaveType, Shift, ShiftType, Status, StatusType, Weekday
+from radscheduler.roster.models import Leave, LeaveType, Shift, ShiftType, Status, StatusType, Weekday
 from radscheduler.roster.rosters import SingleOnCallRoster
-from radscheduler.roster.utils import generate_leaves, shift_breakdown, shifts_to_dataframe
+from radscheduler.roster.utils import daterange, generate_leaves, shift_breakdown, shifts_to_dataframe
 from radscheduler.roster.validators import StonzMecaValidator
 
 
@@ -12,6 +12,25 @@ def test_not_on_leave(juniors):
     leaves = generate_leaves(date(2023, 1, 2), date(2023, 1, 22), LeaveType.ANNUAL, juniors[0])
     shifts = generate_shifts(SingleOnCallRoster, date(2023, 1, 2), date(2023, 1, 22))
     validator = StonzMecaValidator(shift=shifts[0], registrar=juniors[0], shifts=shifts, leaves=leaves)
+    assert validator.validate_not_on_leave() == False
+
+    leaves = Leave(date=date(2024, 2, 29), type=LeaveType.ANNUAL, registrar=juniors[0])
+    shifts = [
+        Shift(date=date(2024, 2, 26), type=ShiftType.NIGHT),
+        Shift(date=date(2024, 2, 27), type=ShiftType.NIGHT),
+        Shift(date=date(2024, 2, 28), type=ShiftType.NIGHT),
+    ]
+    validator = StonzMecaValidator(shift=shifts[0], registrar=juniors[0], shifts=shifts, leaves=[leaves])
+    assert validator.validate_not_on_leave() == False
+
+    leave = Leave(date=date(2024, 2, 29), type=LeaveType.ANNUAL, registrar=juniors[0])
+    shifts = [
+        Shift(date=date(2024, 2, 26), type=ShiftType.NIGHT),
+        Shift(date=date(2024, 2, 27), type=ShiftType.NIGHT),
+        Shift(date=date(2024, 2, 28), type=ShiftType.NIGHT),
+        Shift(date=date(2024, 2, 29), type=ShiftType.NIGHT),
+    ]
+    validator = StonzMecaValidator(shift=shifts[0], registrar=juniors[0], shifts=shifts, leaves=[leave])
     assert validator.validate_not_on_leave() == False
 
 
@@ -64,3 +83,7 @@ def test_one_shift_per_day(juniors):
     for shift in shifts:
         validator = StonzMecaValidator(shift=shift, registrar=juniors[0], shifts=shifts)
         assert validator.validate_one_shift_per_day() == False
+
+
+def test_validate_roster():
+    pass
