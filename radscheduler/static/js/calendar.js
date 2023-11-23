@@ -11,7 +11,8 @@ let calendar = new Calendar(calendarEl, {
     themeSystem: 'bootstrap5',
     events: "/api/calendar/events/",
     locale: nzLocale,
-    height: "90vh"
+    height: "90vh",
+    eventOrder: "order,title",
 });
 
 calendar.render();

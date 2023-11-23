@@ -41,17 +41,6 @@ def retrieve_fullcalendar_events():
         .annotate(username=F("registrar__user__username"))
         .values("id", "date", "type", "username")
     )
-    for shift in shifts:
-        shift_name = ShiftType(shift["type"]).name
-        result.append(
-            {
-                "id": shift["id"],
-                "start": format_date(shift["date"]),
-                "title": f"{shift_name}: {shift['username']}",
-                "allDay": True,
-                "backgroundColor": map_shift_type_to_colour(shift["type"]),
-            }
-        )
     for leave in leaves:
         leave_name = LeaveType(leave["type"]).name
         result.append(
@@ -60,7 +49,20 @@ def retrieve_fullcalendar_events():
                 "start": format_date(leave["date"]),
                 "title": f"{leave_name}: {leave['username']}",
                 "allDay": True,
+                "order": 1,
                 "backgroundColor": None,
+            }
+        )
+    for shift in shifts:
+        shift_name = ShiftType(shift["type"]).name
+        result.append(
+            {
+                "id": shift["id"],
+                "start": format_date(shift["date"]),
+                "title": f"{shift_name}: {shift['username']}",
+                "allDay": True,
+                "order": 0,
+                "backgroundColor": map_shift_type_to_colour(shift["type"]),
             }
         )
     return result
