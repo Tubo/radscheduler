@@ -11,6 +11,7 @@ from radscheduler.roster.assigner import AutoAssigner
 from radscheduler.roster.generator import generate_shifts, merge_shifts
 from radscheduler.roster.models import DetailedShiftType
 from radscheduler.roster.utils import daterange, filter_shifts_by_date_range
+from radscheduler.roster.validators import validate_roster
 
 
 def format_date(date):
@@ -30,8 +31,14 @@ def retrieve_fullcalendar_events():
     result = []
     shifts = (
         Shift.objects.all()
+        .select_related("registrar", "registrar__user")
         .annotate(username=F("registrar__user__username"))
-        .select_related("registrar", "user")
+        .values("id", "date", "type", "username")
+    )
+    leaves = (
+        Leave.objects.all()
+        .select_related("registrar", "registrar__user")
+        .annotate(username=F("registrar__user__username"))
         .values("id", "date", "type", "username")
     )
     for shift in shifts:
@@ -43,6 +50,17 @@ def retrieve_fullcalendar_events():
                 "title": f"{shift_name}: {shift['username']}",
                 "allDay": True,
                 "backgroundColor": map_shift_type_to_colour(shift["type"]),
+            }
+        )
+    for leave in leaves:
+        leave_name = LeaveType(leave["type"]).name
+        result.append(
+            {
+                "id": leave["id"],
+                "start": format_date(leave["date"]),
+                "title": f"{leave_name}: {leave['username']}",
+                "allDay": True,
+                "backgroundColor": None,
             }
         )
     return result
@@ -155,6 +173,8 @@ def fill_shifts(start: date, end: date):
 
     assigner = AutoAssigner(registrars=registrars, unfilled=unfilled, filled=filled, leaves=leaves, statuses=statuses)
     result = assigner.fill_roster()
+    assert validate_roster(result, leaves, statuses)
+
     result = filter_shifts_by_date_range(result, start, end)
     return result
 
