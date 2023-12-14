@@ -1,0 +1,20 @@
+<div class="dropdown">
+    <button class="btn dropdown-toggle {% if shift.extra_duty %}btn-warning{% else %}btn-primary{% endif %}"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false">{{ current_registrar.user.username }}</button>
+    <ul class="dropdown-menu">
+        {% for registrar in registrars %}
+            <li>
+                <input type="hidden" name="registrar" value="{{ registrar.pk }}" />
+                <button class="dropdown-item {% if current_registrar == registrar %}active{% endif %}"
+                        hx-post="{% url 'change_shift_registrar' shift.pk %}"
+                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                        hx-include="previous [name='registrar']"
+                        hx-target="closest .dropdown"
+                        hx-swap="outerHTML"
+                        type="button">{{ registrar.user.username }}</button>
+            </li>
+        {% endfor %}
+    </ul>
+</div>

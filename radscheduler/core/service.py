@@ -87,6 +87,8 @@ def active_registrars(start: date = None, end: date = None):
     start, end = default_start_and_end(start, end)
     registrars = Registrar.objects.exclude(start=None).annotate(days=(Now() - F("start")))
     registrars = registrars.exclude(Q(finish__lt=start) | Q(start__gt=end))
+    registrars = registrars.order_by("start")
+    registrars = registrars.select_related("user")
     return registrars
 
 

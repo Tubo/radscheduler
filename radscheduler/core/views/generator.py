@@ -6,9 +6,15 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 from radscheduler.core import mapper
-from radscheduler.core.forms import DateRangeForm, ShiftFormSet
-from radscheduler.core.models import Shift
-from radscheduler.core.service import canterbury_holidays, fill_shifts, group_shifts_by_date_and_type, shifts_breakdown
+from radscheduler.core.forms import DateRangeForm, ShiftChangeRegistrarForm
+from radscheduler.core.models import Registrar, Shift
+from radscheduler.core.service import (
+    active_registrars,
+    canterbury_holidays,
+    fill_shifts,
+    group_shifts_by_date_and_type,
+    shifts_breakdown,
+)
 
 
 @staff_member_required
@@ -64,3 +70,26 @@ def save_roster(request):
                 return HttpResponse("<span>Success</span>")
             except:
                 return HttpResponse("<span>Failed</span>")
+
+
+def change_shift_registrar(request, pk):
+    if request.method == "GET":
+        shift = Shift.objects.get(pk=pk)
+        registrars = active_registrars(start=shift.date, end=shift.date)
+        return render(
+            request,
+            "generator/shift_cell_form.html",
+            {
+                "shift": shift,
+                "registrars": registrars,
+                "current_registrar": shift.registrar,
+            },
+        )
+    elif request.method == "POST":
+        form = ShiftChangeRegistrarForm(request.POST)
+        if form.is_valid():
+            registrar = form.cleaned_data["registrar"]
+            shift = Shift.objects.get(pk=pk)
+            shift.registrar = registrar
+            shift.save()
+            return render(request, "generator/shift_cell_button.html", {"shift": mapper.shift_from_db(shift)})

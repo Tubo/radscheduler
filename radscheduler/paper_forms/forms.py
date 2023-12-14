@@ -52,6 +52,7 @@ class AnnualLeaveForm:
         "contact": Field(425, 658),
         "position": Field(160, 682),
         "rotation": Field(425, 682),
+        "signature": Field(115, 360),
         "sign_date": Field(350, 360),
     }
 

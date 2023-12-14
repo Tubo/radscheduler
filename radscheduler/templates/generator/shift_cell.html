@@ -1,27 +1,18 @@
 <div class="d-flex gap-1 justify-content-start">
     {% if not shifts %}
-        -
     {% else %}
         {% for shift in shifts %}
-            <div class="p-1 {% if shift.pk %}border border-2 {% if shift.extra_duty %}border-warning{% else %}border-success{% endif %}{% endif %}">
-                {% if not shift.pk %}
-                    {% with input_id=shift.input_id %}
-                        <input type="hidden"
-                               name="form-{{ input_id }}-date"
-                               value="{{ date|date:'Y-m-d' }}" />
-                        <input type="hidden"
-                               name="form-{{ input_id }}-type"
-                               value="{{ shift.type }}" />
-                        <input type="hidden"
-                               name="form-{{ input_id }}-registrar"
-                               value="{{ shift.registrar.username }}" />
-                        <input type="hidden"
-                               name="form-{{ input_id }}-stat_day"
-                               value="{{ shift.stat_day }}" />
-                    {% endwith %}
+            {% if shift.pk %}
+                {% include "generator/shift_cell_button.html" with shift=shift %}
+            {% else %}
+                {% if not shift.registrar %}
+                    <span class="placeholder placeholder-lg w-75 bg-danger">Unfillable</span>
+                {% else %}
+                    <div class="p-1 fst-italic">
+                        <span>{{ shift.registrar.username }}</span>
+                    </div>
                 {% endif %}
-                <span>{{ shift.registrar.username }}</span>
-            </div>
+            {% endif %}
         {% endfor %}
     {% endif %}
 </div>

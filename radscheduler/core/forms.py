@@ -48,10 +48,7 @@ class LeaveForm(forms.ModelForm):
         fields = ["date", "type", "portion", "comment", "registrar"]
 
 
-class ShiftForm(forms.ModelForm):
+class ShiftChangeRegistrarForm(forms.ModelForm):
     class Meta:
         model = Shift
-        fields = ["date", "type", "registrar", "extra_duty", "stat_day"]
-
-
-ShiftFormSet = formset_factory(ShiftForm, extra=0)
+        fields = ["registrar"]

@@ -100,6 +100,7 @@ def fill_header(pdf, page, fields, user):
             rect=field.rect(),
             font="Arial",
             font_size="12pt",
+            border_color="#ffffff",
         )
         pdf.add_annotation(page_number=page, annotation=annotation)
 
@@ -110,24 +111,28 @@ def fill_row(pdf, page_number, row_number, form_class, row):
         rect=form_class.row_fields(row_number)["start"].rect(),
         font="Arial",
         font_size="12pt",
+        border_color="#ffffff",
     )
     end = FreeText(
         text=row.end,
         rect=form_class.row_fields(row_number)["end"].rect(),
         font="Arial",
         font_size="12pt",
+        border_color="#ffffff",
     )
     total_hours = FreeText(
         text=row.total_hours,
         rect=form_class.row_fields(row_number)["total_hour"].rect(),
         font="Arial",
         font_size="12pt",
+        border_color="#ffffff",
     )
     leave_type = FreeText(
         text=row.leave_type,
         rect=form_class.row_fields(row_number)["type"].rect(),
         font="Arial",
         font_size="12pt",
+        border_color="#ffffff",
     )
     pdf.add_annotation(page_number=page_number, annotation=start)
     pdf.add_annotation(page_number=page_number, annotation=end)
