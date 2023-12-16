@@ -39,18 +39,19 @@ def retrieve_fullcalendar_events():
         Leave.objects.all()
         .select_related("registrar", "registrar__user")
         .annotate(username=F("registrar__user__username"))
-        .values("id", "date", "type", "username")
+        .values("id", "date", "type", "username", "reg_approved", "dot_approved")
     )
     for leave in leaves:
         leave_name = LeaveType(leave["type"]).name
+        approved = leave["reg_approved"] and leave["dot_approved"]
         result.append(
             {
                 "id": leave["id"],
                 "start": format_date(leave["date"]),
-                "title": f"{leave_name}: {leave['username']}",
+                "title": f"{leave_name}: {leave['username']}" + (" (TBC)" if not approved else ""),
                 "allDay": True,
                 "order": 1,
-                "backgroundColor": None,
+                "backgroundColor": "green" if approved else "grey",
             }
         )
     for shift in shifts:
