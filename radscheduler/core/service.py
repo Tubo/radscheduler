@@ -48,7 +48,7 @@ def retrieve_fullcalendar_events():
             {
                 "id": leave["id"],
                 "start": format_date(leave["date"]),
-                "title": f"{leave_name}: {leave['username']}" + (" (TBC)" if not approved else ""),
+                "title": f"{leave_name.capitalize()}: {leave['username']}" + (" (TBC)" if not approved else ""),
                 "allDay": True,
                 "order": 1,
                 "backgroundColor": "green" if approved else "grey",
