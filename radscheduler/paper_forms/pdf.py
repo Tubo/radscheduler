@@ -79,6 +79,14 @@ def leaves_to_rows(leaves) -> [[LeaveRow]]:
     return result
 
 
+annotation_config = {
+    "font": "Arial",
+    "font_size": "12pt",
+    "border_color": None,
+    "background_color": None,
+}
+
+
 def fill_header(pdf, page, fields, user):
     if " " in user.name:
         last, first = user.name.split(" ", 1)
@@ -98,9 +106,7 @@ def fill_header(pdf, page, fields, user):
         annotation = FreeText(
             text=getattr(user_info, field_name),
             rect=field.rect(),
-            font="Arial",
-            font_size="12pt",
-            border_color="#ffffff",
+            **annotation_config,
         )
         pdf.add_annotation(page_number=page, annotation=annotation)
 
@@ -109,30 +115,22 @@ def fill_row(pdf, page_number, row_number, form_class, row):
     start = FreeText(
         text=row.start,
         rect=form_class.row_fields(row_number)["start"].rect(),
-        font="Arial",
-        font_size="12pt",
-        border_color="#ffffff",
+        **annotation_config,
     )
     end = FreeText(
         text=row.end,
         rect=form_class.row_fields(row_number)["end"].rect(),
-        font="Arial",
-        font_size="12pt",
-        border_color="#ffffff",
+        **annotation_config,
     )
     total_hours = FreeText(
         text=row.total_hours,
         rect=form_class.row_fields(row_number)["total_hour"].rect(),
-        font="Arial",
-        font_size="12pt",
-        border_color="#ffffff",
+        **annotation_config,
     )
     leave_type = FreeText(
         text=row.leave_type,
         rect=form_class.row_fields(row_number)["type"].rect(),
-        font="Arial",
-        font_size="12pt",
-        border_color="#ffffff",
+        **annotation_config,
     )
     pdf.add_annotation(page_number=page_number, annotation=start)
     pdf.add_annotation(page_number=page_number, annotation=end)

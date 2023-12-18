@@ -174,6 +174,7 @@ class LeaveAdmin(admin.ModelAdmin):
         "reg_approved",
         "dot_approved",
         "printed",
+        "microster",
         "registrar__user",
     )
     list_select_related = ("registrar", "registrar__user")
@@ -222,7 +223,7 @@ class LeaveAdmin(admin.ModelAdmin):
     @admin.action(description="Print the selected leave forms")
     def print_selected(self, request, queryset):
         buffer = leaves_to_buffer(queryset)
-        return FileResponse(buffer, as_attachment=False, filename="hello.pdf")
+        return FileResponse(buffer, as_attachment=True, filename="leaves.pdf")
 
     @admin.action(description="Mark selected leaves as registrar approved")
     def mark_reg_approved(self, request, queryset):
