@@ -179,6 +179,7 @@ class LeaveAdmin(admin.ModelAdmin):
     )
     list_select_related = ("registrar", "registrar__user")
     actions = ["mark_reg_approved", "mark_dot_approved", "mark_printed", "print_selected"]
+    ordering = ("-date", "registrar")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
         return super().get_queryset(request).select_related("registrar", "registrar__user")
