@@ -45,3 +45,10 @@
         </table>
     </div>
 {% endblock content %}
+{% block inline_javascript %}
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        Alpine.start();
+      });
+    </script>
+{% endblock inline_javascript %}

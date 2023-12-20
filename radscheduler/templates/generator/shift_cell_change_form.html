@@ -1,0 +1,34 @@
+<div class="change_registrar_form d-flex">
+    <div class="dropdown">
+        <button class="btn dropdown-toggle {% if shift.extra_duty %}btn-outline-warning{% else %}btn-outline-primary{% endif %}"
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">{{ current_registrar.user.username }}</button>
+        <ul class="dropdown-menu">
+            {% for registrar in registrars %}
+                <li>
+                    <input type="hidden" name="registrar" value="{{ registrar.pk }}" />
+                    <button class="dropdown-item {% if current_registrar == registrar %}active{% endif %}"
+                            hx-post="{% url 'change_shift' shift.pk %}"
+                            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                            hx-include="previous [name='registrar']"
+                            hx-target="closest .dropdown"
+                            hx-swap="outerHTML"
+                            type="button">{{ registrar.user.username }}</button>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <button type="button"
+            class="btn btn-sm text-danger"
+            hx-confirm="Are you sure you wish to delete this shift?">
+        <i class="bi bi-trash"></i>
+    </button>
+    <button type="button"
+            class="btn btn-sm"
+            hx-get="{% url 'cancel_shift_change' shift.pk %}"
+            hx-target="closest .change_registrar_form"
+            hx-swap="outerHTML">
+        <i class="bi bi-x-circle"></i>
+    </button>
+</div>

@@ -9,6 +9,7 @@ from django.forms.formsets import formset_factory
 from django.forms.utils import ErrorList
 
 from radscheduler.core.models import Leave, Registrar, Shift
+from radscheduler.core.service import active_registrars
 from radscheduler.roster import canterbury_holidays
 
 
@@ -48,7 +49,15 @@ class LeaveForm(forms.ModelForm):
         fields = ["date", "type", "portion", "comment", "registrar"]
 
 
-class ShiftChangeRegistrarForm(forms.ModelForm):
+class ShiftChangeForm(forms.ModelForm):
     class Meta:
         model = Shift
         fields = ["registrar"]
+
+
+class ShiftAddForm(forms.ModelForm):
+    registrar = forms.ModelChoiceField(queryset=active_registrars(), required=False)
+
+    class Meta:
+        model = Shift
+        fields = ["date", "type", "registrar", "stat_day", "extra_duty"]

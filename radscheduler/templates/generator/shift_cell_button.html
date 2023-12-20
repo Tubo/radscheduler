@@ -2,7 +2,7 @@
     <span class="placeholder placeholder-lg w-75 bg-danger">Not Filled</span>
 {% else %}
     <button class="btn shadow-sm {% if shift.extra_duty %}btn-warning{% else %}btn-primary{% endif %}"
-            hx-get="{% url 'change_shift_registrar' shift.pk %}"
+            hx-get="{% url 'change_shift' shift.pk %}"
             hx-swap="outerHTML">
         <span>{{ shift.registrar.username }}</span>
     </button>

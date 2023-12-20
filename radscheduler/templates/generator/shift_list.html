@@ -4,12 +4,14 @@
     <tr class="{% if date|date:'D' in 'Sat,Sun' %}table-success{% elif date in holidays %}table-warning{% endif %}">
         <th scope="row"
             class="font-monospace"
-            {% if date in holidays %}data-bs-toggle="tooltip" data-bs-title="{{ holidays.date }}"{% endif %}>
+            {% if date in holidays %}data-bs-toggle="tooltip" data-bs-title="{{ shifts.holiday }}"{% endif %}>
             {{ date|date:'Y-m-d D' }}
         </th>
-        <td>{% include "generator/shift_cell.html" with shifts=shifts.LONG %}</td>
-        <td>{% include "generator/shift_cell.html" with shifts=shifts.NIGHT %}</td>
-        <td>{% include "generator/shift_cell.html" with shifts=shifts.RDO %}</td>
-        <td>{% include "generator/shift_cell.html" with shifts=shifts.SLEEP %}</td>
+        {% with holiday=shifts.holiday %}
+            <td>{% include "generator/shift_cell.html" with shifts=shifts.LONG type="LONG" %}</td>
+            <td>{% include "generator/shift_cell.html" with shifts=shifts.NIGHT type="NIGHT" %}</td>
+            <td>{% include "generator/shift_cell.html" with shifts=shifts.RDO type="RDO" %}</td>
+            <td>{% include "generator/shift_cell.html" with shifts=shifts.SLEEP type="SLEEP" %}</td>
+        {% endwith %}
     </tr>
 {% endfor %}

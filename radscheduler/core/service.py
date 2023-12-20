@@ -88,7 +88,7 @@ def active_registrars(start: date = None, end: date = None):
     start, end = default_start_and_end(start, end)
     registrars = Registrar.objects.exclude(start=None).annotate(days=(Now() - F("start")))
     registrars = registrars.exclude(Q(finish__lt=start) | Q(start__gt=end))
-    registrars = registrars.order_by("start")
+    registrars = registrars.order_by("user__username")
     registrars = registrars.select_related("user")
     return registrars
 
@@ -189,7 +189,8 @@ def group_shifts_by_date_and_type(start: date, end: date, shifts):
     Group shifts by date and type. If the shift is outside the date range, it is ignored.
     """
     result = {
-        day: {shiftType.value: [] for shiftType in ShiftType} for day in daterange(start, end + timedelta(days=1))
+        day: {shiftType.value: [] for shiftType in ShiftType} | {"holiday": canterbury_holidays.get(day)}
+        for day in daterange(start, end + timedelta(days=1))
     }
 
     for shift in shifts:

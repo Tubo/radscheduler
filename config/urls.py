@@ -35,7 +35,9 @@ api_view_urls = [
 generator_view_urls = [
     path("", generator_views.page, name="generator"),
     path("save/", generator_views.save_roster, name="save_shifts"),
-    path("change_shift/<int:pk>/", generator_views.change_shift_registrar, name="change_shift_registrar"),
+    path("change_shift/<int:pk>/", generator_views.change_shift_registrar, name="change_shift"),
+    path("change_shift/<int:pk>/cancel/", generator_views.cancel_shift_change, name="cancel_shift_change"),
+    path("add_shift/", generator_views.add_shift, name="add_shift"),
 ]
 
 ical_urls = [

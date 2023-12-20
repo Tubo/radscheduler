@@ -35,8 +35,8 @@ def test_not_on_leave(juniors):
 
 
 def test_no_weekend_shift_abutting_leaves(juniors, seniors):
-    # todo: simplify this test
-    # add no_abutting_weekend test
+    # TODO: simplify this test
+    # Add no_abutting_weekend test
     leaves = generate_leaves(date(2023, 1, 2), date(2024, 1, 2), LeaveType.ANNUAL, juniors[0])
     mon_leaves = list(filter(lambda l: l.date.weekday() == Weekday.MON, leaves))
     fri_leaves = list(filter(lambda l: l.date.weekday() == Weekday.FRI, leaves))

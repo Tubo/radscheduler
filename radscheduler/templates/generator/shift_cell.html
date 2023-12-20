@@ -1,18 +1,29 @@
-<div class="d-flex gap-1 justify-content-start">
-    {% if not shifts %}
-    {% else %}
-        {% for shift in shifts %}
-            {% if shift.pk %}
-                {% include "generator/shift_cell_button.html" with shift=shift %}
-            {% else %}
-                {% if not shift.registrar %}
-                    <span class="placeholder placeholder-lg w-75 bg-danger">Unfillable</span>
+<div class="row justify-content-between">
+    <div class="shift-cell col-10">
+        {% if not shifts %}
+        {% else %}
+            {% for shift in shifts %}
+                {% if shift.pk %}
+                    {% include "generator/shift_cell_button.html" with shift=shift %}
                 {% else %}
-                    <div class="p-1 fst-italic">
-                        <span>{{ shift.registrar.username }}</span>
-                    </div>
+                    {% if not shift.registrar %}
+                        <span class="placeholder placeholder-lg w-75 bg-danger">Unfillable</span>
+                    {% else %}
+                        <div class="p-1 fst-italic">
+                            <span>{{ shift.registrar.username }}</span>
+                        </div>
+                    {% endif %}
                 {% endif %}
-            {% endif %}
-        {% endfor %}
-    {% endif %}
+            {% endfor %}
+        {% endif %}
+    </div>
+    <div class="col-1">
+        <button type="button"
+                class="btn btn-sm ms-auto"
+                hx-get="{% url 'add_shift' %}?date={{ date|date:'Y-m-d' }}&type={{ type }}&stat_day={{ holiday|yesno:'True,False' }}"
+                hx-target="previous .shift-cell"
+                hx-swap="beforeend">
+            <i class="bi bi-plus-circle"></i>
+        </button>
+    </div>
 </div>

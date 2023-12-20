@@ -6,7 +6,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 from radscheduler.core import mapper
-from radscheduler.core.forms import DateRangeForm, ShiftChangeRegistrarForm
+from radscheduler.core.forms import DateRangeForm, ShiftAddForm, ShiftChangeForm
 from radscheduler.core.models import Registrar, Shift
 from radscheduler.core.service import (
     active_registrars,
@@ -78,7 +78,7 @@ def change_shift_registrar(request, pk):
         registrars = active_registrars(start=shift.date, end=shift.date)
         return render(
             request,
-            "generator/shift_cell_form.html",
+            "generator/shift_cell_change_form.html",
             {
                 "shift": shift,
                 "registrars": registrars,
@@ -86,10 +86,37 @@ def change_shift_registrar(request, pk):
             },
         )
     elif request.method == "POST":
-        form = ShiftChangeRegistrarForm(request.POST)
+        form = ShiftChangeForm(request.POST)
         if form.is_valid():
             registrar = form.cleaned_data["registrar"]
             shift = Shift.objects.get(pk=pk)
             shift.registrar = registrar
+            shift.save()
+            return render(request, "generator/shift_cell_button.html", {"shift": mapper.shift_from_db(shift)})
+
+
+def cancel_shift_change(request, pk):
+    "Cancel button for change registrar form"
+    shift = Shift.objects.get(pk=pk)
+    return render(request, "generator/shift_cell_button.html", {"shift": mapper.shift_from_db(shift)})
+
+
+def add_shift(request):
+    "Add shift button"
+    if request.method == "GET":
+        date = request.GET.get("date")
+        type_ = request.GET.get("type")
+        registrars = active_registrars(date, date)
+        return render(
+            request, "generator/shift_cell_new_form.html", {"registrars": registrars, "date": date, "type": type_}
+        )
+
+    elif request.method == "POST":
+        form = ShiftAddForm(request.POST)
+        if form.is_valid():
+            registrar = form.cleaned_data["registrar"]
+            date = form.cleaned_data["date"]
+            type_ = form.cleaned_data["type"]
+            shift = Shift(date=date, type=type_, registrar=registrar)
             shift.save()
             return render(request, "generator/shift_cell_button.html", {"shift": mapper.shift_from_db(shift)})

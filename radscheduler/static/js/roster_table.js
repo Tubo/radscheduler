@@ -6,7 +6,6 @@ const { DateTime, Interval } = require("luxon");
 import "tabulator-tables/dist/css/tabulator_bootstrap5.min.css"
 import "../css/roster_table.scss"
 
-window.Alpine = Alpine
 window.table = rosterTable('#roster-table')
 
 Alpine.store('state', {
