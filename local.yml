@@ -47,3 +47,5 @@ services:
     ports:
       - "4444:4444"
       - "7900:7900"
+    environment:
+      - SE_NODE_SESSION_TIMEOUT=1800
