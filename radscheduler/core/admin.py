@@ -9,7 +9,7 @@ from django.db.models import Q
 from django.db.models.query import QuerySet
 from django.http import FileResponse
 from django.http.request import HttpRequest
-from rangefilter.filters import DateRangeFilterBuilder, NumericRangeFilterBuilder
+from rangefilter.filters import DateRangeFilterBuilder, DateRangeQuickSelectListFilterBuilder
 
 from radscheduler.core.models import Leave, Registrar, Shift, Status
 from radscheduler.paper_forms.pdf import leaves_to_buffer
@@ -145,6 +145,52 @@ class ShiftAdmin(admin.ModelAdmin):
     )
 
 
+class OfficeLeaveFilter(admin.SimpleListFilter):
+    title = "Ready to print"
+
+    # Parameter for the filter that will be used in the URL query.
+    parameter_name = "for_office"
+
+    def lookups(self, request, model_admin):
+        """
+        Returns a list of tuples. The first element in each
+        tuple is the coded value for the option that will
+        appear in the URL query. The second element is the
+        human-readable name for the option that will appear
+        in the right sidebar.
+        """
+        return [
+            ("2_weeks", "Next 2 weeks"),
+            ("4_weeks", "Next 4 weeks"),
+        ]
+
+    def queryset(self, request, queryset):
+        """
+        Returns the filtered queryset based on the value
+        provided in the query string and retrievable via
+        `self.value()`.
+        """
+        # Compare the requested value (either '80s' or '90s')
+        # to decide how to filter the queryset.
+        queryset = queryset.select_related("registrar", "registrar__user")
+
+        if self.value() == "2_weeks":
+            return queryset.filter(
+                date__gte=date.today(),
+                date__lte=date.today() + timedelta(days=14),
+                dot_approved=True,
+                reg_approved=True,
+            )
+
+        if self.value() == "4_weeks":
+            return queryset.filter(
+                date__gte=date.today(),
+                date__lte=date.today() + timedelta(days=28),
+                dot_approved=True,
+                reg_approved=True,
+            )
+
+
 @admin.register(Leave)
 class LeaveAdmin(admin.ModelAdmin):
     list_display = (
@@ -165,12 +211,13 @@ class LeaveAdmin(admin.ModelAdmin):
     list_filter = (
         (
             "date",
-            DateRangeFilterBuilder(
+            DateRangeQuickSelectListFilterBuilder(
                 title="Leave date",
                 default_start=date.today(),
                 default_end=date.today() + timedelta(days=31 * 3),
             ),
         ),
+        OfficeLeaveFilter,
         "reg_approved",
         "dot_approved",
         "printed",
@@ -182,7 +229,10 @@ class LeaveAdmin(admin.ModelAdmin):
     ordering = ("-date", "registrar")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
-        return super().get_queryset(request).select_related("registrar", "registrar__user")
+        queryset = super().get_queryset(request).select_related("registrar", "registrar__user")
+        if request.user.username == "office":
+            queryset = queryset.filter(dot_approved__isnull=True, reg_approved__isnull=True)
+        return queryset
 
     def get_list_display(self, request: HttpRequest) -> Sequence[str]:
         if request.user.username in ["dot", "office"]:
