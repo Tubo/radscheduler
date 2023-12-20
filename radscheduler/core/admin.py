@@ -159,7 +159,7 @@ class OfficeLeaveFilter(admin.SimpleListFilter):
         human-readable name for the option that will appear
         in the right sidebar.
         """
-        return [("2_weeks", "Next 2 weeks"), ("4_weeks", "Next 4 weeks"), ("6 weeks", "Next 6 weeks")]
+        return [("2_weeks", "Next 2 weeks"), ("4_weeks", "Next 4 weeks"), ("6_weeks", "Next 6 weeks")]
 
     def queryset(self, request, queryset):
         """
