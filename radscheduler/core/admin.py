@@ -146,7 +146,7 @@ class ShiftAdmin(admin.ModelAdmin):
 
 
 class OfficeLeaveFilter(admin.SimpleListFilter):
-    title = "Ready to print"
+    title = "ready to print (for Chris)"
 
     # Parameter for the filter that will be used in the URL query.
     parameter_name = "for_office"
@@ -159,10 +159,7 @@ class OfficeLeaveFilter(admin.SimpleListFilter):
         human-readable name for the option that will appear
         in the right sidebar.
         """
-        return [
-            ("2_weeks", "Next 2 weeks"),
-            ("4_weeks", "Next 4 weeks"),
-        ]
+        return [("2_weeks", "Next 2 weeks"), ("4_weeks", "Next 4 weeks"), ("6 weeks", "Next 6 weeks")]
 
     def queryset(self, request, queryset):
         """
@@ -172,23 +169,20 @@ class OfficeLeaveFilter(admin.SimpleListFilter):
         """
         # Compare the requested value (either '80s' or '90s')
         # to decide how to filter the queryset.
-        queryset = queryset.select_related("registrar", "registrar__user")
+        queryset = queryset.filter(
+            date__gte=date.today(),
+            dot_approved=True,
+            reg_approved=True,
+        ).select_related("registrar", "registrar__user")
 
         if self.value() == "2_weeks":
-            return queryset.filter(
-                date__gte=date.today(),
-                date__lte=date.today() + timedelta(days=14),
-                dot_approved=True,
-                reg_approved=True,
-            )
+            return queryset.filter(date__lte=date.today() + timedelta(days=14))
 
-        if self.value() == "4_weeks":
-            return queryset.filter(
-                date__gte=date.today(),
-                date__lte=date.today() + timedelta(days=28),
-                dot_approved=True,
-                reg_approved=True,
-            )
+        elif self.value() == "4_weeks":
+            return queryset.filter(date__lte=date.today() + timedelta(days=28))
+
+        elif self.value() == "6_weeks":
+            return queryset.filter(date__lte=date.today() + timedelta(days=42))
 
 
 @admin.register(Leave)
@@ -211,7 +205,7 @@ class LeaveAdmin(admin.ModelAdmin):
     list_filter = (
         (
             "date",
-            DateRangeQuickSelectListFilterBuilder(
+            DateRangeFilterBuilder(
                 title="Leave date",
                 default_start=date.today(),
                 default_end=date.today() + timedelta(days=31 * 3),
