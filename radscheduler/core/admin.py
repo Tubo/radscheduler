@@ -169,7 +169,7 @@ class OfficeLeaveFilter(admin.SimpleListFilter):
         """
         # Compare the requested value (either '80s' or '90s')
         # to decide how to filter the queryset.
-        queryset = (
+        office = (
             queryset.filter(
                 date__gte=date.today(),
                 dot_approved=True,
@@ -181,13 +181,13 @@ class OfficeLeaveFilter(admin.SimpleListFilter):
         )
 
         if self.value() == "2_weeks":
-            return queryset.filter(date__lte=date.today() + timedelta(days=14))
+            return office.filter(date__lte=date.today() + timedelta(days=14))
 
         elif self.value() == "4_weeks":
-            return queryset.filter(date__lte=date.today() + timedelta(days=28))
+            return office.filter(date__lte=date.today() + timedelta(days=28))
 
         elif self.value() == "6_weeks":
-            return queryset.filter(date__lte=date.today() + timedelta(days=42))
+            return office.filter(date__lte=date.today() + timedelta(days=42))
 
         else:
             return queryset
