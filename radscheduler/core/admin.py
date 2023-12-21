@@ -173,6 +173,7 @@ class OfficeLeaveFilter(admin.SimpleListFilter):
             date__gte=date.today(),
             dot_approved=True,
             reg_approved=True,
+            printed=False,
         ).select_related("registrar", "registrar__user")
 
         if self.value() == "2_weeks":
@@ -183,6 +184,9 @@ class OfficeLeaveFilter(admin.SimpleListFilter):
 
         elif self.value() == "6_weeks":
             return queryset.filter(date__lte=date.today() + timedelta(days=42))
+
+        else:
+            return queryset
 
 
 @admin.register(Leave)
@@ -224,8 +228,6 @@ class LeaveAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
         queryset = super().get_queryset(request).select_related("registrar", "registrar__user")
-        if request.user.username == "office":
-            queryset = queryset.filter(dot_approved__isnull=True, reg_approved__isnull=True)
         return queryset
 
     def get_list_display(self, request: HttpRequest) -> Sequence[str]:
