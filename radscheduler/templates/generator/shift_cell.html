@@ -17,7 +17,7 @@
             {% endfor %}
         {% endif %}
     </div>
-    <div class="col-1">
+    <div class="col-2">
         <button type="button"
                 class="btn btn-sm ms-auto"
                 hx-get="{% url 'add_shift' %}?date={{ date|date:'Y-m-d' }}&type={{ type }}&stat_day={{ holiday|yesno:'True,False' }}"

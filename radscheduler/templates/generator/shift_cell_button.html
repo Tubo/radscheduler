@@ -1,7 +1,8 @@
 {% if not shift.registrar %}
     <span class="placeholder placeholder-lg w-75 bg-danger">Not Filled</span>
 {% else %}
-    <button class="btn shadow-sm {% if shift.extra_duty %}btn-warning{% else %}btn-primary{% endif %}"
+    <button class="btn shadow-sm w-auto {% if shift.extra_duty %}btn-warning{% else %}btn-primary{% endif %}"
+            {% if shift.extra_duty %}data-bs-toggle="tooltip" data-bs-title="Extra duty"{% endif %}
             hx-get="{% url 'change_shift' shift.pk %}"
             hx-swap="outerHTML">
         <span>{{ shift.registrar.username }}</span>

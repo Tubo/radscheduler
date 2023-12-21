@@ -1,16 +1,16 @@
 <input type="hidden" name="form-TOTAL_FORMS" value="{{ days|length }}" />
 <input type="hidden" name="form-INITIAL_FORMS" value="0" />
 {% for date, shifts in days.items %}
-    <tr class="{% if date|date:'D' in 'Sat,Sun' %}table-success{% elif date in holidays %}table-warning{% endif %}">
+    <tr class="{% if date|date:'D' in 'Sat,Sun' %}table-success{% endif %}">
         <th scope="row"
-            class="font-monospace"
+            class="font-monospace {% if date in holidays %}table-warning{% endif %}"
             {% if date in holidays %}data-bs-toggle="tooltip" data-bs-title="{{ shifts.holiday }}"{% endif %}>
             {{ date|date:'Y-m-d D' }}
         </th>
         {% with holiday=shifts.holiday %}
             <td>{% include "generator/shift_cell.html" with shifts=shifts.LONG type="LONG" %}</td>
-            <td>{% include "generator/shift_cell.html" with shifts=shifts.NIGHT type="NIGHT" %}</td>
             <td>{% include "generator/shift_cell.html" with shifts=shifts.RDO type="RDO" %}</td>
+            <td>{% include "generator/shift_cell.html" with shifts=shifts.NIGHT type="NIGHT" %}</td>
             <td>{% include "generator/shift_cell.html" with shifts=shifts.SLEEP type="SLEEP" %}</td>
         {% endwith %}
     </tr>
