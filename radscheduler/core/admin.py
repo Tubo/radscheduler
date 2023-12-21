@@ -169,12 +169,16 @@ class OfficeLeaveFilter(admin.SimpleListFilter):
         """
         # Compare the requested value (either '80s' or '90s')
         # to decide how to filter the queryset.
-        queryset = queryset.filter(
-            date__gte=date.today(),
-            dot_approved=True,
-            reg_approved=True,
-            printed=False,
-        ).select_related("registrar", "registrar__user")
+        queryset = (
+            queryset.filter(
+                date__gte=date.today(),
+                dot_approved=True,
+                reg_approved=True,
+                printed=False,
+            )
+            .exclude(date__iso_week_day__in=[ISOWeekday.SAT, ISOWeekday.SUN])
+            .select_related("registrar", "registrar__user")
+        )
 
         if self.value() == "2_weeks":
             return queryset.filter(date__lte=date.today() + timedelta(days=14))
