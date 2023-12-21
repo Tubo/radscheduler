@@ -9,7 +9,7 @@ from django.db.models import Q
 from django.db.models.query import QuerySet
 from django.http import FileResponse
 from django.http.request import HttpRequest
-from rangefilter.filters import DateRangeFilterBuilder, DateRangeQuickSelectListFilterBuilder
+from rangefilter.filters import DateRangeFilterBuilder
 
 from radscheduler.core.models import Leave, Registrar, Shift, Status
 from radscheduler.paper_forms.pdf import leaves_to_buffer
@@ -274,7 +274,7 @@ class LeaveAdmin(admin.ModelAdmin):
     @admin.action(description="Print the selected leave forms")
     def print_selected(self, request, queryset):
         buffer = leaves_to_buffer(queryset)
-        return FileResponse(buffer, as_attachment=True, filename="leaves.pdf")
+        return FileResponse(buffer, as_attachment=False, filename="leaves.pdf")
 
     @admin.action(description="Mark selected leaves as registrar approved")
     def mark_reg_approved(self, request, queryset):

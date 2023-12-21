@@ -24,6 +24,7 @@ django-extensions==3.2.3  # https://github.com/django-extensions/django-extensio
 
 # PDF
 pypdf==3.17.1
+reportlab==4.0.8
 
 # iCal
 django-ical==1.9.2

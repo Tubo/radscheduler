@@ -3,8 +3,9 @@ from datetime import date, timedelta
 from itertools import groupby
 from math import ceil
 
+import reportlab.pdfgen.canvas as pdf_canvas
 from pypdf import PdfReader, PdfWriter
-from pypdf.annotations import FreeText, Rectangle
+from reportlab.lib.pagesizes import A4
 
 from radscheduler.core.models import Leave
 from radscheduler.roster import canterbury_holidays
@@ -49,11 +50,11 @@ def leaves_to_row(leaves) -> LeaveRow:
     if not leaves:
         return None
 
-    start = leaves[0].date
-    end = leaves[-1].date
+    start = leaves[0].date.strftime("%d/%m/%Y")
+    end = leaves[-1].date.strftime("%d/%m/%Y")
     leave_type = leaves[0].type
     portion = leaves[0].portion
-    total_hours = 8 * len(leaves) if portion == "ALL" else 4 * len(leaves)
+    total_hours = str(8 * len(leaves) if portion == "ALL" else 4 * len(leaves))
     row = LeaveRow(start=start, end=end, leave_type=leave_type, total_hours=total_hours)
     return row
 
@@ -87,7 +88,7 @@ annotation_config = {
 }
 
 
-def fill_header(pdf, page, fields, user):
+def fill_header(canvas, fields, user):
     if " " in user.name:
         last, first = user.name.split(" ", 1)
     else:
@@ -103,76 +104,65 @@ def fill_header(pdf, page, fields, user):
     )
 
     for field_name, field in fields.items():
-        annotation = FreeText(
-            text=getattr(user_info, field_name),
-            rect=field.rect(),
-            **annotation_config,
-        )
-        pdf.add_annotation(page_number=page, annotation=annotation)
+        canvas.drawString(field.x, field.y, getattr(user_info, field_name))
 
 
-def fill_row(pdf, page_number, row_number, form_class, row):
-    start = FreeText(
-        text=row.start,
-        rect=form_class.row_fields(row_number)["start"].rect(),
-        **annotation_config,
+def fill_row(canvas, row_number, form_class, row):
+    canvas.drawString(
+        form_class.row_fields(row_number)["start"].x,
+        form_class.row_fields(row_number)["start"].y,
+        row.start,
     )
-    end = FreeText(
-        text=row.end,
-        rect=form_class.row_fields(row_number)["end"].rect(),
-        **annotation_config,
+    canvas.drawString(
+        form_class.row_fields(row_number)["end"].x,
+        form_class.row_fields(row_number)["end"].y,
+        row.end,
     )
-    total_hours = FreeText(
-        text=row.total_hours,
-        rect=form_class.row_fields(row_number)["total_hour"].rect(),
-        **annotation_config,
+    canvas.drawString(
+        form_class.row_fields(row_number)["total_hour"].x,
+        form_class.row_fields(row_number)["total_hour"].y,
+        row.total_hours,
     )
-    leave_type = FreeText(
-        text=row.leave_type,
-        rect=form_class.row_fields(row_number)["type"].rect(),
-        **annotation_config,
+    canvas.drawString(
+        form_class.row_fields(row_number)["type"].x,
+        form_class.row_fields(row_number)["type"].y,
+        row.leave_type,
     )
-    pdf.add_annotation(page_number=page_number, annotation=start)
-    pdf.add_annotation(page_number=page_number, annotation=end)
-    pdf.add_annotation(page_number=page_number, annotation=total_hours)
-    pdf.add_annotation(page_number=page_number, annotation=leave_type)
 
 
-def add_stamp(pdf, page_number):
-    rect = (10, 10, 200, 50)
-    annotation = FreeText(
-        text="Registrar approved\nDirector of Training approved",
-        rect=rect,
-        font="Times",
-        font_size="16pt",
-        border_color="#FF0000",
-    )
-    rectange = Rectangle(rect)
-    pdf.add_annotation(page_number=page_number, annotation=rectange)
-    pdf.add_annotation(page_number=page_number, annotation=annotation)
+def add_stamp(canvas):
+    # rect = (10, 10, 200, 50)
+    # annotation = FreeText(
+    #     text="Registrar approved\nDirector of Training approved",
+    #     rect=rect,
+    #     font="Times",
+    #     font_size="16pt",
+    #     border_color="#FF0000",
+    # )
+    # rectange = Rectangle(rect)
+    # pdf.add_annotation(page_number=page_number, annotation=rectange)
+    # pdf.add_annotation(page_number=page_number, annotation=annotation)
+    pass
 
 
-def same_user_same_leave_type(pdf, form_class, leaves):
+def same_user_same_leave_type(pdf, overlay, form_class, leaves):
     if not leaves:
-        return pdf
+        return
 
     user = leaves[0].registrar.user
     rows = leaves_to_rows(leaves)
-    init_page_num = len(pdf.pages)
-    # new_page_num = ceil(len(rows) / form_class.ROW_LIMIT)
 
     form_path = form_class.pdf_path
     form = PdfReader(form_path).pages[0]
 
     rows_per_page = [rows[i : i + form_class.ROW_LIMIT] for i in range(0, len(rows), form_class.ROW_LIMIT)]
     for rel_page_number, rows in enumerate(rows_per_page):
-        page_number = init_page_num + rel_page_number
-        pdf.add_page(form)
-        fill_header(pdf, page_number, form_class.header_fields, user)
+        fill_header(overlay, form_class.header_fields, user)
         for row_number, row in enumerate(rows):
-            fill_row(pdf, page_number, row_number, form_class, row)
-        add_stamp(pdf, page_number)
-    return pdf
+            fill_row(overlay, row_number, form_class, row)
+        add_stamp(overlay)
+        overlay.showPage()
+        pdf.add_page(form)
 
 
 def dispatch_form(leave_type):
@@ -182,7 +172,7 @@ def dispatch_form(leave_type):
         return EducationLeaveForm
 
 
-def same_user_different_leave_forms(pdf, leaves):
+def same_user_different_leave_forms(pdf, overlay, leaves):
     """
     Append a list of leaves of different types from a single user into the given PDF.
     """
@@ -192,17 +182,26 @@ def same_user_different_leave_forms(pdf, leaves):
     for leave_type, leaves in groups:
         leaves = list(leaves)
         form_class = dispatch_form(leave_type)
-        same_user_same_leave_type(pdf, form_class, leaves)
-
-    return pdf
+        same_user_same_leave_type(pdf, overlay, form_class, leaves)
 
 
 def leaves_to_pdf(leaves):
     leaves = sorted(leaves, key=lambda leave: leave.registrar.id)
     leaves_grouped_by_registrars = [list(leaves) for _, leaves in groupby(leaves, key=lambda leave: leave.registrar)]
+
     pdf = PdfWriter()
+    canvas_buffer = io.BytesIO()
+    canvas = pdf_canvas.Canvas(canvas_buffer, pagesize=A4)
+
     for leaves in leaves_grouped_by_registrars:
-        same_user_different_leave_forms(pdf, leaves)
+        same_user_different_leave_forms(pdf, canvas, leaves)
+
+    canvas.save()
+    canvas_buffer.seek(0)
+
+    overlay = PdfReader(canvas_buffer)
+    for page_num, page in enumerate(pdf.pages):
+        page.merge_page(overlay.pages[page_num], over=True)
     return pdf
 
 
