@@ -131,18 +131,9 @@ def fill_row(canvas, row_number, form_class, row):
 
 
 def add_stamp(canvas):
-    # rect = (10, 10, 200, 50)
-    # annotation = FreeText(
-    #     text="Registrar approved\nDirector of Training approved",
-    #     rect=rect,
-    #     font="Times",
-    #     font_size="16pt",
-    #     border_color="#FF0000",
-    # )
-    # rectange = Rectangle(rect)
-    # pdf.add_annotation(page_number=page_number, annotation=rectange)
-    # pdf.add_annotation(page_number=page_number, annotation=annotation)
-    pass
+    canvas.setFillColor("red")
+    canvas.drawString(10, 10, "Registrar approved")
+    canvas.drawString(10, 30, "Director of Training approved")
 
 
 def same_user_same_leave_type(pdf, overlay, form_class, leaves):

@@ -19,7 +19,7 @@ class UserInfo:
     training_programme: str = "Diagnostic Radiology"
     supervisor: str = "Andrew McLaughlin"
     signature: str = ""
-    sign_date: date = date.today()
+    sign_date: date = date.today().strftime("%d/%m/%Y")
 
 
 @dataclass
@@ -35,10 +35,10 @@ class Field:
 
 @dataclass
 class LeaveRow:
-    start: date
-    end: date
+    start: str
+    end: str
     leave_type: LeaveType
-    total_hours: int
+    total_hours: str
 
 
 @dataclass
