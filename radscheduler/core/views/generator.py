@@ -93,6 +93,12 @@ def change_shift_registrar(request, pk):
             shift.registrar = registrar
             shift.save()
             return render(request, "generator/shift_cell_button.html", {"shift": mapper.shift_from_db(shift)})
+    elif request.method == "DELETE":
+        form = ShiftChangeForm(request.POST)
+        if form.is_valid():
+            shift = Shift.objects.get(pk=pk)
+            shift.delete()
+            return HttpResponse()
 
 
 def cancel_shift_change(request, pk):
@@ -117,6 +123,8 @@ def add_shift(request):
             registrar = form.cleaned_data["registrar"]
             date = form.cleaned_data["date"]
             type_ = form.cleaned_data["type"]
-            shift = Shift(date=date, type=type_, registrar=registrar)
+            stat_day = form.cleaned_data["stat_day"]
+            extra_duty = form.cleaned_data["extra_duty"]
+            shift = Shift(date=date, type=type_, registrar=registrar, stat_day=stat_day, extra_duty=extra_duty)
             shift.save()
             return render(request, "generator/shift_cell_button.html", {"shift": mapper.shift_from_db(shift)})
