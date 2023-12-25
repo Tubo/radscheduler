@@ -5,9 +5,10 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
 from django.shortcuts import render
 
+from radscheduler import roster
 from radscheduler.core import mapper
 from radscheduler.core.forms import DateRangeForm, ShiftAddForm, ShiftChangeForm
-from radscheduler.core.models import Registrar, Shift
+from radscheduler.core.models import Registrar, Shift, Status
 from radscheduler.core.service import (
     active_registrars,
     canterbury_holidays,
@@ -35,22 +36,40 @@ def page(request):
             return render(
                 request,
                 "generator/page.html",
-                {"days": days, "workload": workload, "form": form, "holidays": canterbury_holidays},
+                {
+                    "days": days,
+                    "worload": workload,
+                    "form": form,
+                    "holidays": canterbury_holidays,
+                },
             )
         else:
             start = date.today()
             shifts = (
-                Shift.objects.filter(date__gte=start).order_by("-date").select_related("registrar", "registrar__user")
+                Shift.objects.filter(date__gte=start)
+                .order_by("-date", "extra_duty", "registrar")
+                .select_related("registrar", "registrar__user")
             )
             end = shifts.first().date if shifts else start + timedelta(days=90)
             form = DateRangeForm(initial={"start": start, "end": end})
             shifts = list(map(mapper.shift_from_db, shifts))
+            buddy_required = list(
+                Status.objects.filter(type=roster.StatusType.BUDDY, start__lte=end, end__gte=start).values_list(
+                    "registrar", flat=True
+                )
+            )
             days = group_shifts_by_date_and_type(start, end, shifts)
             workload = shifts_breakdown(shifts)
     return render(
         request,
         "generator/page.html",
-        {"days": days, "breakdown": workload, "form": form, "holidays": canterbury_holidays},
+        {
+            "days": days,
+            "workload": workload,
+            "buddy_required": buddy_required,
+            "form": form,
+            "holidays": canterbury_holidays,
+        },
     )
 
 

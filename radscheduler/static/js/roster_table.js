@@ -152,7 +152,7 @@ function rosterTable(id) {
                                             }
                                         } else if (statusType === "Buddy required") {
                                             if (content === "Long day") {
-                                                content += " <small>🫂</small>"
+                                                content += " <small>🤝</small>"
                                             }
                                         } else if (statusType === "Not available") {
                                             el.style.backgroundColor = '#808080b0'

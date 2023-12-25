@@ -85,9 +85,7 @@ class Status(models.Model):
     last_edited = models.DateTimeField(auto_now=True)
 
     def __repr__(self) -> str:
-        return (
-            f"<Status: {self.registrar.user.username} {self.start}--{self.end} ({roster.StatusType(self.type).label})>"
-        )
+        return f"<Status: {self.registrar} {self.start}--{self.end} ({roster.StatusType(self.type).label})>"
 
     class Meta:
         verbose_name_plural = "statuses"

@@ -3,6 +3,9 @@ import radscheduler.roster.models as py
 
 
 def registrar_from_db(registrar):
+    if registrar is None:
+        return None
+
     r = py.Registrar(
         username=registrar.user.username,
         senior=registrar.senior,

@@ -298,4 +298,4 @@ class StatusAdmin(admin.ModelAdmin):
         "type",
         "comment",
     )
-    list_filter = ("registrar",)
+    list_filter = ("registrar", "type")
