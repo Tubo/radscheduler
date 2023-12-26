@@ -16,6 +16,7 @@ def get_calendar(request):
     Display the roster in a calendar format.
     """
     if request.method == "GET":
-        events = retrieve_fullcalendar_events(request.user.registrar)
+        registrar = request.user.registrar if hasattr(request.user, "registrar") else None
+        events = retrieve_fullcalendar_events(registrar)
         events_json = json.dumps(events)
         return HttpResponse(events_json, content_type="application/json")
