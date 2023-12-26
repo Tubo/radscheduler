@@ -296,6 +296,9 @@ class StatusAdmin(admin.ModelAdmin):
         "start",
         "end",
         "type",
+        "weekdays",
+        "shift_types",
         "comment",
     )
-    list_filter = ("registrar", "type")
+    list_filter = ("registrar__user", "type")
+    list_select_related = ("registrar", "registrar__user")

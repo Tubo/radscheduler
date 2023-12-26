@@ -38,7 +38,7 @@ def page(request):
                 "generator/page.html",
                 {
                     "days": days,
-                    "worload": workload,
+                    "workload": workload,
                     "form": form,
                     "holidays": canterbury_holidays,
                 },

@@ -20,29 +20,35 @@ def format_date(date):
 
 def map_shift_type_to_colour(shift_type):
     if shift_type == "LONG":
-        return "#ff0000"
+        foreground = "black"
+        background = "#FFB6C1"
     elif shift_type == "NIGHT":
-        return "#000000"
+        foreground = None
+        background = "#000000"
     else:
-        return None
+        foreground = "black"
+        background = "PaleTurquoise"
+    return {"backgroundColor": background, "textColor": foreground}
 
 
-def retrieve_fullcalendar_events():
+def retrieve_fullcalendar_events(registrar=None):
     result = []
     shifts = (
         Shift.objects.all()
-        .select_related("registrar", "registrar__user")
+        .filter(registrar__isnull=False)
         .annotate(username=F("registrar__user__username"))
-        .values("id", "date", "type", "username")
+        .select_related("registrar", "registrar__user")
+        .values("id", "date", "type", "username", "registrar")
     )
     leaves = (
         Leave.objects.all()
-        .select_related("registrar", "registrar__user")
         .annotate(username=F("registrar__user__username"))
-        .values("id", "date", "type", "username", "reg_approved", "dot_approved")
+        .select_related("registrar", "registrar__user")
+        .values("id", "date", "type", "username", "reg_approved", "dot_approved", "registrar")
     )
     for leave in leaves:
         leave_name = LeaveType(leave["type"]).name
+        my_leave = leave["registrar"] == registrar.pk if registrar else False
         approved = leave["reg_approved"] and leave["dot_approved"]
         result.append(
             {
@@ -51,11 +57,13 @@ def retrieve_fullcalendar_events():
                 "title": f"{leave_name.capitalize()}: {leave['username']}" + (" (TBC)" if not approved else ""),
                 "allDay": True,
                 "order": 1,
-                "backgroundColor": "green" if approved else "grey",
+                "textColor": "black" if approved else "white",
+                "backgroundColor": "DarkSeaGreen" if approved else "grey",
             }
         )
     for shift in shifts:
         shift_name = ShiftType(shift["type"]).name
+        my_shift = shift["registrar"] == registrar.pk if registrar else False
         result.append(
             {
                 "id": shift["id"],
@@ -63,7 +71,7 @@ def retrieve_fullcalendar_events():
                 "title": f"{shift_name}: {shift['username']}",
                 "allDay": True,
                 "order": 0,
-                "backgroundColor": map_shift_type_to_colour(shift["type"]),
+                **map_shift_type_to_colour(shift["type"]),
             }
         )
     return result
