@@ -7,6 +7,7 @@ from django.views.generic import TemplateView
 
 import radscheduler.core.ical as ical
 import radscheduler.core.views as views
+import radscheduler.core.views.extra_duties as extra_duties_views
 import radscheduler.core.views.generator as generator_views
 import radscheduler.core.views.leaves as leaves_views
 import radscheduler.core.views.roster as roster_views
@@ -40,6 +41,13 @@ generator_view_urls = [
     path("add_shift/", generator_views.add_shift, name="add_shift"),
 ]
 
+extra_duties_urls = [
+    path("", extra_duties_views.page, name="extra_page"),
+    path("interests/", extra_duties_views.interests, name="extra_interests"),
+    path("interest/<int:interest_id>/", extra_duties_views.interest, name="extra_interest"),
+    path("editor/", extra_duties_views.edit_page, name="extra_edit_page"),
+]
+
 ical_urls = [
     path("shifts/", ical.ShiftFeed(), name="ical_shifts"),
     path("leaves/", ical.LeaveFeed(), name="ical_leaves"),
@@ -58,6 +66,7 @@ urlpatterns = [
     path("leaves/", include(leave_view_urls)),
     path("roster/", include(roster_view_urls)),
     path("generator/", include(generator_view_urls)),
+    path("extra_duties/", include(extra_duties_urls)),
     path("ical/", include(ical_urls)),
     path("api/", include(api_view_urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

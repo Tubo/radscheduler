@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}
+    Extra duty generation
+{% endblock title %}
+{% block content %}
+    <div class="container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Applicants</th>
+                    <th scope="col">Winner</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for shift in extra_shifts %}
+                    <tr>
+                        <th scope="row">
+                            {{ shift.date|date:"Y-m-d D" }}
+                            {% if shift.date in holidays %}🎉{% endif %}
+                        </th>
+                        <td>{{ shift.get_type_display }}</td>
+                        <td></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock content %}
+{% block inline_javascript %}
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        Alpine.start();
+      });
+    </script>
+{% endblock inline_javascript %}

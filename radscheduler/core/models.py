@@ -50,7 +50,7 @@ class Shift(models.Model):
         return f"<{roster.ShiftType(self.type).name} Shift {self.date} ({roster.Weekday(self.date.weekday()).name}): {registrar}>"
 
     class Meta:
-        unique_together = [["date", "registrar"]]
+        unique_together = [["date", "registrar", "extra_duty"]]
 
 
 class Status(models.Model):
@@ -121,3 +121,22 @@ class Leave(models.Model):
 
     class Meta:
         unique_together = ["date", "registrar"]
+
+
+class ShiftInterest(models.Model):
+    """
+    Expression of interst to a shift.
+
+    This is used for tracking registrars who are interested in an Extra Duty shift.
+    """
+
+    shift = models.ForeignKey(Shift, blank=False, null=False, on_delete=models.CASCADE, related_name="interests")
+    registrar = models.ForeignKey(Registrar, blank=False, null=False, on_delete=models.CASCADE)
+    comment = models.TextField(blank=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+    last_edited = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ["shift", "registrar"]
+        verbose_name_plural = "shift interests"

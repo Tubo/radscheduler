@@ -55,16 +55,19 @@
                 <a class="nav-link" href="{% url 'leave_page' %}">Leaves</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="#">Extra duties</a>
+                <a class="nav-link" href="{% url 'extra_page' %}">Extra duties</a>
               </li>
             </ul>
             {% if request.user.is_staff %}
               <ul class="navbar-nav mr-auto border-start border-2 ps-2">
                 <li class="nav-item">
-                  <a class="nav-link" href="{% url 'roster' %}">Admin overview</a>
+                  <a class="nav-link" href="{% url 'roster' %}">Overview</a>
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" href="{% url 'generator' %}">Edit roster</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'extra_edit_page' %}">Edit extra duties</a>
                 </li>
               </ul>
             {% endif %}

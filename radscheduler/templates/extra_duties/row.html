@@ -1,0 +1,37 @@
+<tr hx-target="closest tr"
+    hx-swap="outerHTML"
+    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+    class="h-50">
+    <th scope="row">
+        {{ shift.date|date:"Y-m-d D" }}
+        {% if shift.date in holidays %}🎉{% endif %}
+    </th>
+    <td>{{ shift.get_type_display }}</td>
+    <td>{{ shift.interests.count }}</td>
+    <td>
+        {% if shift.registrar %}
+            {{ shift.registrar }}
+        {% elif shift.interest_id %}
+            <div class="input-group">
+                <input type="text"
+                       name="comment"
+                       class="form-control"
+                       placeholder="Comment"
+                       value="{{ shift.comment }}" />
+                <button class="btn btn-sm btn-primary"
+                        type="button"
+                        hx-include="previous [name='comment']"
+                        hx-post="{% url 'extra_interest' shift.interest_id %}">Save</button>
+                <button class="btn btn-sm btn-danger"
+                        type="button"
+                        hx-delete="{% url 'extra_interest' shift.interest_id %}"
+                        hx-confirm="Are you sure you want to delete your interest in this shift?">Delete</button>
+            </div>
+        {% else %}
+            <input type="hidden" name="shift_id" value="{{ shift.pk }}" />
+            <button class="btn btn-sm btn-primary"
+                    hx-post="{% url 'extra_interests' %}"
+                    hx-include="previous [name='shift_id']">Keen!</button>
+        {% endif %}
+    </td>
+</tr>

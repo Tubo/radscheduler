@@ -8,7 +8,7 @@ from django.db.models.base import Model
 from django.forms.formsets import formset_factory
 from django.forms.utils import ErrorList
 
-from radscheduler.core.models import Leave, Registrar, Shift
+from radscheduler.core.models import Leave, Registrar, Shift, ShiftInterest
 from radscheduler.core.service import active_registrars
 from radscheduler.roster import canterbury_holidays
 
@@ -61,3 +61,9 @@ class ShiftAddForm(forms.ModelForm):
     class Meta:
         model = Shift
         fields = ["date", "type", "registrar", "stat_day", "extra_duty"]
+
+
+class ShiftInterestForm(forms.ModelForm):
+    class Meta:
+        model = ShiftInterest
+        fields = ["comment"]
