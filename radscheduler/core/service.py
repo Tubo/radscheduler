@@ -121,7 +121,6 @@ def build_pivot_table(start, end, shifts, leaves, registrars):
         df_leaves["id"] = "leave:" + df_leaves["id"].astype("str")
 
     df = concat([df_shifts, df_leaves])
-    df.registrar = df.registrar.astype("str")
 
     if df.empty:
         pivot = DataFrame(columns=["date", "holiday"])
