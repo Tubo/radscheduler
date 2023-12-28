@@ -74,7 +74,10 @@ def interest(request, interest_id):
 @staff_member_required
 def edit_page(request):
     extra_shifts = (
-        Shift.objects.filter(extra_duty=True, registrar=None).order_by("date").select_related("registrar__user")
+        Shift.objects.filter(extra_duty=True, registrar=None)
+        .order_by("date")
+        .select_related("registrar__user")
+        .prefetch_related("interests", "interests__registrar__user")
     )
 
     return render(
