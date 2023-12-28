@@ -121,6 +121,7 @@ def build_pivot_table(start, end, shifts, leaves, registrars):
         df_leaves["id"] = "leave:" + df_leaves["id"].astype("str")
 
     df = concat([df_shifts, df_leaves])
+    df.registrar = df.registrar.astype("str")
 
     if df.empty:
         pivot = DataFrame(columns=["date", "holiday"])
@@ -136,7 +137,7 @@ def build_pivot_table(start, end, shifts, leaves, registrars):
 def retrieve_roster(start: date = None, end: date = None):
     start, end = default_start_and_end(start, end)
 
-    shifts = Shift.objects.filter(date__range=[start, end])
+    shifts = Shift.objects.filter(date__range=[start, end], registrar__isnull=False)
     shift_dict = {shift.id: mapper.shift_to_dict(shift) for shift in shifts}
 
     leaves = Leave.objects.filter(date__range=[start, end])

@@ -6,6 +6,7 @@ const { DateTime, Interval } = require("luxon");
 import "tabulator-tables/dist/css/tabulator_bootstrap5.min.css"
 import "../css/roster_table.scss"
 
+window.Alpine = Alpine
 window.table = rosterTable('#roster-table')
 
 Alpine.store('state', {
@@ -42,7 +43,8 @@ function rosterTable(id) {
                 field: 'date',
                 title: 'Date',
                 frozen: true,
-                minWidth: 150,
+                minWidth: 200,
+                maxWidth: 200,
                 hozAlign: 'left',
                 formatter: function (cell, formatterParams, onRendered) {
                     const el = cell.getElement()
@@ -199,25 +201,6 @@ function rosterTable(id) {
                                     return tip;
                                 }
                             },
-
-                            topCalc: function (values, data, calcParams) {
-                                const shifts = Alpine.store('state').tableData.shifts
-                                let sum = 0
-                                values.forEach((value) => {
-                                    if (typeof value === 'string' && value.includes(':')) {
-                                        const cellType = value.split(':')[0]
-                                        id = value.split(':')[1]
-
-                                        if (cellType === 'shift') {
-                                            const shift = shifts[id]
-                                            if (!shift.extra_duty) {
-                                                sum += 1
-                                            }
-                                        }
-                                    }
-                                })
-                                return sum
-                            }
                         }
                     })
                 })
