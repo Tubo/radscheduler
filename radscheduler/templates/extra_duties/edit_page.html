@@ -10,7 +10,7 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th scope="col">Date</th>
+                    <th scope="col" class="w-25">Date</th>
                     <th scope="col">Type</th>
                     <th scope="col">Applicants</th>
                     <th scope="col">Winner</th>
@@ -24,7 +24,19 @@
                             {% if shift.date in holidays %}🎉{% endif %}
                         </th>
                         <td>{{ shift.get_type_display }}</td>
-                        <td></td>
+                        <td>
+                            {% for interest in shift.interests.all %}
+                                {{ interest.registrar }}
+                                {% if not forloop.last %},{% endif %}
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="No one selected" />
+                                <button class="btn btn-primary" type="button">Roll</button>
+                                <button class="btn btn-warning" type="button">Save</button>
+                            </div>
+                        </td>
                     </tr>
                 {% endfor %}
             </tbody>

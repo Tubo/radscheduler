@@ -6,7 +6,6 @@ const { DateTime, Interval } = require("luxon");
 import "tabulator-tables/dist/css/tabulator_bootstrap5.min.css"
 import "../css/roster_table.scss"
 
-window.Alpine = Alpine
 window.table = rosterTable('#roster-table')
 
 Alpine.store('state', {
@@ -179,6 +178,26 @@ function rosterTable(id) {
                                 const date = cell.getData().date
                                 const reg_id = cell.getField()
                                 const statuses = Alpine.store('state').tableData.statuses
+                                const shifts = Alpine.store('state').tableData.shifts
+                                const leaves = Alpine.store('state').tableData.leaves
+                                const value = cell.getValue()
+                                let content = ""
+
+                                if (typeof value === 'string' && value.includes(':')) {
+                                    const cellType = value.split(':')[0]
+                                    id = value.split(':')[1]
+
+                                    if (cellType === 'leave') {
+                                        let leave = leaves[id]
+                                        content = leave.type + " " + leave.portion
+                                    } else if (cellType === 'shift') {
+                                        const shift = shifts[id]
+                                        content = shift.type
+                                    }
+                                }
+
+                                const tip = document.createElement("div");
+                                tip.appendChild(document.createTextNode(content))
 
                                 const relevantStatus = statuses.filter((status) => {
                                     const start = DateTime.fromISO(status.start)
@@ -191,15 +210,15 @@ function rosterTable(id) {
                                         && status.registrar === parseInt(reg_id)
                                         && (weekdays.includes(thisWeekday) || weekdays.length === 0)
                                 })
+
                                 if (relevantStatus.length > 0) {
-                                    const tip = document.createElement("div");
                                     relevantStatus.forEach((status) => {
-                                        var statusDiv = document.createElement("p");
-                                        statusDiv.innerHTML = status.type
-                                        tip.appendChild(statusDiv)
+                                        var status = document.createTextNode(status.type);
+                                        tip.appendChild(status)
                                     })
-                                    return tip;
                                 }
+
+                                return tip;
                             },
                         }
                     })
