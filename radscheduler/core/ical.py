@@ -11,9 +11,9 @@ class ShiftFeed(ICalFeed):
     timezone = "Pacific/Auckland"
 
     def items(self):
-        return Shift.objects.filter(date__gte=date.today() - timedelta(days=365)).select_related(
-            "registrar", "registrar__user"
-        )
+        return Shift.objects.filter(
+            date__gte=date.today() - timedelta(days=365), registrar__isnull=False
+        ).select_related("registrar", "registrar__user")
 
     def item_title(self, shift):
         result = f"{shift.type}: {shift.registrar.user.username}"
