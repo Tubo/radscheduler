@@ -31,10 +31,24 @@
                             {% endfor %}
                         </td>
                         <td>
-                            <div class="input-group">
-                                <input type="text" class="form-control" placeholder="No one selected" />
-                                <button class="btn btn-primary" type="button">Roll</button>
-                                <button class="btn btn-warning" type="button">Save</button>
+                            <div x-data="{shift_id: {{ shift.id }} }" class="input-group">
+                                <select class="form-select"
+                                        id="registrar_selected"
+                                        name="registrar"
+                                        x-ref="select_element">
+                                    <option value=""></option>
+                                    {% for registrar in registrars %}
+                                        <option value="{{ registrar.pk }}" class="registrar_option">{{ registrar.user.username }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-primary"
+                                        type="button"
+                                        @click="$store.select_random(shift_id, $refs.select_element)">Roll</button>
+                                <button class="btn btn-warning"
+                                        type="button"
+                                        hx-post="{% url 'extra_save_registrar' shift.pk %}"
+                                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                        hx-include="previous #registrar_selected">Save</button>
                             </div>
                         </td>
                     </tr>
@@ -46,7 +60,16 @@
 {% block inline_javascript %}
     <script>
       window.addEventListener('DOMContentLoaded', () => {
+        Alpine.store("select_random", select_random_registrar)
         Alpine.start();
       });
+
+      function select_random_registrar(shift_id, select_element) {
+        fetch("{% url 'extra_random_registrar' %}" + "?id=" + shift_id)
+          .then(response => response.json())
+          .then(data => {
+            select_element.value = data.registrar
+          })
+      }
     </script>
 {% endblock inline_javascript %}

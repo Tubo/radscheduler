@@ -46,6 +46,8 @@ extra_duties_urls = [
     path("interests/", extra_duties_views.interests, name="extra_interests"),
     path("interest/<int:interest_id>/", extra_duties_views.interest, name="extra_interest"),
     path("editor/", extra_duties_views.edit_page, name="extra_edit_page"),
+    path("editor/random/", extra_duties_views.interested_random_registrar, name="extra_random_registrar"),
+    path("editor/save/<int:shift_id>/", extra_duties_views.save_registrar, name="extra_save_registrar"),
 ]
 
 ical_urls = [

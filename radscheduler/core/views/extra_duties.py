@@ -1,13 +1,16 @@
+import random
 from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
-from django.db.models import OuterRef, Q, Subquery
+from django.db.models import F, OuterRef, Q, Subquery
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 
-from radscheduler.core.forms import ShiftInterestForm
+from radscheduler.core.forms import ShiftChangeForm, ShiftInterestForm
 from radscheduler.core.models import Shift, ShiftInterest, Status
+from radscheduler.core.service import active_registrars
 from radscheduler.roster import ShiftType, StatusType, canterbury_holidays
 
 
@@ -75,11 +78,38 @@ def interest(request, interest_id):
 def edit_page(request):
     extra_shifts = (
         Shift.objects.filter(extra_duty=True, registrar=None)
-        .order_by("date")
+        .order_by("-date")
         .select_related("registrar__user")
         .prefetch_related("interests", "interests__registrar__user")
-    )
+    ).all()
+    end = extra_shifts.first().date if extra_shifts else date.today()
+    start = extra_shifts.last().date if extra_shifts else date.today()
+    registrars = active_registrars(start, end)
 
     return render(
-        request, "extra_duties/edit_page.html", {"extra_shifts": extra_shifts, "holidays": canterbury_holidays}
+        request,
+        "extra_duties/edit_page.html",
+        {"extra_shifts": extra_shifts, "registrars": registrars, "holidays": canterbury_holidays},
     )
+
+
+@staff_member_required
+def interested_random_registrar(request):
+    shift_id = request.GET.get("id")
+    interests = Shift.objects.get(pk=shift_id).interests.values("registrar").all()
+    if len(interests) == 0:
+        return JsonResponse({}, safe=True)
+    else:
+        return JsonResponse(random.choice(list(interests)), safe=True)
+
+
+@staff_member_required
+def save_registrar(request, shift_id):
+    if request.method == "POST":
+        form = ShiftChangeForm(request.POST)
+        if form.is_valid():
+            registrar = form.cleaned_data["registrar"]
+            shift = Shift.objects.get(pk=shift_id)
+            shift.registrar = registrar
+            shift.save()
+            return HttpResponse("Saved", status=200)
