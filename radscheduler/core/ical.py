@@ -48,8 +48,9 @@ class LeaveFeed(ICalFeed):
         )
 
     def item_title(self, leave):
+        portion = f" ({leave.portion})" if leave.portion != "ALL" else ""
         leave_type = LeaveType(leave.type).label
-        return f"{leave.registrar.user.username}: {leave_type}"
+        return f"{leave.registrar.user.username}: {leave_type}{portion}"
 
     def item_description(self, leave):
         return self.item_title(leave)
