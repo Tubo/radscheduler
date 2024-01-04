@@ -13,6 +13,19 @@ from radscheduler.core.service import active_registrars
 from radscheduler.roster import canterbury_holidays
 
 
+class DateTimeRangeForm(forms.Form):
+    start = forms.DateTimeField(required=True)
+    end = forms.DateTimeField(required=True)
+
+    def clean(self) -> dict[str, Any]:
+        cleaned_data = super().clean()
+        start = cleaned_data.get("start")
+        end = cleaned_data.get("end")
+
+        if start and end and start > end:
+            self.add_error("start", "Start date must be before end date")
+
+
 class DateRangeForm(forms.Form):
     start = forms.DateField(required=True)
     end = forms.DateField(required=True)

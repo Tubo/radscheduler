@@ -6,7 +6,7 @@ from django.views import defaults as default_views
 from django.views.generic import TemplateView
 
 import radscheduler.core.ical as ical
-import radscheduler.core.views as views
+import radscheduler.core.views.calendar as calendar_views
 import radscheduler.core.views.extra_duties as extra_duties_views
 import radscheduler.core.views.generator as generator_views
 import radscheduler.core.views.leaves as leaves_views
@@ -29,7 +29,7 @@ roster_view_urls = [
 ]
 
 api_view_urls = [
-    path("calendar/events/", views.get_calendar, name="calendar_events"),
+    path("calendar/events/", calendar_views.get_calendar, name="calendar_events"),
     path("table/events/", roster_views.get_roster, name="table_events"),
 ]
 

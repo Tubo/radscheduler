@@ -14,69 +14,6 @@ from radscheduler.roster.utils import daterange, filter_shifts_by_date_range
 from radscheduler.roster.validators import validate_roster
 
 
-def format_date(date):
-    return date.strftime("%Y-%m-%d")
-
-
-def map_shift_type_to_colour(shift_type):
-    if shift_type == "LONG":
-        foreground = "black"
-        background = "#FFB6C1"
-    elif shift_type == "NIGHT":
-        foreground = None
-        background = "#000000"
-    else:
-        foreground = "black"
-        background = "PaleTurquoise"
-    return {"backgroundColor": background, "textColor": foreground}
-
-
-def retrieve_fullcalendar_events(registrar=None):
-    result = []
-    shifts = (
-        Shift.objects.all()
-        .filter(registrar__isnull=False)
-        .annotate(username=F("registrar__user__username"))
-        .select_related("registrar", "registrar__user")
-        .values("id", "date", "type", "username", "registrar")
-    )
-    leaves = (
-        Leave.objects.all()
-        .annotate(username=F("registrar__user__username"))
-        .select_related("registrar", "registrar__user")
-        .values("id", "date", "type", "username", "reg_approved", "dot_approved", "registrar")
-    )
-    for leave in leaves:
-        leave_name = LeaveType(leave["type"]).name
-        my_leave = leave["registrar"] == registrar.pk if registrar else False
-        approved = leave["reg_approved"] and leave["dot_approved"]
-        result.append(
-            {
-                "id": leave["id"],
-                "start": format_date(leave["date"]),
-                "title": f"{leave_name.capitalize()}: {leave['username']}" + (" (TBC)" if not approved else ""),
-                "allDay": True,
-                "order": 1,
-                "textColor": "black" if approved else "white",
-                "backgroundColor": "DarkSeaGreen" if approved else "grey",
-            }
-        )
-    for shift in shifts:
-        shift_name = ShiftType(shift["type"]).name
-        my_shift = shift["registrar"] == registrar.pk if registrar else False
-        result.append(
-            {
-                "id": shift["id"],
-                "start": format_date(shift["date"]),
-                "title": f"{shift_name}: {shift['username']}",
-                "allDay": True,
-                "order": 0,
-                **map_shift_type_to_colour(shift["type"]),
-            }
-        )
-    return result
-
-
 def default_start_and_end(start, end):
     if not (start and end):
         start = date.today() - timedelta(days=14 * 2)
