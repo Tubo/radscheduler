@@ -31,25 +31,31 @@
                             {% endfor %}
                         </td>
                         <td>
-                            <div x-data="{shift_id: {{ shift.id }} }" class="input-group">
-                                <select class="form-select"
-                                        id="registrar_selected"
-                                        name="registrar"
-                                        x-ref="select_element">
-                                    <option value=""></option>
-                                    {% for registrar in registrars %}
-                                        <option value="{{ registrar.pk }}" class="registrar_option">{{ registrar.user.username }}</option>
-                                    {% endfor %}
-                                </select>
-                                <button class="btn btn-primary"
-                                        type="button"
-                                        @click="$store.select_random(shift_id, $refs.select_element)">Roll</button>
-                                <button class="btn btn-warning"
-                                        type="button"
-                                        hx-post="{% url 'extra_save_registrar' shift.pk %}"
-                                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                                        hx-include="previous #registrar_selected">Save</button>
-                            </div>
+                            {% if shift.registrar %}
+                                {{ shift.registrar }}: {{ shift.comment }}
+                            {% else %}
+                                <div x-data="{shift_id: {{ shift.id }} }" class="input-group">
+                                    <select class="form-select"
+                                            id="registrar_selected"
+                                            name="registrar"
+                                            x-ref="select_element">
+                                        <option value=""></option>
+                                        {% for registrar in registrars %}
+                                            <option value="{{ registrar.pk }}" class="registrar_option">{{ registrar.user.username }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button class="btn btn-primary"
+                                            type="button"
+                                            @click="$store.select_random(shift_id, $refs.select_element)">
+                                        Roll
+                                    </button>
+                                    <button class="btn btn-warning"
+                                            type="button"
+                                            hx-post="{% url 'extra_save_registrar' shift.pk %}"
+                                            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                            hx-include="previous #registrar_selected">Save</button>
+                                </div>
+                            {% endif %}
                         </td>
                     </tr>
                 {% endfor %}
