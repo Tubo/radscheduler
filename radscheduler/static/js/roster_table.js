@@ -121,12 +121,10 @@ function rosterTable(id) {
                                             content += " 💵"
                                         }
 
-                                        if (shift.type === "Sleep day") {
-                                            el.style.backgroundColor = 'inherit'
-                                            content = "💤"
+                                        if (shift.type === "Sleep") {
+                                            el.style.backgroundColor = 'rgba(144, 238, 144, 0.53)'
                                         } else if (shift.type === "RDO") {
-                                            el.style.backgroundColor = 'inherit'
-                                            content = "🏡"
+                                            el.style.backgroundColor = 'rgba(144, 238, 144, 0.53)'
                                         }
                                     }
                                 } else {
@@ -147,11 +145,7 @@ function rosterTable(id) {
 
                                 if (relevantStatus.length > 0) {
                                     relevantStatus.map((status) => status.type).forEach((statusType) => {
-                                        if (statusType === "Reliever") {
-                                            if (content === "") {
-                                                content += " <small>🛟</small>"
-                                            }
-                                        } else if (statusType === "Buddy required") {
+                                        if (statusType === "Buddy required") {
                                             if (content === "Long day") {
                                                 content += " <small>🤝</small>"
                                             }
@@ -196,8 +190,12 @@ function rosterTable(id) {
                                     }
                                 }
 
-                                const tip = document.createElement("div");
-                                tip.appendChild(document.createTextNode(content))
+                                const tip = document.createElement("ul");
+
+                                if (content !== "") {
+                                    var li = tip.appendChild(document.createElement("li"))
+                                    li.innerHTML = content
+                                }
 
                                 const relevantStatus = statuses.filter((status) => {
                                     const start = DateTime.fromISO(status.start)
@@ -213,8 +211,9 @@ function rosterTable(id) {
 
                                 if (relevantStatus.length > 0) {
                                     relevantStatus.forEach((status) => {
-                                        var status = document.createTextNode(status.type);
-                                        tip.appendChild(status)
+                                        var li = document.createElement("li");
+                                        li.innerHTML = status.type
+                                        tip.appendChild(li)
                                     })
                                 }
 

@@ -1,6 +1,7 @@
 import json
 from datetime import date
 
+import holidays
 from django.http import JsonResponse
 from django.shortcuts import HttpResponse, render
 
@@ -24,8 +25,24 @@ def get_calendar(request):
             leaves = Leave.objects.filter(date__gte=start, date__lte=end).select_related(
                 "registrar", "registrar__user"
             )
-            events = shifts_to_events(shifts) + leaves_to_events(leaves)
+            events = shifts_to_events(shifts) + leaves_to_events(leaves) + holidays_to_events(start.year)
             return JsonResponse(events, safe=False)
+
+
+def holidays_to_events(year):
+    cant_holidays = holidays.country_holidays("NZ", subdiv="CAN", years=year)
+    result = []
+    for date, name in cant_holidays.items():
+        result.append(
+            {
+                "title": name,
+                "start": format_date(date),
+                "allDay": True,
+                "order": 0,
+                "display": "background",
+            }
+        )
+    return result
 
 
 def shifts_to_events(shifts):
@@ -39,7 +56,7 @@ def shifts_to_events(shifts):
                 "start": format_date(shift.date),
                 "title": f"{shift_name}: {shift.registrar.user.username}" + (" (extra)" if shift.extra_duty else ""),
                 "allDay": True,
-                "order": 0,
+                "order": 1,
                 **map_shift_type_to_colour(shift.type),
             }
         )
@@ -60,7 +77,7 @@ def leaves_to_events(leaves):
                 "start": format_date(leave.date),
                 "title": f"{leave_name.capitalize()} {portion}: {leave.registrar.user.username}" + tbc,
                 "allDay": True,
-                "order": 1,
+                "order": 2,
                 "textColor": "black" if approved else "white",
                 "backgroundColor": "DarkSeaGreen" if approved else "grey",
             }
