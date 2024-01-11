@@ -283,3 +283,5 @@ webpack-stats.json
 
 resources/
 backups/
+.idea/
+.env

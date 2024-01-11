@@ -39,7 +39,7 @@
     "dev": "concurrently npm:dev:*",
     "build": "webpack --config webpack/prod.config.js",
     "dev:webpack": "webpack --config webpack/dev.config.js --watch",
-    "dev:django": "python manage.py runserver_plus 0.0.0.0:8000"
+    "dev:django": "export DJANGO_READ_DOT_ENV_FILE=True && python manage.py runserver_plus 0.0.0.0:8000"
   },
   "dependencies": {
     "@fullcalendar/bootstrap5": "^6.1.9",
