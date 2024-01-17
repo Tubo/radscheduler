@@ -56,7 +56,6 @@ class UserAdmin(auth_admin.UserAdmin):
     list_editable = ["name"]
     search_fields = ["name", "username"]
     inlines = [RegistrarInline]
-    ordering = ["-registrar__start"]
     list_select_related = ["registrar"]
 
     def registrar_year(self, obj: User) -> Any:

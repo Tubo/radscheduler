@@ -18,6 +18,9 @@ class User(AbstractUser):
     employee_number = CharField(max_length=20, blank=True, null=True)
     phone = CharField(max_length=20, blank=True, null=True)
 
+    class Meta:
+        ordering = ["username"]
+
     def get_absolute_url(self) -> str:
         """Get URL for user's detail view.
 

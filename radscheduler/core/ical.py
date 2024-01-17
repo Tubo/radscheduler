@@ -43,7 +43,7 @@ class LeaveFeed(ICalFeed):
     timezone = "Pacific/Auckland"
 
     def items(self):
-        return Leave.objects.filter(date__gte=date.today() - timedelta(days=365)).select_related(
+        return Leave.objects.filter(date__gte=date.today() - timedelta(days=365), cancelled=False).select_related(
             "registrar", "registrar__user"
         )
 

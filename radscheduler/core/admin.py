@@ -206,10 +206,11 @@ class LeaveAdmin(admin.ModelAdmin):
         "microster",
         "printed",
         "no_abutting_weekend",
+        "cancelled",
         "created",
         "last_edited",
     )
-    list_editable = ("dot_approved", "reg_approved", "printed", "microster", "no_abutting_weekend")
+    list_editable = ("dot_approved", "reg_approved", "printed", "microster", "no_abutting_weekend", "cancelled")
     list_filter = (
         (
             "date",
