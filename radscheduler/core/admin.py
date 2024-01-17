@@ -174,6 +174,7 @@ class OfficeLeaveFilter(admin.SimpleListFilter):
                 date__gte=date.today(),
                 dot_approved=True,
                 reg_approved=True,
+                cancelled=False,
                 printed=False,
             )
             .exclude(date__iso_week_day__in=[ISOWeekday.SAT, ISOWeekday.SUN])
