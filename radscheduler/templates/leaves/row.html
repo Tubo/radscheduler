@@ -9,6 +9,8 @@
     <td>
         {% if row.reg_approved == None %}
             <span class="badge text-bg-secondary">Not processed</span>
+        {% elif row.cancelled %}
+            <span class="badge text-bg-danger">Cancelled</span>
         {% elif row.reg_approved %}
             {% if row.dot_approved == None %}
                 <span class="badge text-bg-warning">Processing</span>
