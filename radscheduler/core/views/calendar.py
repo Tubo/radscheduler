@@ -22,8 +22,11 @@ def get_calendar(request):
             shifts = Shift.objects.filter(date__gte=start, date__lte=end, registrar__isnull=False).select_related(
                 "registrar", "registrar__user"
             )
-            leaves = Leave.objects.filter(date__gte=start, date__lte=end, cancelled=False).select_related(
-                "registrar", "registrar__user"
+            leaves = (
+                Leave.objects.filter(date__gte=start, date__lte=end, cancelled=False)
+                .exclude(reg_approved=False)
+                .exclude(dot_approved=False)
+                .select_related("registrar", "registrar__user")
             )
             events = shifts_to_events(shifts) + leaves_to_events(leaves) + holidays_to_events(start.year)
             return JsonResponse(events, safe=False)
