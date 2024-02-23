@@ -17,7 +17,7 @@ class UserInfo:
     position: str = "Registrar"
     rotation: str = "Radiology"
     training_programme: str = "Diagnostic Radiology"
-    supervisor: str = "Andrew McLaughlin"
+    supervisor: str = "Stefan Gabrielson"
     signature: str = ""
     sign_date: date = date.today().strftime("%d/%m/%Y")
 
