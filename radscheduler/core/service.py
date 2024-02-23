@@ -148,6 +148,10 @@ def group_shifts_by_date_and_type(start: date, end: date, shifts):
 def shifts_breakdown(shifts):
     result = {}
     for shift in shifts:
+        if shift.extra_duty:
+            # Extra duty shifts are not counted towards workload
+            continue
+
         shift_type = DetailedShiftType.from_shift(shift).value
 
         if shift.registrar is None:
