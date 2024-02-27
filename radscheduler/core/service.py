@@ -38,9 +38,9 @@ def active_registrars(start: date = None, end: date = None):
     return registrars
 
 
-def build_registrar_table(registrars):
+def build_registrar_table(registrars) -> DataFrame:
     df_registrars = DataFrame(registrars)
-    if "days" in df_registrars.index:
+    if "days" in df_registrars:
         df_registrars["year"] = df_registrars.days.dt.days // 365 + 1
         df_registrars.drop(["days"], axis=1, inplace=True)
     df_registrars.rename(columns={"user__username": "username"}, inplace=True)

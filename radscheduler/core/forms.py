@@ -80,3 +80,7 @@ class ShiftInterestForm(forms.ModelForm):
     class Meta:
         model = ShiftInterest
         fields = ["comment"]
+
+
+class ShiftFormSet(forms.ModelForm):
+    pass

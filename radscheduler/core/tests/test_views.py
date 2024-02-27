@@ -38,3 +38,23 @@ class TestAccess:
 class TestRosterGeneration:
     def test_generate_empty_schedule(self, app, juniors_db):
         pass
+
+
+class TestExtraDuty:
+
+    def test_edit_page(self, app, juniors_db):
+        user = juniors_db[0].user
+        user.registrar = None
+        app.set_user(user)
+        resp = app.get(reverse("extra_edit_page"))
+        assert resp.status_code == 302
+
+
+class TestRoster:
+
+    def test_get_roster(self, app, juniors_db):
+        user = juniors_db[0].user
+        app.set_user(user)
+        resp = app.get(reverse("table_events") + "?start=2024-01-24&end=2024-05-24")
+        print(f"resp code: {resp.status_code}")
+        assert resp.status_code == 200
