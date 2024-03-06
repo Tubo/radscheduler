@@ -9,9 +9,10 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 
 from radscheduler.core.forms import ShiftChangeForm, ShiftInterestForm
-from radscheduler.core.models import Shift, ShiftInterest, Status
+from radscheduler.core.models import Shift, ShiftInterest, Status,Registrar
 from radscheduler.core.service import active_registrars
 from radscheduler.roster import ShiftType, StatusType, canterbury_holidays
+
 
 
 @login_required
@@ -76,26 +77,32 @@ def interest(request, interest_id):
 
 @staff_member_required
 def edit_page(request):
-    subquery = ShiftInterest.objects.filter(registrar=request.user.registrar, shift=OuterRef("pk"))
-    extra_shifts = (
-        Shift.objects.filter(extra_duty=True, date__gte=date.today() - timedelta(days=30))
-        .annotate(
-            interest_id=Subquery(subquery.values("pk")),
-            comment=Subquery(subquery.values("comment")),
+    try:
+        request.user.registrar
+    except Registrar.DoesNotExist:
+        messages.error(request, "You are not a registrar.")
+        return redirect("home")
+    else:
+        subquery = ShiftInterest.objects.filter(registrar=request.user.registrar, shift=OuterRef("pk"))
+        extra_shifts = (
+            Shift.objects.filter(extra_duty=True, date__gte=date.today() - timedelta(days=30))
+            .annotate(
+                interest_id=Subquery(subquery.values("pk")),
+                comment=Subquery(subquery.values("comment")),
+            )
+            .order_by("-date")
+            .select_related("registrar__user")
+            .prefetch_related("interests", "interests__registrar__user")
         )
-        .order_by("-date")
-        .select_related("registrar__user")
-        .prefetch_related("interests", "interests__registrar__user")
-    )
-    end = extra_shifts.first().date if extra_shifts else date.today()
-    start = extra_shifts.last().date if extra_shifts else date.today()
-    registrars = active_registrars(start, end)
+        end = extra_shifts.first().date if extra_shifts else date.today()
+        start = extra_shifts.last().date if extra_shifts else date.today()
+        registrars = active_registrars(start, end)
 
-    return render(
-        request,
-        "extra_duties/edit_page.html",
-        {"extra_shifts": extra_shifts, "registrars": registrars, "holidays": canterbury_holidays},
-    )
+        return render(
+            request,
+            "extra_duties/edit_page.html",
+            {"extra_shifts": extra_shifts, "registrars": registrars, "holidays": canterbury_holidays},
+        )
 
 
 @staff_member_required
