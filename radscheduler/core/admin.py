@@ -138,7 +138,7 @@ class ShiftAdmin(admin.ModelAdmin):
             DateRangeFilterBuilder(
                 title="Shift date",
                 default_start=date.today(),
-                default_end=date.today() + timedelta(days=31 * 2),
+                default_end=date.today() + timedelta(days=31),
             ),
         ),
         ShiftTypeListFilter,
