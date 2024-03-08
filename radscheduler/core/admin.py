@@ -224,6 +224,7 @@ class LeaveAdmin(admin.ModelAdmin):
         OfficeLeaveFilter,
         "reg_approved",
         "dot_approved",
+        "type",
         "printed",
         "microster",
         "registrar__user",
