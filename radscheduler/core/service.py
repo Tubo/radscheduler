@@ -220,7 +220,7 @@ def retrieve_workload_breakdown(start: date = None, end: date = None):
     workload = df_shifts.groupby(["registrar", "type_"]).size().unstack().fillna(0)
     workload["FATIGUE"] = (
         workload["LONG"] * 1 + workload["NIGHT"] * 7 + workload["WEEKEND"] * 4 + workload["WKD NIGHT"] * 5
-    )
+    ) / 10
     workload = workload.merge(df_registrars, left_index=True, right_on="id", how="left")
     workload.drop(["id"], axis=1, inplace=True)
     return workload
