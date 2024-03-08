@@ -14,7 +14,10 @@
                             hx-include="previous [name='registrar']"
                             hx-target="closest .change_registrar_form"
                             hx-swap="outerHTML"
-                            type="button">{{ registrar.user.username }}</button>
+                            type="button">
+                        {{ registrar.user.username }}
+                        {% if registrar.on_leave %}({{ registrar.on_leave|title }}){% endif %}
+                    </button>
                 </li>
             {% endfor %}
         </ul>

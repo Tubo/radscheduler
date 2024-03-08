@@ -6,7 +6,10 @@
             <select class="form-select" name="registrar">
                 <option value="" selected>Choose registrar</option>
                 {% for registrar in registrars %}
-                    <option value="{{ registrar.pk }}">{{ registrar.user.username }}</option>
+                    <option value="{{ registrar.pk }}">
+                        {{ registrar.user.username }}
+                        {% if registrar.on_leave %}({{ registrar.on_leave|title }}){% endif %}
+                    </option>
                 {% endfor %}
             </select>
         </div>

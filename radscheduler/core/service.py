@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from django.db.models import Case, F, Q, Value, When
+from django.db.models import Case, F, OuterRef, Q, Subquery, Value, When
 from django.db.models.functions import Now
 from pandas import DataFrame, concat
 
@@ -33,6 +33,23 @@ def active_registrars(start: date = None, end: date = None):
     start, end = default_start_and_end(start, end)
     registrars = Registrar.objects.exclude(start=None).annotate(days=(Now() - F("start")))
     registrars = registrars.exclude(Q(finish__lt=start) | Q(start__gt=end))
+    registrars = registrars.order_by("user__username")
+    registrars = registrars.select_related("user")
+    return registrars
+
+
+def active_and_available_registrars(day):
+    """
+    Given a date, return all registrars who are active during that period and
+    with their leave and status annotated.
+    """
+    registrars = (
+        Registrar.objects.exclude(start=None)
+        .exclude(Q(finish__lt=day) | Q(start__gt=day))
+        .annotate(
+            on_leave=Subquery(Leave.objects.filter(registrar=OuterRef("pk"), date=day).values("type")[:1]),
+        )
+    )
     registrars = registrars.order_by("user__username")
     registrars = registrars.select_related("user")
     return registrars
@@ -170,8 +187,8 @@ def shifts_breakdown(shifts):
             + breakdown["NIGHT"] * 7 / 4
             + breakdown["WEEKEND"] * 6 / 2
             + breakdown["WEEKEND_NIGHT"] * 5 / 3
-        )
-        breakdown["WORKLOAD"] = round(workload)
+        ) / 10
+        breakdown["WORKLOAD"] = round(workload, 1)
     result = {k: v for k, v in sorted(result.items(), key=lambda item: item[1]["WORKLOAD"], reverse=True)}
     return result
 
@@ -220,7 +237,7 @@ def retrieve_workload_breakdown(start: date = None, end: date = None):
     workload = df_shifts.groupby(["registrar", "type_"]).size().unstack().fillna(0)
     workload["FATIGUE"] = (
         workload["LONG"] * 1 + workload["NIGHT"] * 7 + workload["WEEKEND"] * 4 + workload["WKD NIGHT"] * 5
-    ) / 10
+    )
     workload = workload.merge(df_registrars, left_index=True, right_on="id", how="left")
     workload.drop(["id"], axis=1, inplace=True)
     return workload

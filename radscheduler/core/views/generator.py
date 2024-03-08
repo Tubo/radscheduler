@@ -10,7 +10,7 @@ from radscheduler.core import mapper
 from radscheduler.core.forms import DateRangeForm, ShiftAddForm, ShiftChangeForm
 from radscheduler.core.models import Registrar, Shift, Status
 from radscheduler.core.service import (
-    active_registrars,
+    active_and_available_registrars,
     canterbury_holidays,
     fill_shifts,
     group_shifts_by_date_and_type,
@@ -94,7 +94,7 @@ def save_roster(request):
 def change_shift_registrar(request, pk):
     if request.method == "GET":
         shift = Shift.objects.get(pk=pk)
-        registrars = active_registrars(start=shift.date, end=shift.date)
+        registrars = active_and_available_registrars(shift.date)
         return render(
             request,
             "generator/shift_cell_change_form.html",
@@ -131,7 +131,7 @@ def add_shift(request):
     if request.method == "GET":
         date = request.GET.get("date")
         type_ = request.GET.get("type")
-        registrars = active_registrars(date, date)
+        registrars = active_and_available_registrars(date)
         return render(
             request, "generator/shift_cell_new_form.html", {"registrars": registrars, "date": date, "type": type_}
         )
