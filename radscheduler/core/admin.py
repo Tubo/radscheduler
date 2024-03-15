@@ -6,6 +6,8 @@ from typing import Any
 
 from django.contrib import admin
 from django.db.models import Exists, OuterRef, Q
+from django.db.models import Value as V
+from django.db.models import functions as fn
 from django.db.models.query import QuerySet
 from django.http import FileResponse
 from django.http.request import HttpRequest
@@ -198,7 +200,7 @@ class OfficeLeaveFilter(admin.SimpleListFilter):
 class LeaveAdmin(admin.ModelAdmin):
     list_display = (
         "custom_date_format",
-        "registrar",
+        "name",
         "type",
         "portion",
         "comment",
@@ -239,14 +241,16 @@ class LeaveAdmin(admin.ModelAdmin):
     )
     list_select_related = ("registrar", "registrar__user")
     actions = ["mark_reg_approved", "mark_dot_approved", "mark_printed", "print_selected"]
-    ordering = ("-date", "registrar")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
         queryset = super().get_queryset(request)
         queryset = queryset.annotate(
             # Check if a shift exists for the leave date
-            rostered=Exists(Shift.objects.filter(registrar=OuterRef("registrar"), date=OuterRef("date")))
+            rostered=Exists(Shift.objects.filter(registrar=OuterRef("registrar"), date=OuterRef("date"))),
+            # Extract the last name from the user's name
+            last_name=fn.Substr("registrar__user__name", fn.StrIndex("registrar__user__name", V(" ")) + 1),
         )
+        queryset = queryset.order_by("-date", "last_name")
         queryset = queryset.select_related("registrar", "registrar__user")
         return queryset
 
@@ -289,7 +293,13 @@ class LeaveAdmin(admin.ModelAdmin):
 
     @admin.display(description="Rostered", boolean=True)
     def rostered(self, obj):
+        # Returns True if a shift exists for the leave date
         return obj.rostered
+
+    @admin.display(description="Name", ordering="last_name")
+    def name(self, obj):
+        full_name = obj.registrar.user.name
+        return full_name if full_name else obj.registrar.user.username
 
     @admin.action(description="Print the selected leave forms")
     def print_selected(self, request, queryset):
