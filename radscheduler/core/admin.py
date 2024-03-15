@@ -235,8 +235,9 @@ class LeaveAdmin(admin.ModelAdmin):
         "reg_approved",
         "dot_approved",
         "type",
-        "printed",
         "microster",
+        "cancelled",
+        "printed",
         "registrar__user",
     )
     list_select_related = ("registrar", "registrar__user")
