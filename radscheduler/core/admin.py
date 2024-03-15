@@ -5,7 +5,7 @@ from enum import IntEnum
 from typing import Any
 
 from django.contrib import admin
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.db.models.query import QuerySet
 from django.http import FileResponse
 from django.http.request import HttpRequest
@@ -205,13 +205,21 @@ class LeaveAdmin(admin.ModelAdmin):
         "reg_approved",
         "dot_approved",
         "microster",
+        "rostered",
         "printed",
         "no_abutting_weekend",
         "cancelled",
         "created",
         "last_edited",
     )
-    list_editable = ("dot_approved", "reg_approved", "printed", "microster", "no_abutting_weekend", "cancelled")
+    list_editable = (
+        "dot_approved",
+        "reg_approved",
+        "printed",
+        "microster",
+        "no_abutting_weekend",
+        "cancelled",
+    )
     list_filter = (
         (
             "date",
@@ -234,7 +242,12 @@ class LeaveAdmin(admin.ModelAdmin):
     ordering = ("-date", "registrar")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
-        queryset = super().get_queryset(request).select_related("registrar", "registrar__user")
+        queryset = super().get_queryset(request)
+        queryset = queryset.annotate(
+            # Check if a shift exists for the leave date
+            rostered=Exists(Shift.objects.filter(registrar=OuterRef("registrar"), date=OuterRef("date")))
+        )
+        queryset = queryset.select_related("registrar", "registrar__user")
         return queryset
 
     def get_list_display(self, request: HttpRequest) -> Sequence[str]:
@@ -273,6 +286,10 @@ class LeaveAdmin(admin.ModelAdmin):
         if obj.date:
             return obj.date.strftime("%d-%m-%Y, %a")
         return ""
+
+    @admin.display(description="Rostered", boolean=True)
+    def rostered(self, obj):
+        return obj.rostered
 
     @admin.action(description="Print the selected leave forms")
     def print_selected(self, request, queryset):

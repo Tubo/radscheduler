@@ -104,6 +104,7 @@ def change_shift_registrar(request, pk):
                 "current_registrar": shift.registrar,
             },
         )
+
     elif request.method == "POST":
         form = ShiftChangeForm(request.POST)
         if form.is_valid():
@@ -112,6 +113,7 @@ def change_shift_registrar(request, pk):
             shift.registrar = registrar
             shift.save()
             return render(request, "generator/shift_cell_button.html", {"shift": mapper.shift_from_db(shift)})
+
     elif request.method == "DELETE":
         form = ShiftChangeForm(request.POST)
         if form.is_valid():
