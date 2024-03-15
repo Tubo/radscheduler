@@ -77,11 +77,15 @@ def interest(request, interest_id):
 @staff_member_required
 def edit_page(request):
     subquery = ShiftInterest.objects.filter(registrar=request.user.registrar, shift=OuterRef("pk"))
+    buddy_shifts = Shift.objects.filter(date=OuterRef("date"), type=OuterRef("type"), extra_duty=False).values(
+        "registrar__user__username"
+    )
     extra_shifts = (
         Shift.objects.filter(extra_duty=True, date__gte=date.today() - timedelta(days=30))
         .annotate(
             interest_id=Subquery(subquery.values("pk")),
             comment=Subquery(subquery.values("comment")),
+            buddy=Subquery(buddy_shifts[:1]),
         )
         .order_by("-date")
         .select_related("registrar__user")

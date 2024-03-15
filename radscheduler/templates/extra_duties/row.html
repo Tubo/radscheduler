@@ -2,11 +2,14 @@
     hx-swap="outerHTML"
     hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
     class="h-50">
-    <th scope="row">
-        {{ shift.date|date:"Y-m-d D" }}
+    <th scope="row" class="font-monospace text-start">
+        {{ shift.date|date:"Y-m-d" }}
         {% if shift.date in holidays %}🎉{% endif %}
     </th>
-    <td>{{ shift.get_type_display }}</td>
+    <td class="text-start">
+        <span class="">{{ shift.get_type_display }}</span>
+        <span class="text-secondary">({{ shift.date|date:"D" }})</span>
+    </td>
     <td>{{ shift.interests.count }}</td>
     <td>
         {% if shift.registrar %}

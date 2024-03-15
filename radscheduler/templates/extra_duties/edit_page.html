@@ -23,7 +23,10 @@
                             {{ shift.date|date:"Y-m-d D" }}
                             {% if shift.date in holidays %}🎉{% endif %}
                         </th>
-                        <td>{{ shift.get_type_display }}</td>
+                        <td>
+                            {{ shift.get_type_display }}
+                            {% if shift.buddy %}- {{ shift.buddy }}{% endif %}
+                        </td>
                         <td>
                             {% for interest in shift.interests.all %}
                                 {{ interest.registrar }}
