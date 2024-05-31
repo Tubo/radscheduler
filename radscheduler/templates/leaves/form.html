@@ -47,9 +47,10 @@
     </div>
     <div class="col-md-4">
         {% with form.errors.comment as error %}
-            <label for="inputComment" class="form-label" name="comment">Comment</label>
+            <label for="inputComment" class="form-label">Comment</label>
             <input type="text"
                    class="form-control {% if error %}is-invalid{% endif %}"
+                   name="comment"
                    id="inputComment" />
             {% if error %}<div class="invalid-feedback">{{ error }}</div>{% endif %}
         {% endwith %}
