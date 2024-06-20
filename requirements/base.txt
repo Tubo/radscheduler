@@ -7,6 +7,7 @@ hiredis==2.2.3  # https://github.com/redis/hiredis-py
 holidays==0.30
 pyyaml==6.0.1
 pandas==2.1.1
+numpy==1.26.4
 
 # Django
 # ------------------------------------------------------------------------------
