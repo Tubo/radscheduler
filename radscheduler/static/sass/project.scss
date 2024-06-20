@@ -34,3 +34,10 @@ $red: #b94a48;
   border-color: $dark-pink;
   color: $red;
 }
+
+// smaller fullcalendar header toolbar for smaller screens
+@media (max-width: 768px) {
+  .fc-header-toolbar {
+    font-size: 0.8em;
+  }
+}
