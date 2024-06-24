@@ -76,7 +76,7 @@ def interest(request, interest_id):
 
 @staff_member_required
 def edit_page(request):
-    subquery = ShiftInterest.objects.filter(registrar=request.user.registrar, shift=OuterRef("pk"))
+    subquery = ShiftInterest.objects.filter(registrar=OuterRef("registrar"), shift=OuterRef("pk"))
     buddy_shifts = Shift.objects.filter(date=OuterRef("date"), type=OuterRef("type"), extra_duty=False).values(
         "registrar__user__username"
     )

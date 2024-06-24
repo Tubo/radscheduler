@@ -10,10 +10,11 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th scope="col" class="w-25">Date</th>
+                    <th scope="col" class="">Date</th>
                     <th scope="col">Type</th>
                     <th scope="col">Applicants</th>
                     <th scope="col">Winner</th>
+                    <th scope="col" class="w-25">Comment</th>
                 </tr>
             </thead>
             <tbody>
@@ -35,7 +36,7 @@
                         </td>
                         <td>
                             {% if shift.registrar %}
-                                {{ shift.registrar }}: {{ shift.comment }}
+                                <span class="fw-bold">{{ shift.registrar }}</span>
                             {% else %}
                                 <div x-data="{shift_id: {{ shift.id }} }" class="input-group">
                                     <select class="form-select"
@@ -59,6 +60,9 @@
                                             hx-include="previous #registrar_selected">Save</button>
                                 </div>
                             {% endif %}
+                        </td>
+                        <td>
+                            {% if shift.comment %}<p>{{ shift.comment }}</p>{% endif %}
                         </td>
                     </tr>
                 {% endfor %}
