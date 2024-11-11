@@ -1,5 +1,3 @@
-version: '3'
-
 volumes:
   radscheduler_local_postgres_data: {}
   radscheduler_local_postgres_data_backups: {}

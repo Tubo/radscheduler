@@ -10,12 +10,17 @@ License: MIT
 ## Back up and restore a database from fly.io
 
 Start a proxy to fly postgres:
-`flyctl proxy 54321:5432 --app app-name`
+`flyctl proxy 54321:5432 --app radscheduler-db`
 
-Set env for FLY_DATABASE_URL with credentials.
+Find urls to postgres via:
+`flyctl ssh console -C 'env'`
 
 Download a dump:
-`pg_dump -d $FLY_DATABASE_URL | gzip > backups/first.sql.gz`
+`pg_dump -d postgres://radscheduler:{password}2localhost:54321 | gzip > backups/db.sql.gz`
 
 Restore using
-`docker-compose -f local.yml run postgres restore first.sql.gz`
+`docker-compose -f local.yml run postgres restore db.sql.gz`
+
+or
+
+`docker exec radscheduler_local_postgres restore db.sql.gz`
