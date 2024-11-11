@@ -19,9 +19,35 @@ let calendar = new Calendar(calendarEl, {
     },
     themeSystem: 'bootstrap5',
     events: "/api/calendar/events/",
+    eventDataTransform: function (eventData) {
+        eventData.extendedProps = eventData.extendedProps || {};
+        eventData.extendedProps.initialBackgroundColor = eventData.backgroundColor;
+        eventData.extendedProps.initialBorderColor = eventData.borderColor;
+        return eventData;
+    },
     locale: nzLocale,
     height: "90vh",
     eventOrder: "order,title",
+    eventMouseEnter: function (info) {
+        let eventTitle = info.event.title;
+        let events = calendar.getEvents();
+        events.forEach(event => {
+            if (event.title === eventTitle) {
+                event.setProp('backgroundColor', 'yellow');
+                event.setProp('borderColor', 'yellow');
+            }
+        });
+    },
+    eventMouseLeave: function (info) {
+        let eventTitle = info.event.title;
+        let events = calendar.getEvents();
+        events.forEach(event => {
+            if (event.title === eventTitle) {
+                event.setProp('backgroundColor', event.extendedProps.initialBackgroundColor || '');
+                event.setProp('borderColor', event.extendedProps.initialBorderColor || '');
+            }
+        });
+    },
 });
 
 calendar.render();
