@@ -24,3 +24,7 @@ alias reset_db="python manage.py reset_db && python manage.py drop_test_database
 eval "$(ssh-agent -s)"
 
 npm install
+
+# install flyctl
+curl -L "https://fly.io/install.sh" | sh
+export PATH="$HOME/.fly/bin:$PATH"
