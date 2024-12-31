@@ -22,6 +22,8 @@ django-webpack-loader==2.0.1  # https://github.com/django-webpack/django-webpack
 django-admin-rangefilter==0.11.1
 django-htmx==1.17.0
 django-extensions==3.2.3  # https://github.com/django-extensions/django-extensions
+django-ninja==1.3.0 # https://django-ninja.dev/
+dacite==1.8.1 # https://github.com/konradhalas/dacite
 
 # PDF
 pypdf==3.17.1
