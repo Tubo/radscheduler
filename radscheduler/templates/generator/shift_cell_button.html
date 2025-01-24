@@ -1,17 +1,27 @@
 {% if not shift.registrar %}
-    <button class="btn btn-danger shadow-sm w-auto {% if shift.extra_duty %}btn-warning{% else %}btn-primary{% endif %}"
+    <button class="btn btn-danger shadow-sm w-auto
+                   {% if shift.extra_duty %}
+                       btn-warning
+                   {% else %}
+                       btn-primary
+                   {% endif %}"
             {% if shift.extra_duty %}data-bs-toggle="tooltip" data-bs-title="Extra duty"{% endif %}
-            hx-get="{% url 'change_shift' shift.pk %}"
+            hx-get="{% url 'change_shift' shift.id %}"
             hx-swap="outerHTML">
         <span>Not filled</span>
     </button>
 {% else %}
-    <button class="btn shadow-sm w-auto {% if shift.extra_duty %}btn-warning{% else %}btn-primary{% endif %}"
+    <button class="btn shadow-sm w-auto
+                   {% if shift.extra_duty %}
+                       btn-warning
+                   {% else %}
+                       btn-primary
+                   {% endif %}"
             {% if shift.extra_duty %}data-bs-toggle="tooltip" data-bs-title="Extra duty"{% endif %}
-            hx-get="{% url 'change_shift' shift.pk %}"
+            hx-get="{% url 'change_shift' shift.id %}"
             hx-swap="outerHTML">
         <span>{{ shift.registrar.username }}
-            {% if shift.registrar.pk in buddy_required and type == "LONG" %}🤝{% endif %}
+            {% if shift.registrar.id in buddy_required and type == "LONG" %}🤝{% endif %}
         </span>
     </button>
 {% endif %}

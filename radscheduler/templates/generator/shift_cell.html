@@ -3,7 +3,7 @@
         {% if not shifts %}
         {% else %}
             {% for shift in shifts %}
-                {% if shift.pk %}
+                {% if shift.id %}
                     {% include "generator/shift_cell_button.html" with shift=shift %}
                 {% else %}
                     {% if not shift.registrar %}

@@ -86,7 +86,7 @@ def merge_shifts(*args) -> list[Shift]:
             if shift.same_shift(next_shift):
                 if shift.registrar:
                     next_shift.registrar = shift.registrar
-                    next_shift.pk = shift.pk
+                    next_shift.id = shift.id
                 continue
         result.append(shift)
     return sort_shifts_by_date(result)

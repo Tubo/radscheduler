@@ -2,13 +2,12 @@ from datetime import date
 from typing import List
 
 import holidays
-from ninja import Field, ModelSchema, NinjaAPI, Schema
+from ninja import Field, ModelSchema, Router, Schema
 
 import radscheduler.core.models as orm
 import radscheduler.roster as domain
-from radscheduler.core.forms import DateTimeRangeForm
 
-api = NinjaAPI()
+router = Router()
 
 
 class FullCalendarSchema(Schema):
@@ -54,7 +53,7 @@ class FullCalendarHolidaySchema(FullCalendarSchema):
     event_type: str = "holiday"
 
 
-@api.get("/shifts", response=List[FullCalendarShiftSchema])
+@router.get("/shifts", response=List[FullCalendarShiftSchema])
 def shift_events(request, start: date, end: date):
     shifts = orm.Shift.objects.filter(date__gte=start, date__lte=end, registrar__isnull=False).select_related(
         "registrar", "registrar__user"
@@ -62,7 +61,7 @@ def shift_events(request, start: date, end: date):
     return list(shifts)
 
 
-@api.get("/leaves", response=List[FullCalendarLeaveSchema])
+@router.get("/leaves", response=List[FullCalendarLeaveSchema])
 def leave_events(request, start: date, end: date):
     leaves = (
         orm.Leave.objects.filter(date__gte=start, date__lte=end)
@@ -72,7 +71,7 @@ def leave_events(request, start: date, end: date):
     return list(leaves)
 
 
-@api.get("/holidays", response=List[FullCalendarHolidaySchema])
+@router.get("/holidays", response=List[FullCalendarHolidaySchema])
 def holiday_events(request, start: date, end: date):
     cant_holidays = holidays.country_holidays("NZ", subdiv="CAN", years=[start.year, end.year])
     return [{"start": date, "title": name} for date, name in cant_holidays.items()]

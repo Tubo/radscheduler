@@ -1,10 +1,11 @@
 from datetime import date, timedelta
 
+from django.db import IntegrityError
 from django.db.models import Case, F, OuterRef, Q, Subquery, Value, When
 from django.db.models.functions import Now
 from pandas import DataFrame, concat
 
-from radscheduler.core import mapper
+from radscheduler.core import domain_mapper
 from radscheduler.core.models import Leave, Registrar, Shift, Status
 from radscheduler.roster import LeaveType, ShiftType, SingleOnCallRoster, StatusType, Weekday, canterbury_holidays
 from radscheduler.roster.assigner import AutoAssigner
@@ -91,13 +92,13 @@ def retrieve_roster(start: date = None, end: date = None):
     start, end = default_start_and_end(start, end)
 
     shifts = Shift.objects.filter(date__range=[start, end], registrar__isnull=False)
-    shift_dict = {shift.id: mapper.shift_to_dict(shift) for shift in shifts}
+    shift_dict = {shift.id: domain_mapper.shift_to_dict(shift) for shift in shifts}
 
     leaves = Leave.objects.filter(date__range=[start, end])
-    leave_dict = {leave.id: mapper.leave_to_dict(leave) for leave in leaves}
+    leave_dict = {leave.id: domain_mapper.leave_to_dict(leave) for leave in leaves}
 
     statuses = Status.objects.exclude(Q(end__lt=start) | Q(start__gt=end))
-    status_dict = [mapper.status_to_dict(status) for status in statuses]
+    status_dict = [domain_mapper.status_to_dict(status) for status in statuses]
 
     registrars = active_registrars(start, end)
     df_registrars = build_registrar_table(registrars.values("id", "user__username", "days"))
@@ -122,20 +123,20 @@ def retrieve_roster(start: date = None, end: date = None):
 
 def fill_shifts(start: date, end: date):
     registrars = Registrar.objects.exclude(finish__lte=start).select_related("user")
-    registrars = list(map(mapper.registrar_from_db, registrars))
+    registrars = list(map(domain_mapper.registrar_from_db, registrars))
 
     leaves = Leave.objects.filter(date__range=[start, end]).select_related("registrar", "registrar__user")
-    leaves = list(map(mapper.leave_from_db, leaves))
+    leaves = list(map(domain_mapper.leave_from_db, leaves))
 
     statuses = (
         Status.objects.filter(Q(end__gte=start) | Q(start__lte=end))
         .annotate(username=F("registrar__user__username"))
         .select_related("registrar", "registrar__user")
     )
-    statuses = list(map(mapper.status_from_db, statuses))
+    statuses = list(map(domain_mapper.status_from_db, statuses))
 
     shifts_in_db = Shift.objects.filter(date__range=[start, end]).select_related("registrar", "registrar__user")
-    filled = list(map(mapper.shift_from_db, shifts_in_db))
+    filled = list(map(domain_mapper.shift_from_db, shifts_in_db))
     unfilled = generate_shifts(SingleOnCallRoster, start, end, filled)
 
     assigner = AutoAssigner(registrars=registrars, unfilled=unfilled, filled=filled, leaves=leaves, statuses=statuses)
@@ -193,16 +194,6 @@ def shifts_breakdown(shifts):
     return result
 
 
-def shifts_table(shifts):
-    shifts = [mapper.shift_to_dict(shift) for shift in shifts]
-    df = DataFrame(shifts)
-    pivot = df.pivot_table(index="date", columns="type", values="username", aggfunc="first")
-    pivot.reset_index(inplace=True)
-    pivot.fillna("", inplace=True)
-    pivot["date"] = pivot.date.astype("str")
-    return pivot.to_dict(orient="records")
-
-
 def retrieve_workload_breakdown(start: date = None, end: date = None):
     start, end = default_start_and_end(start, end)
 
@@ -249,3 +240,15 @@ def generate_buddy_shifts(start, end):
 
 def save_assignments(assignments):
     pass
+
+
+def assign_reg_to_shift(shift, registrar):
+    pass
+
+
+def swap_shifts(shift, registrar):
+    try:
+        shift.registrar = registrar
+        shift.save()
+    except IntegrityError:
+        conflict_shift = Shift.objects.get(date=shift.date, type=shift.type, registrar=registrar)

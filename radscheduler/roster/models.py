@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum, IntEnum, auto
+from typing import Optional
 
 from django.db import models
 
@@ -72,8 +73,8 @@ class Registrar:
     username: str
     senior: bool
     start: date
-    finish: date = None
-    pk: int = None  # if registrar is already in database
+    finish: Optional[date] = None
+    id: int = None  # if registrar is already in database
 
 
 @dataclass
@@ -85,7 +86,7 @@ class Shift:
     extra_duty: bool = False
     fatigue_override: float = 0.0
     series: int = 1
-    pk: int = None  # if shift is already in database
+    id: int = None  # if shift is already in database
 
     @property
     def is_weekend(self) -> bool:
