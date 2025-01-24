@@ -10,6 +10,7 @@ module.exports = {
     vendors: path.resolve(__dirname, '../radscheduler/static/js/vendors'),
     roster_table: path.resolve(__dirname, '../radscheduler/static/js/roster_table'),
     calendar: path.resolve(__dirname, '../radscheduler/static/js/calendar'),
+    editor: path.resolve(__dirname, '../radscheduler/static/js/editor'),
   },
   output: {
     path: path.resolve(
@@ -29,7 +30,14 @@ module.exports = {
   ],
   module: {
     rules: [
-      // we pass the output from babel loader to react-hot loader
+      {
+        test: /\.elm$/,
+        exclude: [/elm-stuff/, /node_modules/],
+        use: {
+          loader: 'elm-webpack-loader',
+          options: {}
+        }
+      },
       {
         test: /\.js$/,
         loader: 'babel-loader',

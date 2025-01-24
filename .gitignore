@@ -272,7 +272,7 @@ dump.rdb
 
 ### Project template
 radscheduler/media/
-
+elm-stuff/
 .pytest_cache/
 .ipython/
 radscheduler/static/webpack_bundles/
