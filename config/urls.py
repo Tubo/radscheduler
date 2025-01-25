@@ -6,11 +6,11 @@ from django.views import defaults as default_views
 from django.views.generic import TemplateView
 
 import radscheduler.core.ical as ical
+import radscheduler.core.views.editor as editor_views
 import radscheduler.core.views.extra_duties as extra_duties_views
-import radscheduler.core.views.generator as generator_views
 import radscheduler.core.views.leaves as leaves_views
 import radscheduler.core.views.roster as roster_views
-from radscheduler.core.api.roster_calendar import api as roster_calendar_api
+from radscheduler.core.api import api
 
 admin.site.site_header = "Radscheduler"
 
@@ -22,24 +22,27 @@ leave_view_urls = [
     path("inline/<int:pk>/delete/", leaves_views.leave_delete, name="leave_delete"),
 ]
 
+editor_view_urls = [
+    path("", editor_views.page, name="editor"),
+    path("save/", editor_views.save_roster, name="save_shifts"),
+    path("change_shift/<int:pk>/", editor_views.change_shift_registrar, name="change_shift"),
+    path("change_shift/<int:pk>/cancel/", editor_views.cancel_shift_change, name="cancel_shift_change"),
+    path("add_shift/", editor_views.add_shift, name="add_shift"),
+]
+
 roster_view_urls = [
     path("", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"),
+    path("editor/", include(editor_view_urls)),
+    # path("editor/", TemplateView.as_view(template_name="roster/editor.html"), name="editor"),
     path("table/", TemplateView.as_view(template_name="roster/roster_table.html"), name="roster"),
     path("workload/", roster_views.get_workload, name="workload"),
 ]
 
 api_view_urls = [
-    path("calendar/", roster_calendar_api.urls, name="calendar_api"),
+    path("", api.urls, name="api"),
     path("table/events/", roster_views.get_roster, name="table_events"),
 ]
 
-generator_view_urls = [
-    path("", generator_views.page, name="generator"),
-    path("save/", generator_views.save_roster, name="save_shifts"),
-    path("change_shift/<int:pk>/", generator_views.change_shift_registrar, name="change_shift"),
-    path("change_shift/<int:pk>/cancel/", generator_views.cancel_shift_change, name="cancel_shift_change"),
-    path("add_shift/", generator_views.add_shift, name="add_shift"),
-]
 
 extra_duties_urls = [
     path("", extra_duties_views.page, name="extra_page"),
@@ -67,7 +70,6 @@ urlpatterns = [
     # Your stuff: custom urls includes go here
     path("leaves/", include(leave_view_urls)),
     path("roster/", include(roster_view_urls)),
-    path("generator/", include(generator_view_urls)),
     path("extra_duties/", include(extra_duties_urls)),
     path("ical/", include(ical_urls)),
     path("api/", include(api_view_urls)),

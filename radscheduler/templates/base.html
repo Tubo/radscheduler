@@ -64,7 +64,7 @@
                   <a class="nav-link" href="{% url 'roster' %}">Overview</a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="{% url 'generator' %}">Edit roster</a>
+                  <a class="nav-link" href="{% url 'editor' %}">Edit roster</a>
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" href="{% url 'extra_edit_page' %}">Edit extra duties</a>
@@ -104,7 +104,8 @@
     <div class="container">
       {% if messages %}
         {% for message in messages %}
-          <div class="alert alert-dismissible {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+          <div class="alert alert-dismissible
+                      {% if message.tags %}alert-{{ message.tags }}{% endif %}">
             {{ message }}
             <button type="button"
                     class="btn-close"

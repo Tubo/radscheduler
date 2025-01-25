@@ -4,7 +4,7 @@
         {% else %}
             {% for shift in shifts %}
                 {% if shift.id %}
-                    {% include "generator/shift_cell_button.html" with shift=shift %}
+                    {% include "editor/shift_cell_button.html" with shift=shift %}
                 {% else %}
                     {% if not shift.registrar %}
                         <span class="placeholder placeholder-lg w-75 bg-danger">Unfillable</span>

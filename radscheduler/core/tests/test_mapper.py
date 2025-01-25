@@ -71,6 +71,7 @@ def test_shift_from_db(juniors_db):
         username=juniors_db[0].user.username, senior=False, start=juniors_db[0].start, id=juniors_db[0].pk
     )
     shift_in_domain = domain.Shift(
+        id=shift_in_db.pk,
         date=date(2021, 1, 1),
         type=domain.ShiftType.LONG,
         registrar=registrar_in_domain,

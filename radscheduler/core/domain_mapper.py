@@ -2,12 +2,15 @@ import dataclasses
 from datetime import date
 from typing import List, Optional
 
+import dacite
 from ninja import Field, ModelSchema, Schema
 
 import radscheduler.core.models as orm
 import radscheduler.roster.models as domain
 
-# This module provides mapping from Django ORM to the domain models
+"""
+This module provides mapping from Django ORM to the domain models
+"""
 
 
 class RegistrarDomainSchema(ModelSchema):
@@ -40,6 +43,7 @@ class StatusDomainSchema(ModelSchema):
 
 
 class ShiftDomainSchema(ModelSchema):
+    id: int = Field(..., alias="pk")
     type: domain.ShiftType
     registrar: RegistrarDomainSchema
 
@@ -68,6 +72,22 @@ def shift_to_db(shift: domain.Shift):
         fatigue_override=shift.fatigue_override,
         series=shift.series,
     )
+
+
+def shift_from_db(shift: orm.Shift):
+    return dacite.from_dict(domain.Shift, ShiftDomainSchema.from_orm(shift).dict())
+
+
+def registrar_from_db(registrar: orm.Registrar):
+    return dacite.from_dict(domain.Registrar, RegistrarDomainSchema.from_orm(registrar).dict())
+
+
+def leave_from_db(leave: orm.Leave):
+    return dacite.from_dict(domain.Leave, LeaveDomainSchema.from_orm(leave).dict())
+
+
+def status_from_db(status: orm.Leave):
+    return dacite.from_dict(domain.Status, StatusDomainSchema.from_orm(status).dict())
 
 
 def shift_to_dict(shift):

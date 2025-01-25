@@ -7,9 +7,9 @@
 {% endblock title %}
 {% block content %}
     <div class="container-fluid">
-        <h1>Roster Generation</h1>
+        <h1>Roster Editor</h1>
         <form class="row">
-            {% include "generator/date_range_form.html" %}
+            {% include "editor/date_range_form.html" %}
         </form>
         {% if workload %}
             <table class="table mt-4 p-4 collapse" id="workload">
@@ -24,7 +24,7 @@
                     </tr>
                 </thead>
                 <tbody class="text-center">
-                    {% include "generator/workload.html" with workload=workload %}
+                    {% include "editor/workload.html" with workload=workload %}
                 </tbody>
             </table>
         {% endif %}
@@ -39,7 +39,7 @@
                 </tr>
             </thead>
             <tbody class="text-center">
-                {% include "generator/shift_list.html" with days=days %}
+                {% include "editor/shift_list.html" with days=days %}
             </tbody>
         </table>
     </div>

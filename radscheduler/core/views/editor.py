@@ -35,7 +35,7 @@ def page(request):
             form = DateRangeForm(initial={"start": start, "end": end})
             return render(
                 request,
-                "generator/page.html",
+                "editor/page.html",
                 {
                     "days": days,
                     "workload": workload,
@@ -62,7 +62,7 @@ def page(request):
             workload = shifts_breakdown(shifts)
     return render(
         request,
-        "generator/page.html",
+        "editor/page.html",
         {
             "days": days,
             "workload": workload,
@@ -97,7 +97,7 @@ def change_shift_registrar(request, pk):
         registrars = active_and_available_registrars(shift.date)
         return render(
             request,
-            "generator/shift_cell_change_form.html",
+            "editor/shift_cell_change_form.html",
             {
                 "shift": shift,
                 "registrars": registrars,
@@ -112,7 +112,7 @@ def change_shift_registrar(request, pk):
             shift = Shift.objects.get(pk=pk)
             shift.registrar = registrar
             shift.save()
-            return render(request, "generator/shift_cell_button.html", {"shift": domain_mapper.shift_from_db(shift)})
+            return render(request, "editor/shift_cell_button.html", {"shift": domain_mapper.shift_from_db(shift)})
 
     elif request.method == "DELETE":
         form = ShiftChangeForm(request.POST)
@@ -125,7 +125,7 @@ def change_shift_registrar(request, pk):
 def cancel_shift_change(request, pk):
     "Cancel button for change registrar form"
     shift = Shift.objects.get(pk=pk)
-    return render(request, "generator/shift_cell_button.html", {"shift": domain_mapper.shift_from_db(shift)})
+    return render(request, "editor/shift_cell_button.html", {"shift": domain_mapper.shift_from_db(shift)})
 
 
 def add_shift(request):
@@ -135,7 +135,7 @@ def add_shift(request):
         type_ = request.GET.get("type")
         registrars = active_and_available_registrars(date)
         return render(
-            request, "generator/shift_cell_new_form.html", {"registrars": registrars, "date": date, "type": type_}
+            request, "editor/shift_cell_new_form.html", {"registrars": registrars, "date": date, "type": type_}
         )
 
     elif request.method == "POST":
@@ -148,4 +148,4 @@ def add_shift(request):
             extra_duty = form.cleaned_data["extra_duty"]
             shift = Shift(date=date, type=type_, registrar=registrar, stat_day=stat_day, extra_duty=extra_duty)
             shift.save()
-            return render(request, "generator/shift_cell_button.html", {"shift": domain_mapper.shift_from_db(shift)})
+            return render(request, "editor/shift_cell_button.html", {"shift": domain_mapper.shift_from_db(shift)})
