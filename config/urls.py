@@ -24,6 +24,7 @@ leave_view_urls = [
 
 editor_view_urls = [
     path("", editor_views.page, name="editor"),
+    path("<str:date_>/", editor_views.page, name="editor_by_date"),
     path("save/", editor_views.save_roster, name="save_shifts"),
     path("change_shift/<int:pk>/", editor_views.change_shift_registrar, name="change_shift"),
     path("change_shift/<int:pk>/cancel/", editor_views.cancel_shift_change, name="cancel_shift_change"),

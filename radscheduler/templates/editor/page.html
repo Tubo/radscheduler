@@ -6,6 +6,9 @@
 {% block title %}
   Roster
 {% endblock title %}
+{% block javascript %}
+  {% render_bundle 'vendors' 'js' attrs='defer' %}
+{% endblock javascript %}
 {% block content %}
   <main class="container-fluid">
     <h1>Roster Editor</h1>

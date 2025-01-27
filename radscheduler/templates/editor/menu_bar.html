@@ -4,7 +4,7 @@
 <div class="row justify-content-between align-items-center pt-3 mx-0 my-2 border border-2 shadow-sm"
      id="menu-bar">
     <div class="col-9 d-flex justify-content-start">
-        <form action="{% querystring %}"
+        <form action="{% url 'editor_by_date' week_in_focus|date:'Y-m-d' %}"
               method="get"
               class="w-100"
               up-submit
@@ -15,24 +15,28 @@
     </div>
     <div class="col-3 d-flex justify-content-end gap-2">
         <span>
-            <a href="{% querystring date=prev|date:"Y-m-d" %}"
+            <a href="{% url 'editor_by_date' prev|date:'Y-m-d' %}"
                class="btn btn-primary"
                up-transition="cross-fade"
                up-target="#menu-bar,#roster-editor"
+               up-cache="false"
                up-follow>Prev week</a>
         </span>
         <span>
-            <a href="{% querystring date=None %}"
+            {% now "Y-m-d" as today %}
+            <a href="{% url 'editor_by_date' today %}"
                class="btn btn-primary"
                up-transition="cross-fade"
                up-target="#menu-bar,#roster-editor"
+               up-cache="false"
                up-follow>Today</a>
         </span>
         <span>
-            <a href="{% querystring date=next|date:"Y-m-d" %}"
+            <a href="{% url 'editor_by_date' next|date:'Y-m-d' %}"
                class="btn btn-primary"
                up-transition="cross-fade"
                up-target="#menu-bar,#roster-editor"
+               up-cache="false"
                up-follow>Next week</a>
         </span>
     </div>

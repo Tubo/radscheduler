@@ -1,3 +1,5 @@
+{% load editor_tags %}
+
 <thead>
     <tr class=" text-center table-light">
         <th scope="col" style="width: 100px"></th>
@@ -9,6 +11,7 @@
                        {% elif date|date:"D" in "Sat,Sun" %}
                            table-warning
                        {% endif %}"
+                {% if date in holidays %}data-bs-toggle="tooltip" data-bs-title="{{ holidays|keyvalue:date }}"{% endif %}
                 style="min-width: 120px">
                 <div>{{ date|date:'Y' }}</div>
                 <div>{{ date|date:'m-d' }}</div>

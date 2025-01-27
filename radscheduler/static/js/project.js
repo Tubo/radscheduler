@@ -11,4 +11,3 @@ import 'unpoly/unpoly-bootstrap5.css'
 window.htmx = require('htmx.org');
 
 window.Alpine = Alpine
-
