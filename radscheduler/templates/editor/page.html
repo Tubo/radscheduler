@@ -1,53 +1,25 @@
 {% extends 'base.html' %}
 
+{% load render_bundle from webpack_loader %}
 {% load static %}
 
 {% block title %}
-    Roster
+  Roster
 {% endblock title %}
 {% block content %}
-    <div class="container-fluid">
-        <h1>Roster Editor</h1>
-        <form class="row">
-            {% include "editor/date_range_form.html" %}
-        </form>
-        {% if workload %}
-            <table class="table mt-4 p-4 collapse" id="workload">
-                <thead>
-                    <tr class="table-dark text-center">
-                        <th scope="col" style="width: 10%">Registrar</th>
-                        <th scope="col" style="width: 10%">Long day</th>
-                        <th scope="col" style="width: 10%">Weekend</th>
-                        <th scope="col" style="width: 10%">Weekday night</th>
-                        <th scope="col" style="width: 10%">Weekend night</th>
-                        <th scope="col" style="width: 10%">Workload</th>
-                    </tr>
-                </thead>
-                <tbody class="text-center">
-                    {% include "editor/workload.html" with workload=workload %}
-                </tbody>
-            </table>
-        {% endif %}
-        <table class="table table-hover table-bordered mt-4 p-4" id="roster-table">
-            <thead>
-                <tr class="table-dark text-center">
-                    <th scope="col" style="width: 10%">Date</th>
-                    <th scope="col" style="width: 22.5%">Long day</th>
-                    <th scope="col" style="width: 22.5%">RDO</th>
-                    <th scope="col" style="width: 22.5%">Night</th>
-                    <th scope="col" style="width: 22.5%">Sleep</th>
-                </tr>
-            </thead>
-            <tbody class="text-center">
-                {% include "editor/shift_list.html" with days=days %}
-            </tbody>
-        </table>
+  <main class="container-fluid">
+    <h1>Roster Editor</h1>
+    <div up-main>
+      {% include "editor/menu_bar.html" %}
+      {% include "editor/table.html" %}
     </div>
+  </main>
+  {% render_bundle 'editor' %}
 {% endblock content %}
 {% block inline_javascript %}
-    <script>
-      window.addEventListener('DOMContentLoaded', () => {
-        Alpine.start();
-      });
-    </script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      Alpine.start();
+    });
+  </script>
 {% endblock inline_javascript %}

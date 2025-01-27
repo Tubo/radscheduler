@@ -15,6 +15,65 @@ from radscheduler.roster.utils import daterange, filter_shifts_by_date_range
 from radscheduler.roster.validators import validate_roster
 
 
+def calculate_3_week_range(someday: date):
+    """
+    Given a date, return the start and end of the 3-week period that contains that date.
+    """
+    first_day_of_week = someday - timedelta(days=someday.weekday())
+    start = first_day_of_week - timedelta(days=7)
+    end = first_day_of_week + timedelta(days=14)
+    return start, end
+
+
+def _merge_shifts_and_leaves(shifts, leaves, start, end):
+    # Get all active registrars
+    active_registrars = get_active_registrars(start, end).all()
+    active_registrars_ids = set(reg.id for reg in active_registrars)
+
+    # Get all registrars in the shifts and leaves
+    registrar_ids = set(shift.registrar.id for shift in shifts) | set(leave.registrar.id for leave in leaves)
+
+    # Retrieve all registrars if the active registrars are not a superset of the registrars in the shifts and leaves
+    if not active_registrars_ids.issuperset(registrar_ids):
+        active_registrars = Registrar.objects.filter(id__in=registrar_ids | active_registrars_ids).select_related(
+            "user"
+        )
+
+    # Create a dictionary of shifts and leaves for each date and for each registrar:
+    events = {registrar: {} for registrar in registrar_ids}
+    for shift in shifts:
+        if shift.date not in events[shift.registrar_id]:
+            events[shift.registrar_id][shift.date] = {"shifts": [], "leaves": []}
+        events[shift.registrar_id][shift.date]["shifts"].append(shift)
+
+    for leave in leaves:
+        if leave.date not in events[leave.registrar_id]:
+            events[leave.registrar_id][leave.date] = {"shifts": [], "leaves": []}
+        events[leave.registrar_id][leave.date]["leaves"].append(leave)
+
+    registrars = {reg.id: reg for reg in sorted(active_registrars, key=lambda reg: (reg.year, reg.user.username))}
+    return registrars, events
+
+
+def get_events(someday: date, shift_types, leave_types):
+    """
+    Retrieve all events in the given date range.
+    """
+    start, end = calculate_3_week_range(someday)
+    shifts = Shift.objects.filter(date__range=[start, end], type__in=shift_types).select_related(
+        "registrar", "registrar__user"
+    )
+    leaves = Leave.objects.filter(date__range=[start, end], type__in=leave_types).select_related(
+        "registrar", "registrar__user"
+    )
+    # Get all dates in the range
+    dates = daterange(start, end)
+
+    # Merge shifts and leaves into a single list grouped by registrar
+    registrars, events = _merge_shifts_and_leaves(shifts, leaves, start, end)
+    return registrars, dates, events
+
+
 def default_start_and_end(start, end):
     if not (start and end):
         start = date.today() - timedelta(days=14 * 2)
@@ -26,12 +85,13 @@ def default_start_and_end(start, end):
     return (start, end)
 
 
-def active_registrars(start: date = None, end: date = None):
+def get_active_registrars(start: date = None, end: date = None):
     """
     Given a date range, return all registrars who are active during that period.
     Active registrars are those that have not finished training yet.
     """
-    start, end = default_start_and_end(start, end)
+    if not (start and end):
+        start, end = default_start_and_end(start, end)
     registrars = Registrar.objects.exclude(start=None).annotate(days=(Now() - F("start")))
     registrars = registrars.exclude(Q(finish__lt=start) | Q(start__gt=end))
     registrars = registrars.order_by("user__username")
@@ -100,7 +160,7 @@ def retrieve_roster(start: date = None, end: date = None):
     statuses = Status.objects.exclude(Q(end__lt=start) | Q(start__gt=end))
     status_dict = [domain_mapper.status_to_dict(status) for status in statuses]
 
-    registrars = active_registrars(start, end)
+    registrars = get_active_registrars(start, end)
     df_registrars = build_registrar_table(registrars.values("id", "user__username", "days"))
 
     pivot = build_pivot_table(

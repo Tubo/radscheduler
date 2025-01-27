@@ -6,8 +6,7 @@ from radscheduler.roster.models import DetailedShiftType, Leave, LeaveType, Regi
 
 
 def daterange(start_date, end_date):
-    for n in range(int((end_date - start_date).days)):
-        yield start_date + timedelta(n)
+    return [start_date + timedelta(n) for n in range(int((end_date - start_date).days))]
 
 
 def generate_leaves(start: date, end: date, type: LeaveType, registrar: Registrar):

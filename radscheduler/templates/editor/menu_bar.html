@@ -1,0 +1,39 @@
+{% load crispy_forms_tags %}
+{% load editor_tags %}
+
+<div class="row justify-content-between align-items-center pt-3 mx-0 my-2 border border-2 shadow-sm"
+     id="menu-bar">
+    <div class="col-9 d-flex justify-content-start">
+        <form action="{% querystring %}"
+              method="get"
+              class="w-100"
+              up-submit
+              up-target="#menu-bar, #roster-editor"
+              up-watch-disable>
+            {% crispy events_filter_form %}
+        </form>
+    </div>
+    <div class="col-3 d-flex justify-content-end gap-2">
+        <span>
+            <a href="{% querystring date=prev|date:"Y-m-d" %}"
+               class="btn btn-primary"
+               up-transition="cross-fade"
+               up-target="#menu-bar,#roster-editor"
+               up-follow>Prev week</a>
+        </span>
+        <span>
+            <a href="{% querystring date=None %}"
+               class="btn btn-primary"
+               up-transition="cross-fade"
+               up-target="#menu-bar,#roster-editor"
+               up-follow>Today</a>
+        </span>
+        <span>
+            <a href="{% querystring date=next|date:"Y-m-d" %}"
+               class="btn btn-primary"
+               up-transition="cross-fade"
+               up-target="#menu-bar,#roster-editor"
+               up-follow>Next week</a>
+        </span>
+    </div>
+</div>

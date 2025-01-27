@@ -1,0 +1,17 @@
+#roster-editor {
+
+    // td: first-child
+    tbody>tr>th:first-child {
+        position: sticky;
+        left: -1px;
+        box-shadow: inset -3px 0 #e0e0e0;
+        z-index: 1;
+    }
+
+    thead>tr>th {
+        position: sticky;
+        top: -1px;
+        z-index: 2;
+        box-shadow: inset 0 -3px #e0e0e0;
+    }
+}

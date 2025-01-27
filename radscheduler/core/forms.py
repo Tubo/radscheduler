@@ -2,6 +2,9 @@ from collections.abc import Mapping
 from datetime import date
 from typing import Any
 
+from crispy_forms.bootstrap import InlineCheckboxes
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Div, Field, Layout, Submit
 from django import forms
 from django.core.files.base import File
 from django.db.models.base import Model
@@ -9,8 +12,43 @@ from django.forms.formsets import formset_factory
 from django.forms.utils import ErrorList
 
 from radscheduler.core.models import Leave, Registrar, Shift, ShiftInterest
-from radscheduler.core.service import active_registrars
+from radscheduler.core.service import get_active_registrars
 from radscheduler.roster import canterbury_holidays
+from radscheduler.roster.models import LeaveType, ShiftType
+
+
+class DateForm(forms.Form):
+    date = forms.DateField()
+
+
+class EventsFilterForm(forms.Form):
+    shift_types = forms.MultipleChoiceField(
+        choices=ShiftType.choices,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        initial=ShiftType.values,
+    )
+    leave_types = forms.MultipleChoiceField(
+        choices=LeaveType.choices,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        initial=LeaveType.values,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+
+        self.helper.layout = Layout(
+            Div(
+                # auto-submit form when checkbox is clicked with unpoly
+                Div(InlineCheckboxes("shift_types", up_autosubmit="")),
+                Div(InlineCheckboxes("leave_types", up_autosubmit="")),
+                css_class="row row-cols-auto justify-content-start",
+            )
+        )
 
 
 class DateTimeRangeForm(forms.Form):
@@ -69,7 +107,7 @@ class ShiftChangeForm(forms.ModelForm):
 
 
 class ShiftAddForm(forms.ModelForm):
-    registrar = forms.ModelChoiceField(queryset=active_registrars(), required=False)
+    registrar = forms.ModelChoiceField(queryset=get_active_registrars(), required=False)
 
     class Meta:
         model = Shift

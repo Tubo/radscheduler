@@ -1,11 +1,8 @@
-<input type="hidden" name="form-TOTAL_FORMS" value="{{ days|length }}" />
+{% comment %} <input type="hidden" name="form-TOTAL_FORMS" value="{{ days|length }}" />
 <input type="hidden" name="form-INITIAL_FORMS" value="0" />
 {% for date, shifts in days.items %}
     <tr class="{% if date|date:'D' in 'Sat,Sun' %}table-warning{% endif %}">
-        <th scope="row"
-            class="font-monospace
-                   {% if date in holidays %}table-info{% endif %}"
-            {% if date in holidays %}data-bs-toggle="tooltip" data-bs-title="{{ shifts.holiday }}"{% endif %}>
+        <th scope="row" class="font-monospace {% if date in holidays %}table-info{% endif %}" {% if date in holidays %}data-bs-toggle="tooltip" data-bs-title="{{ shifts.holiday }}"{% endif %}>
             {{ date|date:'Y-m-d D' }}
             {% if date in holidays %}🎉{% endif %}
         </th>
@@ -16,4 +13,16 @@
             <td>{% include "editor/shift_cell.html" with shifts=shifts.SLEEP type="SLEEP" %}</td>
         {% endwith %}
     </tr>
-{% endfor %}
+{% endfor %} {% endcomment %}
+<tbody class="text-center">
+    {% for reg_id, registrar in registrars.items %}
+        <tr>
+            <th scope="row"
+                class="text-start align-middle border"
+                style="height: 50px">{{ registrar }}</th>
+            {% for date in dates %}
+                {% include "editor/event_cell.html" with registrar=reg_id date=date %}
+            {% endfor %}
+        </tr>
+    {% endfor %}
+</tbody>

@@ -10,7 +10,7 @@ from django.shortcuts import redirect, render
 
 from radscheduler.core.forms import ShiftChangeForm, ShiftInterestForm
 from radscheduler.core.models import Shift, ShiftInterest, Status
-from radscheduler.core.service import active_registrars
+from radscheduler.core.service import get_active_registrars
 from radscheduler.roster import ShiftType, StatusType, canterbury_holidays
 
 
@@ -93,7 +93,7 @@ def edit_page(request):
     )
     end = extra_shifts.first().date if extra_shifts else date.today()
     start = extra_shifts.last().date if extra_shifts else date.today()
-    registrars = active_registrars(start, end)
+    registrars = get_active_registrars(start, end)
 
     return render(
         request,

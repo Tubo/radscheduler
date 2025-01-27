@@ -25,8 +25,7 @@ class Registrar(models.Model):
     def year(self):
         if self.start is None:
             return None
-        if date.today() > self.finish:
-            return None
+
         return ((date.today() - self.start).days // 365) + 1
 
 

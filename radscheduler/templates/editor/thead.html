@@ -1,0 +1,22 @@
+<thead>
+    <tr class=" text-center table-light">
+        <th scope="col" style="width: 100px"></th>
+        {% now "Y-m-d" as today %}
+        {% for date in dates %}
+            <th scope="col"
+                class="{% if date|date:'Y-m-d' == today %}
+                           table-active
+                       {% elif date|date:"D" in "Sat,Sun" %}
+                           table-warning
+                       {% endif %}"
+                style="min-width: 120px">
+                <div>{{ date|date:'Y' }}</div>
+                <div>{{ date|date:'m-d' }}</div>
+                <div>
+                    {{ date|date:'D' }}
+                    {% if date in holidays %}🎉{% endif %}
+                </div>
+            </th>
+        {% endfor %}
+    </tr>
+</thead>

@@ -4,71 +4,47 @@ from datetime import date, timedelta
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.views.decorators.http import require_GET
 
 from radscheduler import roster
 from radscheduler.core import domain_mapper
-from radscheduler.core.forms import DateRangeForm, ShiftAddForm, ShiftChangeForm
+from radscheduler.core.forms import DateForm, DateRangeForm, EventsFilterForm, ShiftAddForm, ShiftChangeForm
 from radscheduler.core.models import Registrar, Shift, Status
-from radscheduler.core.service import (
-    active_and_available_registrars,
-    canterbury_holidays,
-    fill_shifts,
-    group_shifts_by_date_and_type,
-    shifts_breakdown,
-)
+from radscheduler.core.service import *
 
 
 @staff_member_required
+@require_GET
 def page(request):
     """
     Display the roster generation form.
     """
+    date_form = DateForm(request.GET)
+    week_in_focus = date_form.cleaned_data["date"] if date_form.is_valid() else date.today()
 
-    if request.method == "GET":
-        form = DateRangeForm(request.GET)
-        if form.is_valid():
-            start = form.cleaned_data["start"]
-            end = form.cleaned_data["end"]
-            shifts = fill_shifts(start, end)
-            days = group_shifts_by_date_and_type(start, end, shifts)
-            workload = shifts_breakdown(shifts)
-            form = DateRangeForm(initial={"start": start, "end": end})
-            return render(
-                request,
-                "editor/page.html",
-                {
-                    "days": days,
-                    "workload": workload,
-                    "form": form,
-                    "holidays": canterbury_holidays,
-                },
-            )
-        else:
-            start = date.today()
-            shifts = (
-                Shift.objects.filter(date__gte=start)
-                .order_by("-date", "extra_duty", "registrar")
-                .select_related("registrar", "registrar__user")
-            )
-            end = shifts.first().date if shifts else start + timedelta(days=90)
-            form = DateRangeForm(initial={"start": start, "end": end})
-            shifts = list(map(domain_mapper.shift_from_db, shifts))
-            buddy_required = list(
-                Status.objects.filter(type=roster.StatusType.BUDDY, start__lte=end, end__gte=start).values_list(
-                    "registrar", flat=True
-                )
-            )
-            days = group_shifts_by_date_and_type(start, end, shifts)
-            workload = shifts_breakdown(shifts)
+    events_filter_form = EventsFilterForm(request.GET)
+    if request.up and events_filter_form.is_valid():
+        shift_types = events_filter_form.cleaned_data["shift_types"]
+        leave_types = events_filter_form.cleaned_data["leave_types"]
+    else:
+        events_filter_form = EventsFilterForm(
+            initial={"shift_types": roster.ShiftType.values, "leave_types": roster.LeaveType.values}
+        )
+        shift_types, leave_types = roster.ShiftType.values, roster.LeaveType.values
+
+    registrars, dates, events = get_events(week_in_focus, shift_types, leave_types)
+
     return render(
         request,
         "editor/page.html",
         {
-            "days": days,
-            "workload": workload,
-            "buddy_required": buddy_required,
-            "form": form,
+            "events_filter_form": events_filter_form,
+            "registrars": registrars,
+            "dates": dates,
+            "events": events,
             "holidays": canterbury_holidays,
+            "prev": week_in_focus - timedelta(weeks=1),
+            "next": week_in_focus + timedelta(weeks=1),
         },
     )
 
