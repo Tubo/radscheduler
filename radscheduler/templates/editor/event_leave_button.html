@@ -1,12 +1,16 @@
 <div class="btn-group event event-leave-button">
     <button type="button"
-            class="btn btn-sm dropdown-toggle shadow py-1 w-100
+            class="btn btn-sm dropdown-toggle py-1 w-100
                    {% if leave.cancelled %}
                        text-decoration-line-through btn-outline-secondary
+                   {% elif leave.dot_approved is False or leave.reg_approved is False %}
+                       text-decoration-line-through btn-outline-danger
                    {% elif leave.dot_approved and leave.reg_approved %}
-                       btn-success
+                       btn-outline-success
                    {% elif leave.dot_approved or leave.reg_approved %}
-                       btn-outline-warning
+                       btn-outline-warning shadow
+                   {% else %}
+                       btn-outline-secondary
                    {% endif %}"
             data-bs-toggle="dropdown"
             aria-expanded="false">

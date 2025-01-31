@@ -48,9 +48,6 @@ class Shift(models.Model):
             registrar = "N/A"
         return f"<{roster.ShiftType(self.type).name} Shift {self.date} ({roster.Weekday(self.date.weekday()).name}): {registrar}>"
 
-    class Meta:
-        unique_together = [["date", "registrar", "extra_duty"]]
-
 
 class Status(models.Model):
     """
@@ -116,7 +113,7 @@ class Leave(models.Model):
         return f"<Leave: {self.registrar.user.username} {self.date} ({roster.LeaveType(self.type).name})>"
 
     def __str__(self):
-        return f"{self.type}-{self.portion}" if self.portion != "ALL" else self.type
+        return f"{self.type} {self.portion}" if self.portion != "ALL" else self.type
 
     def is_past(self):
         return self.date < date.today()

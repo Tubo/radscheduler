@@ -50,7 +50,7 @@ def _merge_shifts_and_leaves(shifts, leaves, active_registrars):
             events[leave.registrar_id][leave.date] = {"shifts": [], "leaves": []}
         events[leave.registrar_id][leave.date]["leaves"].append(leave)
 
-    registrars = {reg.id: reg for reg in sorted(active_registrars, key=lambda reg: (reg.year, reg.user.username))}
+    registrars = {reg.id: reg for reg in sorted(active_registrars, key=lambda reg: (-reg.year, reg.user.username))}
     return registrars, events
 
 

@@ -1,8 +1,10 @@
 <div class="btn-group event event-shift-button" data-shift-id={{ shift.id }}>
     <button type="button"
             class="btn btn-sm dropdown-toggle shadow py-1 w-100
-                   {% if shift.type == 'LONG' %}
+                   {% if shift.type in 'LONG,SWING' %}
                        btn-danger
+                   {% elif shift.type == 'HELP' %}
+                       btn-info
                    {% elif shift.type == 'NIGHT' %}
                        btn-dark
                    {% elif shift.type == 'SLEEP' or shift.type == 'RDO' %}

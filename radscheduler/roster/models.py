@@ -18,18 +18,20 @@ class Weekday(IntEnum):
 
 class LeaveType(models.TextChoices):
     ANNUAL = "ANNUAL", "Annual"
-    BE = "BE", "Bereavement"
+    EDU = "EDU", "Education"
+    CONF = "CONF", "Conference"
     LIEU = "LIEU", "Lieu day"
     SICK = "SICK", "Sick"
     PARENTAL = "PAR", "Parental"
-    EDU = "EDU", "Education"
-    CONF = "CONF", "Conference"
+    BE = "BE", "Bereavement"
 
 
 class ShiftType(models.TextChoices):
+    SWING = "SWING", "Swing day"  # from 12pm to 10pm
+    HELP = "HELP", "Help desk"  # from 8am to 12pm
     LONG = "LONG", "Long day"  # from 8am to 10pm
-    NIGHT = "NIGHT", "Night"  # from 10pm to 8am
     RDO = "RDO", "RDO"
+    NIGHT = "NIGHT", "Night"  # from 10pm to 8am
     SLEEP = "SLEEP", "Sleep"
 
 

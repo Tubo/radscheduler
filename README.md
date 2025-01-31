@@ -12,14 +12,14 @@ License: MIT
 Start a proxy to fly postgres:
 `flyctl proxy 54321:5432 --app radscheduler-db`
 
-Find urls to postgres via:
+Find the password to of DATABASE_URL via:
 `flyctl ssh console -C 'env'`
 
 Download a dump:
-`pg_dump -d postgres://radscheduler:{password}2localhost:54321 | gzip > backups/db.sql.gz`
+`pg_dump -d postgres://radscheduler@localhost:54321 | gzip > backups/db.sql.gz`
 
 Restore using
-`docker-compose -f local.yml run postgres restore db.sql.gz`
+`docker-compose -f local.yml run --rm postgres restore db.sql.gz`
 
 or
 

@@ -30,6 +30,12 @@ up.on('up:form:submit', (event, form) => {
     dd_intance.hide()
 })
 
+up.on("change", "input[name='week_in_focus']", function (event, element) {
+    // Update the context when the user changes the week in focus.
+    const week_in_focus = element.value
+    up.navigate({ url: "/roster/editor/" + week_in_focus })
+})
+
 up.on("change", "input[name='shift_types'], input[name='leave_types']", function (event, element) {
     // Update the context when the user checks or unchecks a shift type or leave type.
     const contextKey = element.getAttribute('name');

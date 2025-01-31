@@ -13,8 +13,7 @@
                    {% elif date|date:'D' in 'Sat,Sun' %}
                        table-warning
                    {% endif %}
-                   {% if date in holidays %}table-info{% endif %}
-                   {% if shifts and leaves %}border border-2 border-danger{% endif %}">
+                   {% if date in holidays %}table-info{% endif %}">
             <div class="d-flex flex-column align-items-start gap-1 px-1 m-0 position-relative event-cell-content">
                 {% if shifts %}
                     {% for shift in shifts %}

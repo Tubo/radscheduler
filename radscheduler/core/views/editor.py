@@ -70,11 +70,13 @@ def page(request, date_=None):
     )
 
 
+@staff_member_required
 @require_GET
 def update_cell(request):
     pass
 
 
+@staff_member_required
 @require_POST
 def add_shift(request):
     "Add shift button"
@@ -93,6 +95,7 @@ def add_shift(request):
     return HttpResponse(status=304)
 
 
+@staff_member_required
 @require_POST
 def change_shift(request, pk):
     shift_types = roster.ShiftType.choices
@@ -104,6 +107,7 @@ def change_shift(request, pk):
     return HttpResponse(status=304)
 
 
+@staff_member_required
 @require_POST
 def delete_shift(request, pk):
     try:
@@ -118,6 +122,7 @@ def delete_shift(request, pk):
         return HttpResponse(status=500)
 
 
+@staff_member_required
 @require_POST
 def change_leave(request, pk):
     leave = Leave.objects.get(pk=pk)

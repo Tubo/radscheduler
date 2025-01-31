@@ -25,11 +25,21 @@ let calendar = new Calendar(calendarEl, {
         { url: "/api/calendar/holidays", display: "background" }
     ],
     eventDataTransform: function (eventData) {
+        eventData.extendedProps = eventData.extendedProps || {};
+
         if (eventData.event_type === 'shift') {
             switch (eventData.title.split(":")[0]) {
                 case "LONG":
+                    eventData.extendedProps.order = 3;
+                case "SWING":
+                    eventData.extendedProps.order = 2;
                     eventData.textColor = "black"
                     eventData.backgroundColor = "#FFB6C1"
+                    break
+                case "HELP":
+                    eventData.extendedProps.order = 1;
+                    eventData.textColor = "black"
+                    eventData.backgroundColor = "PaleTurquoise"
                     break
                 case "NIGHT":
                     eventData.textColor = null
@@ -37,7 +47,7 @@ let calendar = new Calendar(calendarEl, {
                     break
                 default:
                     eventData.textColor = "black"
-                    eventData.backgroundColor = "PaleTurquoise"
+                    eventData.backgroundColor = "#ffc10770"
             }
         }
 
@@ -46,15 +56,14 @@ let calendar = new Calendar(calendarEl, {
             eventData.backgroundColor = "grey"
         }
 
-        eventData.extendedProps = eventData.extendedProps || {};
         eventData.extendedProps.initialBackgroundColor = eventData.backgroundColor;
         eventData.extendedProps.event_type = eventData.event_type;
         return eventData;
     },
-    eventOrder: ["-event_type", "title"],
+    eventOrder: ["-event_type", "order", "title"],
     locale: nzLocale,
     height: "90vh",
-    rerenderDelay: 125,
+    rerenderDelay: 50,
     eventMouseEnter: function (info) {
         let eventTitle = info.event.title;
         let events = calendar.getEvents();
