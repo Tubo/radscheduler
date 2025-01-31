@@ -34,74 +34,7 @@
     {% endblock javascript %}
   </head>
   <body>
-    <div class="mb-1">
-      <nav class="navbar navbar-expand-md navbar-light bg-light">
-        <div class="container-fluid">
-          <button class="navbar-toggler navbar-toggler-right"
-                  type="button"
-                  data-bs-toggle="collapse"
-                  data-bs-target="#navbarSupportedContent"
-                  aria-controls="navbarSupportedContent"
-                  aria-expanded="false"
-                  aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-          <a class="navbar-brand" href="{% url 'home' %}">Radscheduler</a>
-          <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav pe-2">
-              <li class="nav-item">
-                <a class="nav-link" href="{% url 'home' %}">Calendar</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="{% url 'leave_page' %}">Leaves</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="{% url 'extra_page' %}">Extra duties</a>
-              </li>
-            </ul>
-            {% if request.user.is_staff %}
-              <ul class="navbar-nav mr-auto border-start border-2 ps-2">
-                {% comment %} <li class="nav-item">
-                  <a class="nav-link" href="{% url 'roster' %}" data-bs-toggle="tooltip" data-bs-title="test">Overview</a>
-                </li> {% endcomment %}
-                <li class="nav-item">
-                  <a class="nav-link" href="{% url 'editor' %}">Edit roster</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="{% url 'extra_edit_page' %}">Edit extra duties</a>
-                </li>
-              </ul>
-            {% endif %}
-          </div>
-          <div class="collapse navbar-collapse justify-content-end"
-               id="navbarSupportedContent">
-            <ul class="navbar-nav mr-auto">
-              {% if request.user.is_authenticated %}
-                <li class="nav-item">
-                  <a class="nav-link"
-                     href="{% url 'users:detail' request.user.username %}">{% translate request.user.username %}</a>
-                </li>
-                <li class="nav-item">
-                  {# URL provided by django-allauth/account/urls.py #}
-                  <a class="nav-link" href="{% url 'account_logout' %}">{% translate "Sign Out" %}</a>
-                </li>
-              {% else %}
-                {% if ACCOUNT_ALLOW_REGISTRATION %}
-                  <li class="nav-item">
-                    {# URL provided by django-allauth/account/urls.py #}
-                    <a id="sign-up-link" class="nav-link" href="{% url 'account_signup' %}">{% translate "Sign Up" %}</a>
-                  </li>
-                {% endif %}
-                <li class="nav-item">
-                  {# URL provided by django-allauth/account/urls.py #}
-                  <a id="log-in-link" class="nav-link" href="{% url 'account_login' %}">{% translate "Sign In" %}</a>
-                </li>
-              {% endif %}
-            </ul>
-          </div>
-        </div>
-      </nav>
-    </div>
+    <div class="mb-1">{% include "navbar.html" %}</div>
     <div class="container">
       {% if messages %}
         {% for message in messages %}
