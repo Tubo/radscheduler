@@ -100,18 +100,25 @@ class LeaveForm(forms.ModelForm):
         fields = ["date", "type", "portion", "comment", "registrar"]
 
 
+class LeaveChangeEditorForm(forms.ModelForm):
+    reg_approved = forms.NullBooleanSelect()
+    dot_approved = forms.NullBooleanSelect()
+
+    class Meta:
+        model = Leave
+        fields = ["reg_approved", "dot_approved", "cancelled"]
+
+
 class ShiftChangeForm(forms.ModelForm):
     class Meta:
         model = Shift
-        fields = ["registrar"]
+        fields = ["type", "extra_duty"]
 
 
 class ShiftAddForm(forms.ModelForm):
-    registrar = forms.ModelChoiceField(queryset=get_active_registrars(), required=False)
-
     class Meta:
         model = Shift
-        fields = ["date", "type", "registrar", "stat_day", "extra_duty"]
+        fields = ["date", "type", "registrar", "extra_duty"]
 
 
 class ShiftInterestForm(forms.ModelForm):

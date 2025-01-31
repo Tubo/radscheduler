@@ -1,6 +1,14 @@
-import '@popperjs/core';
-import * as bootstrap from 'bootstrap'
-import 'bootstrap-icons/font/bootstrap-icons.css';
+import 'unpoly/unpoly.css'
+import 'unpoly/unpoly.js'
+import 'unpoly/unpoly-bootstrap5.css'
+import 'unpoly/unpoly-bootstrap5.js'
 
-const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+import '@popperjs/core';
+import 'bootstrap-icons/font/bootstrap-icons.css';
+import * as bootstrap from 'bootstrap'
+
+import Alpine from 'alpinejs'
+
+window.Alpine = Alpine
+window.bootstrap = bootstrap;
+

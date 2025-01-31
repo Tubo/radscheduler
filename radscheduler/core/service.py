@@ -25,9 +25,8 @@ def calculate_3_week_range(someday: date):
     return start, end
 
 
-def _merge_shifts_and_leaves(shifts, leaves, start, end):
+def _merge_shifts_and_leaves(shifts, leaves, active_registrars):
     # Get all active registrars
-    active_registrars = get_active_registrars(start, end).all()
     active_registrars_ids = set(reg.id for reg in active_registrars)
 
     # Get all registrars in the shifts and leaves
@@ -68,9 +67,9 @@ def get_events(someday: date, shift_types, leave_types):
     )
     # Get all dates in the range
     dates = daterange(start, end)
-
+    active_registrars = get_active_registrars(start, end)
     # Merge shifts and leaves into a single list grouped by registrar
-    registrars, events = _merge_shifts_and_leaves(shifts, leaves, start, end)
+    registrars, events = _merge_shifts_and_leaves(shifts, leaves, active_registrars)
     return registrars, dates, events
 
 

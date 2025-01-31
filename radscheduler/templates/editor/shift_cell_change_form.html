@@ -1,6 +1,11 @@
 <div class="change_registrar_form d-inline-flex">
     <div class="dropdown">
-        <button class="btn dropdown-toggle {% if shift.extra_duty %}btn-outline-warning{% else %}btn-outline-primary{% endif %}"
+        <button class="btn dropdown-toggle
+                       {% if shift.extra_duty %}
+                           btn-outline-warning
+                       {% else %}
+                           btn-outline-primary
+                       {% endif %}"
                 type="button"
                 data-bs-toggle="dropdown"
                 aria-expanded="false">{{ current_registrar.user.username }}</button>
@@ -8,7 +13,8 @@
             {% for registrar in registrars %}
                 <li>
                     <input type="hidden" name="registrar" value="{{ registrar.pk }}" />
-                    <button class="dropdown-item {% if current_registrar == registrar %}active{% endif %}"
+                    <button class="dropdown-item
+                                   {% if current_registrar == registrar %}active{% endif %}"
                             hx-post="{% url 'change_shift' shift.pk %}"
                             hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                             hx-include="previous [name='registrar']"

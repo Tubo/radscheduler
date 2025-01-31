@@ -18,7 +18,6 @@
             <a href="{% url 'editor_by_date' prev|date:'Y-m-d' %}"
                class="btn btn-primary"
                up-transition="cross-fade"
-               up-target="#menu-bar,#roster-editor"
                up-cache="false"
                up-follow>Prev week</a>
         </span>
@@ -27,7 +26,6 @@
             <a href="{% url 'editor_by_date' today %}"
                class="btn btn-primary"
                up-transition="cross-fade"
-               up-target="#menu-bar,#roster-editor"
                up-cache="false"
                up-follow>Today</a>
         </span>
@@ -35,7 +33,6 @@
             <a href="{% url 'editor_by_date' next|date:'Y-m-d' %}"
                class="btn btn-primary"
                up-transition="cross-fade"
-               up-target="#menu-bar,#roster-editor"
                up-cache="false"
                up-follow>Next week</a>
         </span>

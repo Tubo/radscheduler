@@ -3,12 +3,19 @@ from datetime import date, timedelta
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
-from django.shortcuts import render
-from django.views.decorators.http import require_GET
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_GET, require_POST
 
 from radscheduler import roster
 from radscheduler.core import domain_mapper
-from radscheduler.core.forms import DateForm, DateRangeForm, EventsFilterForm, ShiftAddForm, ShiftChangeForm
+from radscheduler.core.forms import (
+    DateForm,
+    DateRangeForm,
+    EventsFilterForm,
+    LeaveChangeEditorForm,
+    ShiftAddForm,
+    ShiftChangeForm,
+)
 from radscheduler.core.models import Registrar, Shift, Status
 from radscheduler.core.service import *
 
@@ -54,86 +61,68 @@ def page(request, date_=None):
             "dates": dates,
             "events": events,
             "holidays": canterbury_holidays,
+            "week_in_focus": week_in_focus,
             "prev": week_in_focus - timedelta(weeks=1),
             "next": week_in_focus + timedelta(weeks=1),
-            "week_in_focus": week_in_focus,
+            "shift_types": roster.ShiftType.choices,
+            "leave_types": roster.LeaveType.choices,
         },
     )
 
 
-def save_roster(request):
-    if request.method == "POST":
-        form = DateRangeForm(request.POST)
-        if form.is_valid():
-            start = form.cleaned_data["start"]
-            end = form.cleaned_data["end"]
-            shifts = fill_shifts(start, end)
-            to_save = []
-            for shift in shifts:
-                if not shift.pk and shift.registrar:
-                    to_save.append(domain_mapper.shift_to_db(shift))
-            try:
-                Shift.objects.bulk_create(to_save)
-                return HttpResponse("<span>Success</span>")
-            except:
-                return HttpResponse("<span>Failed</span>")
+@require_GET
+def update_cell(request):
+    pass
 
 
-def change_shift_registrar(request, pk):
-    if request.method == "GET":
-        shift = Shift.objects.get(pk=pk)
-        registrars = active_and_available_registrars(shift.date)
-        return render(
-            request,
-            "editor/shift_cell_change_form.html",
-            {
-                "shift": shift,
-                "registrars": registrars,
-                "current_registrar": shift.registrar,
-            },
-        )
-
-    elif request.method == "POST":
-        form = ShiftChangeForm(request.POST)
-        if form.is_valid():
-            registrar = form.cleaned_data["registrar"]
-            shift = Shift.objects.get(pk=pk)
-            shift.registrar = registrar
-            shift.save()
-            return render(request, "editor/shift_cell_button.html", {"shift": domain_mapper.shift_from_db(shift)})
-
-    elif request.method == "DELETE":
-        form = ShiftChangeForm(request.POST)
-        if form.is_valid():
-            shift = Shift.objects.get(pk=pk)
-            shift.delete()
-            return HttpResponse()
-
-
-def cancel_shift_change(request, pk):
-    "Cancel button for change registrar form"
-    shift = Shift.objects.get(pk=pk)
-    return render(request, "editor/shift_cell_button.html", {"shift": domain_mapper.shift_from_db(shift)})
-
-
+@require_POST
 def add_shift(request):
     "Add shift button"
-    if request.method == "GET":
-        date = request.GET.get("date")
-        type_ = request.GET.get("type")
-        registrars = active_and_available_registrars(date)
+    shift_types = roster.ShiftType.choices
+    form = ShiftAddForm(request.POST)
+    if form.is_valid():
+        shift = form.save(commit=False)
+        stat_day = shift.date in canterbury_holidays
+        shift.stat_day = stat_day
+        shift.save()
         return render(
-            request, "editor/shift_cell_new_form.html", {"registrars": registrars, "date": date, "type": type_}
+            request,
+            "editor/wrapper_cell.html",
+            {"template_name": "editor/event_shift_button.html", "shift": shift, "shift_types": shift_types},
         )
+    return HttpResponse(status=304)
 
-    elif request.method == "POST":
-        form = ShiftAddForm(request.POST)
-        if form.is_valid():
-            registrar = form.cleaned_data["registrar"]
-            date = form.cleaned_data["date"]
-            type_ = form.cleaned_data["type"]
-            stat_day = form.cleaned_data["stat_day"]
-            extra_duty = form.cleaned_data["extra_duty"]
-            shift = Shift(date=date, type=type_, registrar=registrar, stat_day=stat_day, extra_duty=extra_duty)
-            shift.save()
-            return render(request, "editor/shift_cell_button.html", {"shift": domain_mapper.shift_from_db(shift)})
+
+@require_POST
+def change_shift(request, pk):
+    shift_types = roster.ShiftType.choices
+    shift = Shift.objects.get(pk=pk)
+    form = ShiftChangeForm(request.POST, instance=shift)
+    if form.is_valid():
+        shift = form.save()
+        return render(request, "editor/event_shift_button.html", {"shift": shift, "shift_types": shift_types})
+    return HttpResponse(status=304)
+
+
+@require_POST
+def delete_shift(request, pk):
+    try:
+        shift = Shift.objects.get(pk=pk)
+        shift.delete()
+        if request.up:
+            request.up.emit("shift:deleted", {"shift_id": pk})
+        return HttpResponse(status=204)
+    except Shift.DoesNotExist:
+        return HttpResponse(status=404)
+    except Exception:
+        return HttpResponse(status=500)
+
+
+@require_POST
+def change_leave(request, pk):
+    leave = Leave.objects.get(pk=pk)
+    form = LeaveChangeEditorForm(request.POST, instance=leave)
+    if form.is_valid():
+        leave = form.save()
+        return render(request, "editor/event_leave_button.html", {"leave": leave})
+    return HttpResponse(status=304)

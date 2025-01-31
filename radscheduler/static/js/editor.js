@@ -1,13 +1,5 @@
 import "../css/editor.scss"
 
-import Alpine from 'alpinejs'
-import 'unpoly/unpoly.js'
-import 'unpoly/unpoly.css'
-import 'unpoly/unpoly-bootstrap5.js'
-import 'unpoly/unpoly-bootstrap5.css'
-
-window.Alpine = Alpine
-
 up.compiler("#menu-bar", function (element) {
     up.context.shift_types = getCheckedValues(element, "shift_types");
     up.context.leave_types = getCheckedValues(element, "leave_types");
@@ -20,9 +12,27 @@ up.compiler("#menu-bar", function (element) {
     }
 })
 
+up.compiler("[data-bs-toggle='tooltip']", function (element) {
+    // Initialize Bootstrap tooltips for the shift buttons after update.
+    bootstrap.Tooltip.getOrCreateInstance(element);
+    // new bootstrap.Tooltip(element);
+})
+
+up.on('up:form:submit', (event, form) => {
+    // Get the closest dropdown menu and hide it when the user clicks a link.
+    const dd = up.fragment.closest(form, ".dropdown-menu")
+    // if dd is null, then the form is not inside a dropdown menu
+    if (!dd) {
+        return
+    }
+    console.log("form:", form, "dd:", dd)
+    let dd_intance = bootstrap.Dropdown.getInstance(dd.previousElementSibling)
+    dd_intance.hide()
+})
+
 up.on("change", "input[name='shift_types'], input[name='leave_types']", function (event, element) {
+    // Update the context when the user checks or unchecks a shift type or leave type.
     const contextKey = element.getAttribute('name');
-    console.log("contextKey:", contextKey, "element.value:", element.value)
 
     if (!up.context[contextKey]) {
         up.context[contextKey] = [];
@@ -36,3 +46,15 @@ up.on("change", "input[name='shift_types'], input[name='leave_types']", function
     console.log("shift types:", up.context.shift_types)
     console.log("leave types:", up.context.leave_types)
 })
+
+up.on("shift:deleted", function (event) {
+    // Destroy the shift element from the DOM when the server sends a 'shift:deleted' event.
+    console.log("shift:deleted event:", event.shift_id)
+    const el = document.querySelector(`[data-shift-id='${event.shift_id}']`)
+    // remove tooltip instances
+    el.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+        bootstrap.Tooltip.getInstance(el).dispose();
+    })
+    up.destroy(el, { animate: 'fade-out' });
+})
+

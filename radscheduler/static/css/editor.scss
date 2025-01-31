@@ -1,7 +1,10 @@
+// import bootstrap5 scss
+@import "bootstrap/scss/bootstrap";
+
 #roster-editor {
 
-    // td: first-child
     tbody>tr>th:first-child {
+        // sticky left column
         position: sticky;
         left: -1px;
         box-shadow: inset -3px 0 #e0e0e0;
@@ -9,9 +12,34 @@
     }
 
     thead>tr>th {
+        // sticky top row
         position: sticky;
         top: -1px;
         z-index: 2;
         box-shadow: inset 0 -3px #e0e0e0;
+    }
+
+    .event {
+        width: 75%;
+    }
+
+    .add-shift-form {
+        z-index: 2;
+        position: absolute;
+        top: 50%;
+        right: 0;
+        margin-right: 2px;
+        transform: translateY(-50%);
+    }
+
+    .add-shift-form:not(:has(.show)) {
+        // Hide form button group if not in show mode
+        display: none;
+    }
+
+    td:hover .add-shift-form {
+        // Show form on hover
+        display: block;
+        z-index: 1;
     }
 }

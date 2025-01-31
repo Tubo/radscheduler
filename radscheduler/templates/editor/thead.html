@@ -12,9 +12,8 @@
                            table-warning
                        {% endif %}"
                 {% if date in holidays %}data-bs-toggle="tooltip" data-bs-title="{{ holidays|keyvalue:date }}"{% endif %}
-                style="min-width: 120px">
-                <div>{{ date|date:'Y' }}</div>
-                <div>{{ date|date:'m-d' }}</div>
+                style="min-width: 150px">
+                <div>{{ date|date:'Y-m-d' }}</div>
                 <div>
                     {{ date|date:'D' }}
                     {% if date in holidays %}🎉{% endif %}

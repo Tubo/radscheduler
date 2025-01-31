@@ -1,9 +1,13 @@
 {% load editor_tags %}
 
 {% now "Y-m-d" as today %}
-{% with relevant_events=events|keyvalue:registrar|keyvalue:date %}
+{% with relevant_events=events|keyvalue:registrar.id|keyvalue:date %}
     {% with shifts=relevant_events.shifts leaves=relevant_events.leaves %}
-        <td class="font-monospace
+        <td id="cell-{{ date|date:'Y-m-d' }}-{{ registrar.id }}"
+            data-date="{{ date|date:'Y-m-d' }}"
+            data-registrar-id="{{ registrar.id }}"
+            data-registrar="{{ registrar }}"
+            class="font-monospace px-0 align-middle event-cell
                    {% if date|date:'Y-m-d' == today %}
                        table-active
                    {% elif date|date:'D' in 'Sat,Sun' %}
@@ -11,34 +15,19 @@
                    {% endif %}
                    {% if date in holidays %}table-info{% endif %}
                    {% if shifts and leaves %}border border-2 border-danger{% endif %}">
-            <div class="row align-items-center p-0 m-0 h-100 gap-1 ">
+            <div class="d-flex flex-column align-items-start gap-1 px-1 m-0 position-relative event-cell-content">
                 {% if shifts %}
                     {% for shift in shifts %}
-                        <button class="col rounded border shadow-sm
-                                       {% if shift.type == 'LONG' %}
-                                           bg-danger
-                                       {% elif shift.type == 'NIGHT' %}
-                                           bg-dark text-light
-                                       {% elif shift.type == 'SLEEP' or shift.type == 'RDO' %}
-                                           bg-warning-subtle
-                                       {% endif %}">{{ shift.type }}</button>
+                        {% include "editor/event_shift_button.html" with shift=shift %}
                     {% endfor %}
                 {% endif %}
                 {% if leaves %}
                     {% for leave in leaves %}
-                        <button class="col rounded border bg-light-subtle shadow-sm">{{ leave.type }}</button>
+                        {% include "editor/event_leave_button.html" with leave=leave %}
                     {% endfor %}
                 {% endif %}
+                {% include "editor/event_shift_new_form.html" %}
             </div>
         </td>
     {% endwith %}
 {% endwith %}
-{% comment %}
-                                       {% if leave.dot_approved and leave.reg_approved %}
-                                           text-success
-                                       {% elif leave.dot_approved or leave.reg_approved %}
-                                           text-warning-emphasis
-                                       {% else %}
-                                           text-secondary
-                                       {% endif %}"
-{% endcomment %}

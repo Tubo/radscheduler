@@ -1,0 +1,25 @@
+<div class="btn-group add-shift-form">
+    <button type="button"
+            class="btn btn-sm btn-outline-primary dropdown-toggle shadow"
+            data-bs-toggle="dropdown"
+            data-bs-auto-close="outside"
+            aria-expanded="false"></button>
+    <form class="dropdown-menu p-2"
+          action="{% url "add_shift" %}"
+          method="post"
+          style="width: 200px"
+          up-submit
+          up-autosubmit
+          up-target=".event-cell-content:before">
+        {% csrf_token %}
+        <input type="hidden" name="date" value="{{ date|date:"Y-m-d" }}" />
+        <input type="hidden" name="registrar" value="{{ registrar.id }}" />
+        <div class="form-text mb-2">New shift:</div>
+        {% for shift_type in shift_types %}
+            <button class="dropdown-item"
+                    name="type"
+                    value="{{ shift_type.0 }}"
+                    type="submit">{{ shift_type.1 }}</button>
+        {% endfor %}
+    </form>
+</div>

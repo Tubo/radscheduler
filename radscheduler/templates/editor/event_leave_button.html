@@ -1,0 +1,150 @@
+<div class="btn-group event event-leave-button">
+    <button type="button"
+            class="btn btn-sm dropdown-toggle shadow py-1 w-100
+                   {% if leave.cancelled %}
+                       text-decoration-line-through btn-outline-secondary
+                   {% elif leave.dot_approved and leave.reg_approved %}
+                       btn-success
+                   {% elif leave.dot_approved or leave.reg_approved %}
+                       btn-outline-warning
+                   {% endif %}"
+            data-bs-toggle="dropdown"
+            aria-expanded="false">
+        {% if leave.comment %}
+            <abbr title="{{ leave.comment }}">{{ leave }}</abbr>
+        {% else %}
+            {{ leave }}
+        {% endif %}
+    </button>
+    <form class="dropdown-menu p-2"
+          action="{% url "change_leave" leave.id %}"
+          method="post"
+          up-target=".event-leave-button"
+          up-submit
+          up-autosubmit>
+        {% csrf_token %}
+        <div>
+            <h6 class="dropdown-header">Roster master:</h6>
+        </div>
+        <div class="btn-group btn-group-sm w-100"
+             role="group"
+             aria-label="Leave approval from the roster master">
+            <input type="radio"
+                   id="{{ leave.id }}-reg-approve"
+                   name="reg_approved"
+                   value="True"
+                   {% if leave.reg_approved %}checked{% endif %}
+                   {% if leave.cancelled %}disabled{% endif %}
+                   class="btn-check"
+                   autocomplete="off" />
+            <label class="btn btn-outline-success"
+                   for="{{ leave.id }}-reg-approve"
+                   data-bs-toggle="tooltip"
+                   data-bs-title="Approve">
+                <i class="bi bi-check-lg"></i>
+            </label>
+            <input type="radio"
+                   id="{{ leave.id }}-reg-pending"
+                   name="reg_approved"
+                   value="None"
+                   {% if leave.reg_approved is None %}checked{% endif %}
+                   {% if leave.cancelled %}disabled{% endif %}
+                   class="btn-check"
+                   autocomplete="off" />
+            <label class="btn btn-outline-secondary"
+                   for="{{ leave.id }}-reg-pending"
+                   data-bs-toggle="tooltip"
+                   data-bs-title="Pending">
+                <i class="bi bi-question-lg"></i>
+            </label>
+            <input type="radio"
+                   id="{{ leave.id }}-reg-decline"
+                   name="reg_approved"
+                   value="False"
+                   {% if leave.reg_approved is False %}checked{% endif %}
+                   {% if leave.cancelled %}disabled{% endif %}
+                   class="btn-check"
+                   autocomplete="off" />
+            <label class="btn btn-outline-danger"
+                   for="{{ leave.id }}-reg-decline"
+                   data-bs-toggle="tooltip"
+                   data-bs-title="Decline">
+                <i class="bi bi-x-lg"></i>
+            </label>
+        </div>
+        <div>
+            <h6 class="dropdown-header">Director:</h6>
+        </div>
+        <div class="btn-group btn-group-sm w-100"
+             role="group"
+             aria-label="Leave approval from the directors of training">
+            <input type="radio"
+                   id="{{ leave.id }}-dot-approve"
+                   name="dot_approved"
+                   value="True"
+                   {% if leave.dot_approved %}checked{% endif %}
+                   {% if leave.cancelled %}disabled{% endif %}
+                   class="btn-check"
+                   autocomplete="off" />
+            <label class="btn btn-outline-success"
+                   for="{{ leave.id }}-dot-approve"
+                   data-bs-toggle="tooltip"
+                   data-bs-title="Approve">
+                <i class="bi bi-check-lg"></i>
+            </label>
+            <input type="radio"
+                   name="dot_approved"
+                   value="None"
+                   {% if leave.dot_approved is None %}checked{% endif %}
+                   {% if leave.cancelled %}disabled{% endif %}
+                   class="btn-check"
+                   autocomplete="off"
+                   id="{{ leave.id }}-dot-pending" />
+            <label class="btn btn-outline-secondary"
+                   for="{{ leave.id }}-dot-pending"
+                   data-bs-toggle="tooltip"
+                   data-bs-title="Pending">
+                <i class="bi bi-question-lg"></i>
+            </label>
+            <input type="radio"
+                   name="dot_approved"
+                   value="False"
+                   {% if leave.dot_approved is False %}checked{% endif %}
+                   {% if leave.cancelled %}disabled{% endif %}
+                   class="btn-check"
+                   id="{{ leave.id }}-dot-decline"
+                   autocomplete="off" />
+            <label class="btn btn-outline-danger"
+                   for="{{ leave.id }}-dot-decline"
+                   data-bs-toggle="tooltip"
+                   data-bs-title="Decline">
+                <i class="bi bi-x-lg"></i>
+            </label>
+        </div>
+        <div>
+            <div class="form-check mt-3">
+                <input class="form-check-input"
+                       type="checkbox"
+                       name="cancelled"
+                       id="{{ leave.id }}-cancelled"
+                       {% if leave.cancelled %}checked{% endif %} />
+                <label class="form-check-label" for="{{ leave.id }}-cancelled">Cancelled</label>
+            </div>
+        </div>
+        <div>
+            <hr class="dropdown-divider" />
+        </div>
+        <div>
+            <h6 class="small">
+                Created:
+                <br />
+                {{ leave.created|date:"Y-m-d H:i" }}
+            </h6>
+            <h6 class="small">
+                Last updated:
+                <br />
+                {{ leave.last_edited|date:"Y-m-d H:i" }}
+            </h6>
+        </div>
+    </form>
+</div>

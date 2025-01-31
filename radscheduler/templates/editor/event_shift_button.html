@@ -1,0 +1,70 @@
+<div class="btn-group event event-shift-button" data-shift-id={{ shift.id }}>
+    <button type="button"
+            class="btn btn-sm dropdown-toggle shadow py-1 w-100
+                   {% if shift.type == 'LONG' %}
+                       btn-danger
+                   {% elif shift.type == 'NIGHT' %}
+                       btn-dark
+                   {% elif shift.type == 'SLEEP' or shift.type == 'RDO' %}
+                       btn-warning
+                   {% endif %}"
+            data-bs-toggle="dropdown"
+            aria-expanded="false">
+        {{ shift.type }}
+        {% if shift.extra_duty %}<i class="bi bi-coin"></i>{% endif %}
+    </button>
+    <ul class="dropdown-menu p-2">
+        <form action="{% url "change_shift" shift.id %}"
+              method="post"
+              up-target=".event-shift-button">
+            {% csrf_token %}
+            <li>
+                <h6 class="dropdown-header">Change shift type:</h6>
+            </li>
+            <input type="hidden" name="extra_duty" value="{{ shift.extra_duty }}" />
+            {% for shift_type in shift_types %}
+                <li>
+                    <button class="dropdown-item"
+                            name="type"
+                            value="{{ shift_type.0 }}"
+                            type="submit">{{ shift_type.1 }}</button>
+                </li>
+            {% endfor %}
+            <li class="mt-2">
+                <div class="btn-group btn-group-sm w-100" role="group">
+                    <button type="submit"
+                            class="btn
+                                   {% if shift.extra_duty %}
+                                       btn-success
+                                   {% else %}
+                                       btn-outline-success
+                                   {% endif %}"
+                            name="extra_duty"
+                            value="{% if not shift.extra_duty %}
+                                       True
+                                   {% endif %}"
+                            data-bs-toggle="tooltip"
+                            data-bs-title="{% if shift.extra_duty %}
+                                               Remove extra duty
+                                           {% else %}
+                                               Make shift extra duty
+                                           {% endif %}">
+                        <input type="hidden" name="type" value="{{ shift.type }}" />
+                        <i class="bi bi-coin px-1"></i>Extra
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-danger"
+                            up-follow
+                            up-href="{% url 'delete_shift' shift.id %}"
+                            up-method="post"
+                            up-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                            up-confirm="Are you sure you want to delete this shift?"
+                            data-bs-toggle="tooltip"
+                            data-bs-title="Delete shift">
+                        <i class="bi bi-trash3 px-1"></i>Delete
+                    </button>
+                </div>
+            </li>
+        </form>
+    </ul>
+</div>

@@ -115,6 +115,9 @@ class Leave(models.Model):
     def __repr__(self) -> str:
         return f"<Leave: {self.registrar.user.username} {self.date} ({roster.LeaveType(self.type).name})>"
 
+    def __str__(self):
+        return f"{self.type}-{self.portion}" if self.portion != "ALL" else self.type
+
     def is_past(self):
         return self.date < date.today()
 

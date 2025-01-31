@@ -25,16 +25,15 @@ leave_view_urls = [
 editor_view_urls = [
     path("", editor_views.page, name="editor"),
     path("<str:date_>/", editor_views.page, name="editor_by_date"),
-    path("save/", editor_views.save_roster, name="save_shifts"),
-    path("change_shift/<int:pk>/", editor_views.change_shift_registrar, name="change_shift"),
-    path("change_shift/<int:pk>/cancel/", editor_views.cancel_shift_change, name="cancel_shift_change"),
-    path("add_shift/", editor_views.add_shift, name="add_shift"),
+    path("shift/new/", editor_views.add_shift, name="add_shift"),
+    path("shift/<int:pk>/", editor_views.change_shift, name="change_shift"),
+    path("shift/<int:pk>/delete/", editor_views.delete_shift, name="delete_shift"),
+    path("leave/<int:pk>/", editor_views.change_leave, name="change_leave"),
 ]
 
 roster_view_urls = [
     path("", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"),
     path("editor/", include(editor_view_urls)),
-    # path("editor/", TemplateView.as_view(template_name="roster/editor.html"), name="editor"),
     path("table/", TemplateView.as_view(template_name="roster/roster_table.html"), name="roster"),
     path("workload/", roster_views.get_workload, name="workload"),
 ]
