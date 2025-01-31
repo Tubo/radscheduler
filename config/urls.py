@@ -34,15 +34,8 @@ editor_view_urls = [
 roster_view_urls = [
     path("", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"),
     path("editor/", include(editor_view_urls)),
-    path("table/", TemplateView.as_view(template_name="roster/roster_table.html"), name="roster"),
     path("workload/", roster_views.get_workload, name="workload"),
 ]
-
-api_view_urls = [
-    path("", api.urls, name="api"),
-    path("table/events/", roster_views.get_roster, name="table_events"),
-]
-
 
 extra_duties_urls = [
     path("", extra_duties_views.page, name="extra_page"),
@@ -72,7 +65,7 @@ urlpatterns = [
     path("roster/", include(roster_view_urls)),
     path("extra_duties/", include(extra_duties_urls)),
     path("ical/", include(ical_urls)),
-    path("api/", include(api_view_urls)),
+    path("api/", api.urls, name="api"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
