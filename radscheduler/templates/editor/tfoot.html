@@ -1,0 +1,25 @@
+{% load editor_tags %}
+
+<tfoot>
+    <tr class=" text-center table-light">
+        <th scope="col"
+            style="width: 100px"
+            class="text-secondary text-start small">Leaves</th>
+        {% now "Y-m-d" as today %}
+        {% for date in dates %}
+            <th scope="col" data-date="{{ date|date:'Y-m-d' }}" class="small">
+                {% if not date|date:"D" in "Sat,Sun" %}
+                    <span class="approved-leaves text-success"
+                          data-bs-toggle="tooltip"
+                          data-bs-title="Approved"></span>
+                    <span>/</span>
+                    <span class="pending-leaves text-warning"
+                          data-bs-toggle="tooltip"
+                          data-bs-title="Pending"></span>
+                    <span>/</span>
+                    <span class="total-leaves" data-bs-toggle="tooltip" data-bs-title="Total"></span>
+                {% endif %}
+            </th>
+        {% endfor %}
+    </tr>
+</tfoot>

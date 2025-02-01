@@ -1,11 +1,18 @@
-<div class="btn-group event event-leave-button">
+<div class="btn-group event event-leave-button"
+     data-date="{{ leave.date|date:"Y-m-d" }}"
+     data-event-type="leave"
+     data-leave-id="{{ leave.id }}"
+     data-event-reg="{{ leave.registrar.id }}"
+     data-event-approved="{{ leave.is_approved }}"
+     data-event-cancelled="{{ leave.cancelled }}"
+     data-event-pending="{{ leave.is_pending }}">
     <button type="button"
             class="btn btn-sm dropdown-toggle py-1 w-100
                    {% if leave.cancelled %}
                        text-decoration-line-through btn-outline-secondary
-                   {% elif leave.dot_approved is False or leave.reg_approved is False %}
+                   {% elif leave.is_declined %}
                        text-decoration-line-through btn-outline-danger
-                   {% elif leave.dot_approved and leave.reg_approved %}
+                   {% elif leave.is_approved %}
                        btn-outline-success
                    {% elif leave.dot_approved or leave.reg_approved %}
                        btn-outline-warning shadow

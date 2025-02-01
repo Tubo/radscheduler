@@ -118,6 +118,22 @@ class Leave(models.Model):
     def is_past(self):
         return self.date < date.today()
 
+    def is_approved(self):
+        return True if self.reg_approved and self.dot_approved else False
+
+    def is_declined(self):
+        return self.reg_approved is False or self.dot_approved is False
+
+    def is_pending(self):
+        if self.cancelled:
+            return False
+        elif self.reg_approved and self.dot_approved:
+            return False
+        elif self.reg_approved is False or self.dot_approved is False:
+            return False
+        else:
+            return True
+
     class Meta:
         unique_together = ["date", "registrar"]
 

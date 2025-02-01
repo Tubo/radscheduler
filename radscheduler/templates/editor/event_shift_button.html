@@ -1,4 +1,4 @@
-<div class="btn-group event event-shift-button" data-shift-id={{ shift.id }}>
+<div class="btn-group event event-shift-button" data-shift-id={{ shift.id }} data-date={{ shift.date|date:'Y-m-d' }} data-event-type="shift" data-event-reg={{ shift.registrar.id }}>
     <button type="button"
             class="btn btn-sm dropdown-toggle shadow py-1 w-100
                    {% if shift.type in 'LONG,SWING' %}

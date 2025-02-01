@@ -3,7 +3,7 @@
 
 <div class="row justify-content-between align-items-center pt-3 mx-0 my-2 border border-2 shadow-sm"
      id="menu-bar">
-    <div class="col-9 d-flex justify-content-start">
+    <div class="col-6 col-lg-9 d-flex justify-content-start">
         <form action="{% url 'editor_by_date' week_in_focus|date:'Y-m-d' %}"
               method="get"
               class="w-100"
@@ -13,7 +13,7 @@
             {% crispy events_filter_form %}
         </form>
     </div>
-    <div class="col-3 d-flex justify-content-end gap-2">
+    <div class="col-6 col-lg-3 d-flex justify-content-end gap-2">
         <div>
             <input type="date"
                    name="week_in_focus"
