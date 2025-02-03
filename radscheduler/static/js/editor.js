@@ -18,17 +18,36 @@ up.compiler("[data-bs-toggle='tooltip']", function (element) {
     // new bootstrap.Tooltip(element);
 })
 
-up.compiler(".event-leave-button", function (element) {
-    // Whenever a leave button gets updated, we need to count the number of leaves for that column
-    const date = element.getAttribute('data-date');
-    const leaves = document.querySelectorAll(`.event-leave-button[data-date='${date}'][data-event-cancelled*='False']`);
-    const approved = Array.from(leaves).filter(leave => leave.getAttribute('data-event-approved').includes('True'));
-    const pending = Array.from(leaves).filter(leave => leave.getAttribute('data-event-pending').includes('True'));
-    const tfoot = document.querySelector(`tfoot th[data-date='${date}']`);
-    console.log("date:", date, "leaves:", leaves.length, "approved:", approved.length, "pending:", pending.length);
-    tfoot.querySelector('.total-leaves').textContent = leaves.length;
-    tfoot.querySelector('.approved-leaves').textContent = approved.length;
-    tfoot.querySelector('.pending-leaves').textContent = pending.length;
+up.compiler(".event-leave-button", { batch: true }, function (elements) {
+    // On page load, we need to count the number of leaves for that column
+    // loop through each element
+    let footer_cell = document.querySelectorAll("tfoot th[data-date]:has(span)");
+    for (const cell of footer_cell) {
+        const date = cell.getAttribute('data-date');
+        const leaves = document.querySelectorAll(`.event-leave-button[data-date='${date}'][data-event-cancelled='False']`);
+        const deduped = Array.from(leaves).reduce((acc, leave) => {
+            if (!acc.some(item => item.getAttribute('data-leave-id') === leave.getAttribute('data-leave-id'))) {
+                acc.push(leave);
+            }
+            return acc;
+        }, []);
+        let total_leaves = 0;
+        let approved_leaves = 0;
+        let pending_leaves = 0;
+
+        for (const leave of deduped) {
+            total_leaves += 1;
+            if (leave.getAttribute('data-event-approved') === 'True') {
+                approved_leaves += 1;
+            }
+            if (leave.getAttribute('data-event-pending') === 'True') {
+                pending_leaves += 1;
+            }
+        }
+        cell.querySelector('.total-leaves').textContent = total_leaves;
+        cell.querySelector('.approved-leaves').textContent = approved_leaves;
+        cell.querySelector('.pending-leaves').textContent = pending_leaves;
+    }
 })
 
 up.on('up:form:submit', (event, form) => {
@@ -38,7 +57,6 @@ up.on('up:form:submit', (event, form) => {
     if (!dd) {
         return
     }
-    console.log("form:", form, "dd:", dd)
     let dd_intance = bootstrap.Dropdown.getInstance(dd.previousElementSibling)
     dd_intance.hide()
 })
