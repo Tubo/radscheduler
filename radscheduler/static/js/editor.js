@@ -18,35 +18,30 @@ up.compiler("[data-bs-toggle='tooltip']", function (element) {
     // new bootstrap.Tooltip(element);
 })
 
-up.compiler(".event-leave-button", { batch: true }, function (elements) {
+up.compiler(".event-leave-button", { batch: true }, function (elements, data) {
     // On page load, we need to count the number of leaves for that column
-    // loop through each element
-    let footer_cell = document.querySelectorAll("tfoot th[data-date]:has(span)");
-    for (const cell of footer_cell) {
-        const date = cell.getAttribute('data-date');
-        const leaves = document.querySelectorAll(`.event-leave-button[data-date='${date}'][data-event-cancelled='False']`);
-        const deduped = Array.from(leaves).reduce((acc, leave) => {
-            if (!acc.some(item => item.getAttribute('data-leave-id') === leave.getAttribute('data-leave-id'))) {
-                acc.push(leave);
-            }
-            return acc;
-        }, []);
-        let total_leaves = 0;
-        let approved_leaves = 0;
-        let pending_leaves = 0;
+    // and update the footer cell with the total number of leaves.
 
-        for (const leave of deduped) {
-            total_leaves += 1;
-            if (leave.getAttribute('data-event-approved') === 'True') {
-                approved_leaves += 1;
-            }
-            if (leave.getAttribute('data-event-pending') === 'True') {
-                pending_leaves += 1;
-            }
+    const grouped_by_date = data.reduce((acc, item) => {
+        // group each item in data by date
+        const date = item.date;
+        if (!acc[date]) {
+            acc[date] = [];
         }
-        cell.querySelector('.total-leaves').textContent = total_leaves;
-        cell.querySelector('.approved-leaves').textContent = approved_leaves;
-        cell.querySelector('.pending-leaves').textContent = pending_leaves;
+        acc[date].push(item);
+        return acc;
+    }, {});
+
+    // iterate over each date and update the footer cell
+    for (const date in grouped_by_date) {
+        const leaves = grouped_by_date[date].filter(item => item.eventCancelled === "False");
+        const total_leaves = leaves.length;
+        const approved_leaves = leaves.filter(item => item.eventApproved === "True").length;
+        const pending_leaves = leaves.filter(item => item.eventPending === "True").length;
+        const footer_cell = up.fragment.get(`tfoot th[data-date='${date}']`);
+        up.fragment.get(footer_cell, '.total-leaves').textContent = total_leaves;
+        up.fragment.get(footer_cell, '.approved-leaves').textContent = approved_leaves;
+        up.fragment.get(footer_cell, '.pending-leaves').textContent = pending_leaves;
     }
 })
 
