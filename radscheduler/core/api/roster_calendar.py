@@ -2,6 +2,7 @@ from datetime import date
 from typing import List
 
 import holidays
+from django.db.models import Q
 from ninja import Field, ModelSchema, Router, Schema
 
 import radscheduler.core.models as orm
@@ -65,7 +66,7 @@ def shift_events(request, start: date, end: date):
 def leave_events(request, start: date, end: date):
     leaves = (
         orm.Leave.objects.filter(date__gte=start, date__lte=end)
-        .exclude(reg_approved=False, dot_approved=False, cancelled=True)
+        .exclude(Q(reg_approved=False) | Q(dot_approved=False) | Q(cancelled=True))
         .select_related("registrar", "registrar__user")
     )
     return list(leaves)
