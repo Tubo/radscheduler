@@ -23,10 +23,13 @@
 
   # https://devenv.sh/packages/
   packages = with pkgs; [
+    libpq.pg_config
     git
     flyctl
     gzip
     coreutils
+    playwright-test
+    playwright-driver
   ];
 
   # https://devenv.sh/languages/
@@ -71,6 +74,13 @@
     '';
     "db:restore".exec = ''
       python bin/pg_restore.py --clean "$@" 
+    '';
+    "pip:compile".exec = ''
+      pip-compile --extra local -o requirements/local.txt
+      pip-compile --extra production -o requirements/production.txt
+    '';
+    "pip:sync".exec = ''
+      pip-sync requirements/local.txt
     '';
   };
 
