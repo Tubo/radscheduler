@@ -76,8 +76,12 @@
       python bin/pg_restore.py --clean "$@" 
     '';
     "pip:compile".exec = ''
-      pip-compile --extra local -o requirements/local.txt
-      pip-compile --extra production -o requirements/production.txt
+      pip-compile --extra local -o requirements/local.txt "$@"
+      pip-compile --extra production -o requirements/production.txt "$@"
+    '';
+    "pip:upgrade".exec = ''
+      pip-compile --extra local -o requirements/local.txt --upgrade "$@"
+      pip-compile --extra production -o requirements/production.txt --upgrade "$@"
     '';
     "pip:sync".exec = ''
       pip-sync requirements/local.txt
