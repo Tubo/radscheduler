@@ -77,7 +77,7 @@ dill==0.4.0
     # via pylint
 distlib==0.4.0
     # via virtualenv
-django==4.2.27
+django==5.2.9
     # via
     #   crispy-bootstrap5
     #   django-allauth
