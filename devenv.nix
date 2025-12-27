@@ -8,12 +8,15 @@
 
 {
   # https://devenv.sh/basics/
-  env.FLY_APP = "radscheduler";
-  env.FLY_PG_APP = "radscheduler-db";
+  env = {
+    FLY_APP = "radscheduler";
+    FLY_PG_APP = "radscheduler-db";
 
-  env.POSTGRES_HOST = "";
-  env.DATABASE_URL = "postgres://${config.env.POSTGRES_USER}:${config.env.POSTGRES_PASSWORD}@${config.env.POSTGRES_HOST}/${config.env.POSTGRES_DB}";
-  env.EMAIL_HOST = "localhost";
+    PGDATABASE = config.env.POSTGRES_DB;
+    DATABASE_URL = "postgres://${config.env.POSTGRES_USER}:${config.env.POSTGRES_PASSWORD}@${config.env.PGHOST}/${config.env.POSTGRES_DB}";
+
+    EMAIL_HOST = "localhost"; # For Mailpit
+  };
 
   dotenv.enable = true;
   dotenv.filename = [
@@ -54,14 +57,20 @@
   '';
 
   # https://devenv.sh/services/
-  services.postgres.enable = true;
-  services.postgres.initialDatabases = [
-    {
-      name = config.env.POSTGRES_DB;
-      user = config.env.POSTGRES_USER;
-      pass = config.env.POSTGRES_PASSWORD;
-    }
-  ];
+  services.postgres = {
+    enable = true;
+    listen_addresses = "localhost";
+    initialScript = ''
+      ALTER USER "${config.env.POSTGRES_USER}" WITH SUPERUSER;
+    '';
+    initialDatabases = [
+      {
+        name = config.env.POSTGRES_DB;
+        user = config.env.POSTGRES_USER;
+        pass = config.env.POSTGRES_PASSWORD;
+      }
+    ];
+  };
   services.mailpit.enable = true;
 
   # https://devenv.sh/scripts/
@@ -73,7 +82,10 @@
       python bin/pg_pull_from_fly.py
     '';
     "db:restore".exec = ''
-      python bin/pg_restore.py --clean "$@" 
+      latest_backup="$(ls -1t backups/* | head -n 1)" && echo "Latest: $latest_backup"
+      dropdb "${config.env.POSTGRES_DB}"
+      createdb "${config.env.POSTGRES_DB}" --owner="${config.env.POSTGRES_USER}"
+      gunzip -c "$latest_backup" | psql "${config.env.POSTGRES_DB}" >/dev/null 2>&1 && echo "Restore success" || echo "Restore failed"
     '';
     "pip:compile".exec = ''
       pip-compile --extra local -o requirements/local.txt "$@"
