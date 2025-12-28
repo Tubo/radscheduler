@@ -11,9 +11,21 @@ class ShiftFeed(ICalFeed):
     timezone = "Pacific/Auckland"
 
     def items(self):
-        return Shift.objects.filter(
-            date__gte=date.today() - timedelta(days=365), registrar__isnull=False
-        ).select_related("registrar", "registrar__user")
+        # Only fetch recent past (30 days) and future shifts to reduce query size
+        return (
+            Shift.objects.filter(
+                date__gte=date.today() - timedelta(days=30), registrar__isnull=False
+            )
+            .select_related("registrar", "registrar__user")
+            .only(
+                "id",
+                "date",
+                "type",
+                "extra_duty",
+                "registrar__id",
+                "registrar__user__username",
+            )
+        )
 
     def item_title(self, shift):
         result = f"{shift.type}: {shift.registrar.user.username}"
@@ -43,8 +55,20 @@ class LeaveFeed(ICalFeed):
     timezone = "Pacific/Auckland"
 
     def items(self):
-        return Leave.objects.filter(date__gte=date.today() - timedelta(days=365), cancelled=False).select_related(
-            "registrar", "registrar__user"
+        # Only fetch recent past (30 days) and future leaves to reduce query size
+        return (
+            Leave.objects.filter(
+                date__gte=date.today() - timedelta(days=30), cancelled=False
+            )
+            .select_related("registrar", "registrar__user")
+            .only(
+                "id",
+                "date",
+                "type",
+                "portion",
+                "registrar__id",
+                "registrar__user__username",
+            )
         )
 
     def item_title(self, leave):

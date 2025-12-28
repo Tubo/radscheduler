@@ -32,7 +32,7 @@ class Registrar(models.Model):
 
 
 class Shift(models.Model):
-    date = models.DateField("shift date")
+    date = models.DateField("shift date", db_index=True)
     type = models.CharField(
         "shift type", max_length=10, choices=roster.ShiftType.choices
     )
@@ -99,7 +99,7 @@ class Leave(models.Model):
     registrar = models.ForeignKey(
         Registrar, blank=False, null=False, on_delete=models.CASCADE
     )
-    date = models.DateField("date of leave")
+    date = models.DateField("date of leave", db_index=True)
     type = models.CharField(choices=roster.LeaveType.choices, max_length=10)
     portion = models.CharField(
         "portion of day",

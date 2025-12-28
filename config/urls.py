@@ -3,6 +3,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.views import defaults as default_views
+from django.views.decorators.cache import cache_page
 from django.views.generic import TemplateView
 
 import radscheduler.core.ical as ical
@@ -66,9 +67,17 @@ extra_duties_urls = [
     ),
 ]
 
+# Cache iCal feeds for 15 minutes - calendar apps poll periodically
+# and the data doesn't change frequently
+ICAL_CACHE_SECONDS = 60 * 15  # 15 minutes
+
 ical_urls = [
-    path("shifts/", ical.ShiftFeed(), name="ical_shifts"),
-    path("leaves/", ical.LeaveFeed(), name="ical_leaves"),
+    path(
+        "shifts/", cache_page(ICAL_CACHE_SECONDS)(ical.ShiftFeed()), name="ical_shifts"
+    ),
+    path(
+        "leaves/", cache_page(ICAL_CACHE_SECONDS)(ical.LeaveFeed()), name="ical_leaves"
+    ),
 ]
 
 
