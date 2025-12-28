@@ -2,9 +2,26 @@ from datetime import date
 
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.db.models import ExpressionWrapper, F, IntegerField, Value
+from django.db.models.functions import ExtractYear, Now
 
 from radscheduler import roster
 from radscheduler.users.models import User
+
+
+class RegistrarQuerySet(models.QuerySet):
+    def annotate_year(self):
+        # year = ExtractYear(now) - ExtractYear(start) + 1
+        expr = ExpressionWrapper(
+            ExtractYear(Now()) - ExtractYear(F("start")) + Value(1),
+            output_field=IntegerField(),
+        )
+        return self.annotate(year=expr)
+
+
+class RegistrarManager(models.Manager):
+    def get_queryset(self):
+        return RegistrarQuerySet(self.model, using=self._db).annotate_year()
 
 
 class Registrar(models.Model):
@@ -17,14 +34,19 @@ class Registrar(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
 
+    # Use a manager that annotates `year` by default on querysets
+    objects = RegistrarManager()
+
     def __repr__(self) -> str:
         return f"<Registrar: {self.user.username}>"
 
     def __str__(self) -> str:
         return self.user.username
 
-    @property
-    def year(self):
+    # `year` is provided via a default queryset annotation.
+    # If you need the exact value for a single instance outside a queryset,
+    # call `Registrar.compute_year()`.
+    def compute_year(self):
         if self.start is None:
             return None
 

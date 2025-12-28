@@ -14,8 +14,11 @@ up.compiler("#menu-bar", function (element) {
 
 up.compiler("[data-bs-toggle='tooltip']", function (element) {
     // Initialize Bootstrap tooltips for the shift buttons after update.
-    bootstrap.Tooltip.getOrCreateInstance(element);
-    // new bootstrap.Tooltip(element);
+    const tooltip = bootstrap.Tooltip.getOrCreateInstance(element);
+    // dispose the tooltip when the anchor element is removed
+    up.destructor(element, () => {
+        tooltip.dispose()
+    })
 })
 
 up.compiler(".event-leave-button", { batch: true }, function (elements, data) {
