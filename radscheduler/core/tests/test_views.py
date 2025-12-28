@@ -38,3 +38,30 @@ class TestAccess:
 class TestRosterGeneration:
     def test_generate_empty_schedule(self, app, juniors_db):
         pass
+
+
+class TestSettingsView:
+    """Tests for the settings view Unpoly layer behavior."""
+
+    def test_settings_redirects_to_editor_on_direct_access(self, app, admin_user):
+        """When accessing settings URL directly (browser refresh), redirect to editor."""
+        app.set_user(admin_user)
+        resp = app.get(reverse("settings"))
+        assert resp.status_code == 302
+        assert resp.location == reverse("editor")
+
+    def test_settings_renders_form_when_accessed_via_unpoly_layer(
+        self, app, admin_user
+    ):
+        """When accessing settings via Unpoly layer, render the settings form."""
+        app.set_user(admin_user)
+        resp = app.get(reverse("settings"), headers={"X-Up-Mode": "modal"})
+        assert resp.status_code == 200
+        assert "Publication Settings" in resp.text
+
+    def test_settings_redirects_when_unpoly_mode_is_root(self, app, admin_user):
+        """When X-Up-Mode is 'root', treat as direct access and redirect."""
+        app.set_user(admin_user)
+        resp = app.get(reverse("settings"), headers={"X-Up-Mode": "root"})
+        assert resp.status_code == 302
+        assert resp.location == reverse("editor")

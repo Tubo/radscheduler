@@ -31,7 +31,9 @@ class TestShift:
         # TODO: Test that only one shift per day is allowed
         Shift.objects.create(date=date(2023, 8, 1), type=ShiftType.LONG, registrar=reg)
         with pytest.raises(IntegrityError):
-            Shift.objects.create(date=date(2023, 8, 1), type=ShiftType.LONG, registrar=reg)
+            Shift.objects.create(
+                date=date(2023, 8, 1), type=ShiftType.LONG, registrar=reg
+            )
 
 
 class TestStatus:
@@ -77,20 +79,28 @@ class TestSettings:
         # Test that only one Settings instance can be created
         from radscheduler.core.models import Settings
 
-        Settings.objects.create(publish_start_date=date(2023, 1, 1), publish_end_date=date(2023, 12, 31))
+        Settings.objects.create(
+            publish_start_date=date(2023, 1, 1), publish_end_date=date(2023, 12, 31)
+        )
         with pytest.raises(IntegrityError):
-            Settings.objects.create(publish_start_date=date(2024, 1, 1), publish_end_date=date(2024, 12, 31))
-            
-    def test_shift_queryset_returns_all_shifts_regardless_of_settings(self, db, juniors_db):
+            Settings.objects.create(
+                publish_start_date=date(2024, 1, 1), publish_end_date=date(2024, 12, 31)
+            )
+
+    def test_shift_queryset_returns_all_shifts_regardless_of_settings(
+        self, db, juniors_db
+    ):
         """Shift.objects should return all shifts without date range filtering.
-        
+
         The publish date range filtering is now only applied in the calendar API,
         not at the model manager level.
         """
         from radscheduler.core.models import Settings, Shift
 
         # Create settings with a limited date range
-        Settings.objects.create(publish_start_date=date(2023, 6, 1), publish_end_date=date(2023, 6, 30))
+        Settings.objects.create(
+            publish_start_date=date(2023, 6, 1), publish_end_date=date(2023, 6, 30)
+        )
 
         reg = juniors_db[0]
         reg.save()
