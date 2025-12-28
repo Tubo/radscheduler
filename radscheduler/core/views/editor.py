@@ -157,6 +157,11 @@ def settings(request):
     """
     Display the settings form.
     """
+    # If not opened in an Unpoly layer (e.g., browser refresh), redirect to editor
+    up_mode = request.headers.get("X-Up-Mode")
+    if not up_mode or up_mode == "root":
+        return redirect("editor")
+
     settings_obj = Settings.objects.first()
     if not settings_obj:
         settings_obj = Settings.objects.create(
