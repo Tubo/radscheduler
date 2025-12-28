@@ -10,6 +10,19 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Run Sentry release
+        if: env.SENTRY_AUTH_TOKEN != ''
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          VERSION=$(sentry-cli releases propose-version)
+          sentry-cli releases new "$VERSION" || true
+          sentry-cli releases set-commits "$VERSION" --auto || true
+          sentry-cli releases finalize "$VERSION" || true
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+
       - run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
