@@ -161,6 +161,8 @@ freezegun==1.5.5
     # via radscheduler (pyproject.toml)
 furl==2.1.4
     # via django-functest
+greenlet==3.3.0
+    # via playwright
 h11==0.16.0
     # via
     #   uvicorn
@@ -257,6 +259,8 @@ platformdirs==4.5.1
     # via
     #   pylint
     #   virtualenv
+playwright==1.57.0
+    # via pytest-playwright
 pluggy==1.6.0
     # via pytest
 pre-commit==4.5.1
@@ -279,6 +283,8 @@ pydantic==2.12.5
     # via django-ninja
 pydantic-core==2.41.5
     # via pydantic
+pyee==13.0.0
+    # via playwright
 pyflakes==3.4.0
     # via flake8
 pygments==2.19.2
@@ -307,10 +313,16 @@ pysocks==1.7.1
     # via urllib3
 pytest==9.0.2
     # via
+    #   pytest-base-url
     #   pytest-django
+    #   pytest-playwright
     #   pytest-sugar
     #   radscheduler (pyproject.toml)
+pytest-base-url==2.1.0
+    # via pytest-playwright
 pytest-django==4.11.1
+    # via radscheduler (pyproject.toml)
+pytest-playwright==0.7.2
     # via radscheduler (pyproject.toml)
 pytest-sugar==1.1.1
     # via radscheduler (pyproject.toml)
@@ -322,7 +334,9 @@ python-dateutil==2.9.0.post0
     #   icalendar
     #   pandas
 python-slugify==8.0.4
-    # via radscheduler (pyproject.toml)
+    # via
+    #   pytest-playwright
+    #   radscheduler (pyproject.toml)
 pytz==2025.2
     # via pandas
 pyyaml==6.0.3
@@ -339,7 +353,9 @@ regex==2025.11.3
 reportlab==4.4.7
     # via radscheduler (pyproject.toml)
 requests==2.32.5
-    # via sphinx
+    # via
+    #   pytest-base-url
+    #   sphinx
 roman-numerals==4.1.0
     # via sphinx
 ruff==0.14.10
@@ -418,6 +434,7 @@ typing-extensions==4.15.0
     #   psycopg
     #   pydantic
     #   pydantic-core
+    #   pyee
     #   selenium
     #   starlette
     #   typing-inspection

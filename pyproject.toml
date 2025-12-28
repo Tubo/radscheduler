@@ -41,6 +41,7 @@ local = [
     "pytest",
     "pytest-django",
     "pytest-sugar",
+    "pytest-playwright",
     "freezegun",
     "coverage",
     "sphinx",
