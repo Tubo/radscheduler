@@ -26,10 +26,7 @@ astroid==3.3.11
 asttokens==3.0.1
     # via stack-data
 attrs==25.4.0
-    # via
-    #   outcome
-    #   trio
-    #   unpoly
+    # via unpoly
 babel==2.17.0
     # via sphinx
 beautifulsoup4==4.14.3
@@ -37,9 +34,7 @@ beautifulsoup4==4.14.3
 build==1.3.0
     # via pip-tools
 certifi==2025.11.12
-    # via
-    #   requests
-    #   selenium
+    # via requests
 cffi==2.0.0
     # via argon2-cffi-bindings
 cfgv==3.5.0
@@ -65,8 +60,6 @@ crispy-bootstrap5==2025.6
     # via radscheduler (pyproject.toml)
 cssbeautifier==1.15.4
     # via djlint
-cssselect==1.3.0
-    # via pyquery
 dacite==1.9.2
     # via radscheduler (pyproject.toml)
 decorator==5.2.1
@@ -85,7 +78,6 @@ django==5.2.9
     #   django-crispy-forms
     #   django-debug-toolbar
     #   django-extensions
-    #   django-functest
     #   django-htmx
     #   django-ical
     #   django-model-utils
@@ -112,8 +104,6 @@ django-environ==0.12.0
     # via radscheduler (pyproject.toml)
 django-extensions==4.1
     # via radscheduler (pyproject.toml)
-django-functest==1.6.2
-    # via radscheduler (pyproject.toml)
 django-htmx==1.27.0
     # via radscheduler (pyproject.toml)
 django-ical==1.9.2
@@ -135,9 +125,7 @@ django-template-partials==25.3
 django-webpack-loader==3.2.3
     # via radscheduler (pyproject.toml)
 django-webtest==1.9.14
-    # via
-    #   django-functest
-    #   radscheduler (pyproject.toml)
+    # via radscheduler (pyproject.toml)
 djlint==1.36.4
     # via radscheduler (pyproject.toml)
 docutils==0.22.4
@@ -162,14 +150,10 @@ flake8-isort==7.0.0
     # via radscheduler (pyproject.toml)
 freezegun==1.5.5
     # via radscheduler (pyproject.toml)
-furl==2.1.4
-    # via django-functest
 greenlet==3.3.0
     # via playwright
 h11==0.16.0
-    # via
-    #   uvicorn
-    #   wsproto
+    # via uvicorn
 hiredis==3.3.0
     # via radscheduler (pyproject.toml)
 holidays==0.87
@@ -182,7 +166,6 @@ idna==3.11
     # via
     #   anyio
     #   requests
-    #   trio
 imagesize==1.4.1
     # via sphinx
 iniconfig==2.3.0
@@ -209,8 +192,6 @@ json5==0.12.1
     # via djlint
 librt==0.7.5
     # via mypy
-lxml==6.0.2
-    # via pyquery
 markupsafe==3.0.3
     # via
     #   jinja2
@@ -231,12 +212,6 @@ nodeenv==1.10.0
     # via pre-commit
 numpy==2.4.0
     # via pandas
-orderedmultidict==1.0.2
-    # via furl
-outcome==1.3.0.post0
-    # via
-    #   trio
-    #   trio-websocket
 packaging==25.0
     # via
     #   build
@@ -312,10 +287,6 @@ pyproject-hooks==1.2.0
     # via
     #   build
     #   pip-tools
-pyquery==2.0.1
-    # via django-functest
-pysocks==1.7.1
-    # via urllib3
 pytest==9.0.2
     # via
     #   pytest-base-url
@@ -365,21 +336,13 @@ roman-numerals==4.1.0
     # via sphinx
 ruff==0.14.10
     # via radscheduler (pyproject.toml)
-selenium==4.39.0
-    # via django-functest
 six==1.17.0
     # via
     #   cssbeautifier
-    #   furl
     #   jsbeautifier
-    #   orderedmultidict
     #   python-dateutil
-sniffio==1.3.1
-    # via trio
 snowballstemmer==3.0.1
     # via sphinx
-sortedcontainers==2.4.0
-    # via trio
 soupsieve==2.8.1
     # via beautifulsoup4
 sphinx==9.0.4
@@ -420,12 +383,6 @@ traitlets==5.14.3
     # via
     #   ipython
     #   matplotlib-inline
-trio==0.32.0
-    # via
-    #   selenium
-    #   trio-websocket
-trio-websocket==0.12.2
-    # via selenium
 types-pyyaml==6.0.12.20250915
     # via django-stubs
 typing-extensions==4.15.0
@@ -440,7 +397,6 @@ typing-extensions==4.15.0
     #   pydantic
     #   pydantic-core
     #   pyee
-    #   selenium
     #   starlette
     #   typing-inspection
 typing-inspection==0.4.2
@@ -452,10 +408,8 @@ tzdata==2025.3
     #   pandas
 unpoly==3.2.0
     # via radscheduler (pyproject.toml)
-urllib3[socks]==2.6.2
-    # via
-    #   requests
-    #   selenium
+urllib3==2.6.2
+    # via requests
 uvicorn==0.40.0
     # via sphinx-autobuild
 virtualenv==20.35.4
@@ -470,22 +424,16 @@ wcwidth==0.2.14
     # via prompt-toolkit
 webob==1.8.9
     # via webtest
-websocket-client==1.9.0
-    # via selenium
 websockets==15.0.1
     # via sphinx-autobuild
 webtest==3.0.7
-    # via
-    #   django-functest
-    #   django-webtest
+    # via django-webtest
 werkzeug[watchdog]==3.1.4
     # via radscheduler (pyproject.toml)
 wheel==0.45.1
     # via pip-tools
 whitenoise==6.11.0
     # via radscheduler (pyproject.toml)
-wsproto==1.3.2
-    # via trio-websocket
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
