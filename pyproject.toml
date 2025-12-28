@@ -15,6 +15,7 @@ dependencies = [
     "django-htmx",
     "django-extensions",
     "django-ninja",
+    "django-template-partials",
     "dacite",
     "unpoly",
     "pypdf",
@@ -41,6 +42,7 @@ local = [
     "pytest",
     "pytest-django",
     "pytest-sugar",
+    "playwright==1.54",              # Pinning to match nixpkgs version
     "pytest-playwright",
     "freezegun",
     "coverage",

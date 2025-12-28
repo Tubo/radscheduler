@@ -44,6 +44,7 @@ django==5.2.9
     #   django-ninja
     #   django-recurrence
     #   django-redis
+    #   django-template-partials
     #   radscheduler (pyproject.toml)
 django-admin-rangefilter==0.13.5
     # via radscheduler (pyproject.toml)
@@ -70,6 +71,8 @@ django-ninja==1.5.1
 django-recurrence==1.14
     # via django-ical
 django-redis==6.0.0
+    # via radscheduler (pyproject.toml)
+django-template-partials==25.3
     # via radscheduler (pyproject.toml)
 django-webpack-loader==3.2.3
     # via radscheduler (pyproject.toml)
