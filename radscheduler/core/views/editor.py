@@ -59,6 +59,7 @@ def page(request, date_=None):
             leave_types = events_filter_form.cleaned_data["leave_types"]
 
     registrars, dates, events = get_events(week_in_focus, shift_types, leave_types)
+    settings = Settings.objects.first()
 
     return render(
         request,
@@ -74,6 +75,7 @@ def page(request, date_=None):
             "next": week_in_focus + timedelta(weeks=1),
             "shift_types": roster.ShiftType.choices,
             "leave_types": roster.LeaveType.choices,
+            "settings": settings,
         },
     )
 

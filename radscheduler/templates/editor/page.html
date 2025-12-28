@@ -12,7 +12,15 @@
 {% endblock javascript %}
 {% block content %}
   <main class="container-fluid">
-    <h1>Roster Editor</h1>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+      <h1 class="mb-0">Roster Editor</h1>
+      {% if settings %}
+        <div class="d-flex align-items-center gap-2 text-muted">
+          <i class="bi bi-calendar-range"></i>
+          <span>Published: <strong>{{ settings.publish_start_date|date:"M j, Y" }}</strong> – <strong>{{ settings.publish_end_date|date:"M j, Y" }}</strong></span>
+        </div>
+      {% endif %}
+    </div>
     <div up-main>
       {% include "editor/menu_bar.html" %}
       {% include "editor/table.html" %}
