@@ -13,7 +13,7 @@ from django.http import FileResponse
 from django.http.request import HttpRequest
 from rangefilter.filters import DateRangeFilterBuilder
 
-from radscheduler.core.models import Leave, Registrar, Shift, Status
+from radscheduler.core.models import Leave, Registrar, Settings, Shift, ShiftInterest, Status
 from radscheduler.paper_forms.pdf import leaves_to_buffer
 from radscheduler.roster.models import ShiftType, Weekday
 
@@ -333,3 +333,21 @@ class StatusAdmin(admin.ModelAdmin):
     )
     list_filter = ("registrar__user", "type")
     list_select_related = ("registrar", "registrar__user")
+
+
+@admin.register(Settings)
+class SettingsAdmin(admin.ModelAdmin):
+    list_display = ["publish_start_date", "publish_end_date", "created", "last_edited"]
+    readonly_fields = ["created", "last_edited"]
+    fieldsets = (
+        (None, {"fields": ("publish_start_date", "publish_end_date")}),
+        ("Timestamps", {"fields": ("created", "last_edited"), "classes": ("collapse",)}),
+    )
+
+    def has_add_permission(self, request):
+        # Only allow adding if no settings exist
+        return not Settings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        # Prevent deletion of settings
+        return False

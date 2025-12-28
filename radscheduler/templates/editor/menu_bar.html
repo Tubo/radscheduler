@@ -1,46 +1,69 @@
 {% load crispy_forms_tags %}
 {% load editor_tags %}
 
-<div class="row justify-content-between align-items-center pt-3 mx-0 my-2 border border-2 shadow-sm"
+<div class="d-flex flex-column flex-xl-row flex-wrap flex-xl-nowrap align-items-center gap-3 p-2 mx-0 my-2 border border-2 shadow-sm bg-light rounded"
      id="menu-bar">
-    <div class="col-6 col-lg-9 d-flex justify-content-start">
+    <!-- Navigation Group -->
+    <div class="d-flex align-items-center gap-2 w-100 w-xl-auto justify-content-center justify-content-xl-start"
+         style="flex: 0 1 auto;
+                max-width: 360px">
+        <div class="input-group flex-nowrap w-auto">
+            <a href="{% url 'editor_by_date' prev|date:'Y-m-d' %}"
+               class="btn btn-outline-secondary"
+               up-transition="cross-fade"
+               up-cache="false"
+               up-follow
+               data-bs-toggle="tooltip"
+               data-bs-placement="top"
+               title="Previous week">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+            <input type="date"
+                   name="week_in_focus"
+                   value="{{ week_in_focus|date:'Y-m-d' }}"
+                   class="form-control text-center"
+                   style="min-width: 130px;
+                          max-width: 160px"
+                   onchange="window.location.href = '{% url 'editor' %}' + this.value"
+                   aria-label="Week in focus" />
+            <a href="{% url 'editor_by_date' next|date:'Y-m-d' %}"
+               class="btn btn-outline-secondary"
+               up-transition="cross-fade"
+               up-cache="false"
+               up-follow
+               data-bs-toggle="tooltip"
+               data-bs-placement="top"
+               title="Next week">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </div>
+        {% now "Y-m-d" as today %}
+        <a href="{% url 'editor_by_date' today %}"
+           class="btn btn-outline-primary"
+           up-transition="cross-fade"
+           up-cache="false"
+           up-follow>Today</a>
+    </div>
+    <!-- Filters Group -->
+    <div class="flex-grow-1" style="flex: 3 1 0;">
         <form action="{% url 'editor_by_date' week_in_focus|date:'Y-m-d' %}"
               method="get"
               class="w-100"
               up-submit
-              up-target="#menu-bar, #roster-editor"
-              up-watch-disable>
+              up-autosubmit
+              up-target="#menu-bar, #roster-editor">
             {% crispy events_filter_form %}
         </form>
     </div>
-    <div class="col-6 col-lg-3 d-flex justify-content-end gap-2">
-        <div>
-            <input type="date"
-                   name="week_in_focus"
-                   value="{{ week_in_focus|date:'Y-m-d' }}"
-                   class="form-control" />
-        </div>
-        <span>
-            <a href="{% url 'editor_by_date' prev|date:'Y-m-d' %}"
-               class="btn btn-primary"
-               up-transition="cross-fade"
-               up-cache="false"
-               up-follow><i class="bi bi-rewind-fill"></i></a>
-        </span>
-        <span>
-            {% now "Y-m-d" as today %}
-            <a href="{% url 'editor_by_date' today %}"
-               class="btn btn-primary"
-               up-transition="cross-fade"
-               up-cache="false"
-               up-follow>Today</a>
-        </span>
-        <span>
-            <a href="{% url 'editor_by_date' next|date:'Y-m-d' %}"
-               class="btn btn-primary"
-               up-transition="cross-fade"
-               up-cache="false"
-               up-follow><i class="bi bi-fast-forward-fill"></i></a>
-        </span>
+    <!-- Settings Group -->
+    <div class="w-100 w-xl-auto d-flex justify-content-center justify-content-xl-end"
+         style="flex: 0 1 auto;
+                max-width: 200px">
+        <a href="{% url 'settings' %}"
+           class="btn btn-secondary text-nowrap"
+           up-layer="new"
+           up-on-accepted="up.reload('#roster-editor', { focus: 'keep' })">
+            <i class="bi bi-gear-fill"></i> Settings
+        </a>
     </div>
 </div>

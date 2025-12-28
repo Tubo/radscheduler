@@ -41,3 +41,54 @@ $red: #b94a48;
     font-size: 0.8em;
   }
 }
+
+////////////////////////////
+// Checkbox Button Groups //
+////////////////////////////
+
+// Enhanced visual feedback for checkbox button groups
+.btn-check:checked + .btn-outline-secondary {
+  background-color: #0d6efd !important;
+  border-color: #0d6efd !important;
+  color: #fff !important;
+  font-weight: 600;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.btn-check + .btn-outline-secondary {
+  transition: all 0.15s ease-in-out;
+  background-color: #fff;
+  border-color: #6c757d;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+.btn-check + .btn-outline-secondary:hover {
+  background-color: #f8f9fa;
+  border-color: #495057;
+  color: #495057;
+}
+
+.btn-check:focus + .btn-outline-secondary {
+  box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25);
+}
+
+////////////////////////////
+// Interactive Buttons    //
+////////////////////////////
+
+// Enhanced settings button with interactive shadow
+.btn-secondary {
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}

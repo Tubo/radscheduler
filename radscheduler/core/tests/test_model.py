@@ -70,3 +70,34 @@ class TestStatus:
 class TestLeave:
     def test_cancelled_leaves_filtered_by_default(self):
         pass
+
+
+class TestSettings:
+    def test_singleton_enforced(self):
+        # Test that only one Settings instance can be created
+        from radscheduler.core.models import Settings
+
+        Settings.objects.create(publish_start_date=date(2023, 1, 1), publish_end_date=date(2023, 12, 31))
+        with pytest.raises(IntegrityError):
+            Settings.objects.create(publish_start_date=date(2024, 1, 1), publish_end_date=date(2024, 12, 31))
+            
+    def test_settings_limits_shift_queryset(self, db, juniors_db):
+        from radscheduler.core.models import Settings, Shift
+
+        # Create settings that limit published shifts to 2023-06-01 to 2023-06-30
+        Settings.objects.create(publish_start_date=date(2023, 6, 1), publish_end_date=date(2023, 6, 30))
+
+        reg = juniors_db[0]
+        reg.save()
+
+        # Create shifts on various dates
+        Shift.objects.create(date=date(2023, 5, 31), type=ShiftType.LONG, registrar=reg)
+        Shift.objects.create(date=date(2023, 6, 15), type=ShiftType.LONG, registrar=reg)
+        Shift.objects.create(date=date(2023, 7, 1), type=ShiftType.LONG, registrar=reg)
+
+        # Query shifts using the custom manager
+        shifts = Shift.objects.all()
+
+        # Only the shift on 2023-06-15 should be returned
+        assert len(shifts) == 1
+        assert shifts[0].date == date(2023, 6, 15)

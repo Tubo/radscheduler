@@ -4,14 +4,14 @@ from typing import Any
 
 from crispy_forms.bootstrap import InlineCheckboxes
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Div, Field, Layout, Submit
+from crispy_forms.layout import HTML, Div, Field, Layout, Submit
 from django import forms
 from django.core.files.base import File
 from django.db.models.base import Model
 from django.forms.formsets import formset_factory
 from django.forms.utils import ErrorList
 
-from radscheduler.core.models import Leave, Registrar, Shift, ShiftInterest
+from radscheduler.core.models import Leave, Registrar, Settings, Shift, ShiftInterest
 from radscheduler.core.service import get_active_registrars
 from radscheduler.roster import canterbury_holidays
 from radscheduler.roster.models import LeaveType, ShiftType
@@ -43,10 +43,21 @@ class EventsFilterForm(forms.Form):
 
         self.helper.layout = Layout(
             Div(
-                # auto-submit form when checkbox is clicked with unpoly
-                Div(InlineCheckboxes("shift_types", up_autosubmit="")),
-                Div(InlineCheckboxes("leave_types", up_autosubmit="")),
-                css_class="row row-cols-auto justify-content-start",
+                Div(
+                    HTML(
+                        '<small class="text-muted text-uppercase fw-bold me-2" style="font-size: 0.7rem; min-width: 50px;">Shifts</small>'
+                    ),
+                    Field("shift_types", template="forms/checkbox_btn_group.html"),
+                    css_class="d-flex align-items-center mb-2 mb-xl-0 me-xl-4",
+                ),
+                Div(
+                    HTML(
+                        '<small class="text-muted text-uppercase fw-bold me-2" style="font-size: 0.7rem; min-width: 50px;">Leaves</small>'
+                    ),
+                    Field("leave_types", template="forms/checkbox_btn_group.html"),
+                    css_class="d-flex align-items-center",
+                ),
+                css_class="d-flex flex-column flex-xl-row align-items-start align-items-xl-center",
             )
         )
 
@@ -86,7 +97,9 @@ class LeaveForm(forms.ModelForm):
         if leave_date < date.today():
             raise forms.ValidationError("Unable to apply for leave in the past")
         if leave_date.weekday() > 4:
-            raise forms.ValidationError(f"{leave_date.strftime('%d/%m/%Y')} is a weekend")
+            raise forms.ValidationError(
+                f"{leave_date.strftime('%d/%m/%Y')} is a weekend"
+            )
         return leave_date
 
     def clean_registrar(self) -> Registrar:
@@ -125,3 +138,13 @@ class ShiftInterestForm(forms.ModelForm):
     class Meta:
         model = ShiftInterest
         fields = ["comment"]
+
+
+class SettingsForm(forms.ModelForm):
+    class Meta:
+        model = Settings
+        fields = ["publish_start_date", "publish_end_date"]
+        widgets = {
+            "publish_start_date": forms.DateInput(attrs={"type": "date"}),
+            "publish_end_date": forms.DateInput(attrs={"type": "date"}),
+        }

@@ -13,10 +13,11 @@ from radscheduler.core.forms import (
     DateRangeForm,
     EventsFilterForm,
     LeaveChangeEditorForm,
+    SettingsForm,
     ShiftAddForm,
     ShiftChangeForm,
 )
-from radscheduler.core.models import Registrar, Shift, Status
+from radscheduler.core.models import Registrar, Settings, Shift, Status
 from radscheduler.core.service import *
 
 
@@ -27,11 +28,23 @@ def page(request, date_=None):
     Display the roster generation form.
     """
     date_form = DateForm({"date": date_})
-    week_in_focus = date_form.cleaned_data["date"] if date_form.is_valid() else date.today()
+    week_in_focus = (
+        date_form.cleaned_data["date"] if date_form.is_valid() else date.today()
+    )
 
     # By default, show all shift types and leave types
     shift_types, leave_types = roster.ShiftType.values, roster.LeaveType.values
-    if not request.up:
+
+    if "shift_types" in request.GET or "leave_types" in request.GET:
+        events_filter_form = EventsFilterForm(request.GET)
+    elif request.up:
+        # Else if the request is an Unpoly request, use the context data from unpoly
+        data = {
+            "shift_types": request.up.context.get("shift_types", []),
+            "leave_types": request.up.context.get("leave_types", []),
+        }
+        events_filter_form = EventsFilterForm(data)
+    else:
         # If the request is an normal browser request, create a new form with the default values
         events_filter_form = EventsFilterForm(
             initial={
@@ -39,13 +52,8 @@ def page(request, date_=None):
                 "leave_types": leave_types,
             }
         )
-    else:
-        # Else if the request is an Unpoly request, use the context data from unpoly
-        data = {
-            "shift_types": request.up.context.get("shift_types", []),
-            "leave_types": request.up.context.get("leave_types", []),
-        }
-        events_filter_form = EventsFilterForm(data)
+
+    if events_filter_form.is_bound:
         if events_filter_form.is_valid():
             shift_types = events_filter_form.cleaned_data["shift_types"]
             leave_types = events_filter_form.cleaned_data["leave_types"]
@@ -90,7 +98,11 @@ def add_shift(request):
         return render(
             request,
             "editor/wrapper_cell.html",
-            {"template_name": "editor/event_shift_button.html", "shift": shift, "shift_types": shift_types},
+            {
+                "template_name": "editor/event_shift_button.html",
+                "shift": shift,
+                "shift_types": shift_types,
+            },
         )
     return HttpResponse(status=304)
 
@@ -103,7 +115,11 @@ def change_shift(request, pk):
     form = ShiftChangeForm(request.POST, instance=shift)
     if form.is_valid():
         shift = form.save()
-        return render(request, "editor/event_shift_button.html", {"shift": shift, "shift_types": shift_types})
+        return render(
+            request,
+            "editor/event_shift_button.html",
+            {"shift": shift, "shift_types": shift_types},
+        )
     return HttpResponse(status=304)
 
 
@@ -131,3 +147,40 @@ def change_leave(request, pk):
         leave = form.save()
         return render(request, "editor/event_leave_button.html", {"leave": leave})
     return HttpResponse(status=304)
+
+
+@staff_member_required
+@require_GET
+def settings(request):
+    """
+    Display the settings form.
+    """
+    settings_obj = Settings.objects.first()
+    if not settings_obj:
+        settings_obj = Settings.objects.create(
+            publish_start_date=date.today(),
+            publish_end_date=date.today() + timedelta(days=365),
+        )
+    form = SettingsForm(instance=settings_obj)
+    return render(request, "editor/settings.html", {"form": form})
+
+
+@staff_member_required
+@require_POST
+def update_settings(request):
+    """
+    Update the settings.
+    """
+    settings_obj = Settings.objects.first()
+    if not settings_obj:
+        settings_obj = Settings.objects.create(
+            publish_start_date=date.today(),
+            publish_end_date=date.today() + timedelta(days=365),
+        )
+    form = SettingsForm(request.POST, instance=settings_obj)
+    if form.is_valid():
+        form.save()
+        response = HttpResponse(status=204)
+        response["X-Up-Accept-Layer"] = json.dumps(None)
+        return response
+    return render(request, "editor/settings.html", {"form": form}, status=400)

@@ -1,0 +1,15 @@
+{% load crispy_forms_field %}
+
+<div class="d-flex flex-wrap gap-1" role="group">
+    {% for choice in field.field.choices %}
+        <input type="checkbox"
+               class="btn-check"
+               name="{{ field.html_name }}"
+               id="id_{{ field.html_name }}_{{ forloop.counter }}"
+               value="{{ choice.0 }}"
+               onchange="this.form?.requestSubmit()"
+               {% if choice.0 in field.value %}checked{% endif %} />
+        <label class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+               for="id_{{ field.html_name }}_{{ forloop.counter }}">{{ choice.1 }}</label>
+    {% endfor %}
+</div>

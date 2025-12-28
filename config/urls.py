@@ -18,11 +18,17 @@ leave_view_urls = [
     path("", leaves_views.leave_page, name="leave_page"),
     path("list/", leaves_views.leave_list, name="leave_list"),
     path("inline/<int:pk>/", leaves_views.leave_row, name="leave_row"),
-    path("inline/<int:pk>/form/", leaves_views.leave_form_inline, name="leave_form_inline"),
+    path(
+        "inline/<int:pk>/form/",
+        leaves_views.leave_form_inline,
+        name="leave_form_inline",
+    ),
     path("inline/<int:pk>/delete/", leaves_views.leave_delete, name="leave_delete"),
 ]
 
 editor_view_urls = [
+    path("settings/", editor_views.settings, name="settings"),
+    path("settings/update/", editor_views.update_settings, name="update_settings"),
     path("", editor_views.page, name="editor"),
     path("<str:date_>/", editor_views.page, name="editor_by_date"),
     path("shift/new/", editor_views.add_shift, name="add_shift"),
@@ -32,7 +38,9 @@ editor_view_urls = [
 ]
 
 roster_view_urls = [
-    path("", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"),
+    path(
+        "", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"
+    ),
     path("editor/", include(editor_view_urls)),
     path("workload/", roster_views.get_workload, name="workload"),
 ]
@@ -40,10 +48,22 @@ roster_view_urls = [
 extra_duties_urls = [
     path("", extra_duties_views.page, name="extra_page"),
     path("interests/", extra_duties_views.interests, name="extra_interests"),
-    path("interest/<int:interest_id>/", extra_duties_views.interest, name="extra_interest"),
+    path(
+        "interest/<int:interest_id>/",
+        extra_duties_views.interest,
+        name="extra_interest",
+    ),
     path("editor/", extra_duties_views.edit_page, name="extra_edit_page"),
-    path("editor/random/", extra_duties_views.interested_random_registrar, name="extra_random_registrar"),
-    path("editor/save/<int:shift_id>/", extra_duties_views.save_registrar, name="extra_save_registrar"),
+    path(
+        "editor/random/",
+        extra_duties_views.interested_random_registrar,
+        name="extra_random_registrar",
+    ),
+    path(
+        "editor/save/<int:shift_id>/",
+        extra_duties_views.save_registrar,
+        name="extra_save_registrar",
+    ),
 ]
 
 ical_urls = [
@@ -54,7 +74,9 @@ ical_urls = [
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
-    path("about/", TemplateView.as_view(template_name="pages/about.html"), name="about"),
+    path(
+        "about/", TemplateView.as_view(template_name="pages/about.html"), name="about"
+    ),
     # Django Admin, use {% url 'admin:index' %}
     path(settings.ADMIN_URL, admin.site.urls),
     # User management
@@ -72,7 +94,6 @@ urlpatterns = [
 if settings.DEBUG:
     # This allows the error pages to be debugged during development, just visit
     # these url in browser to see how these error pages look like.
-    urlpatterns += [path("django_functest/", include("django_functest.urls"))]
     urlpatterns += [
         path(
             "400/",

@@ -7,6 +7,21 @@ from radscheduler import roster
 from radscheduler.users.models import User
 
 
+class ShiftManager(models.Manager):
+    def get_queryset(self):
+        try:
+            settings = Settings.objects.first()
+            if settings:
+                return (
+                    super()
+                    .get_queryset()
+                    .filter(date__gte=settings.publish_start_date, date__lte=settings.publish_end_date)
+                )
+        except Settings.DoesNotExist:
+            pass
+        return super().get_queryset()
+
+
 class Registrar(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     senior = models.BooleanField(default=False)
@@ -30,6 +45,9 @@ class Registrar(models.Model):
 
 
 class Shift(models.Model):
+    objects = ShiftManager()
+    all_objects = models.Manager()  # Use this to get all shifts regardless of publication date
+
     date = models.DateField("shift date")
     type = models.CharField("shift type", max_length=10, choices=roster.ShiftType.choices)
     registrar = models.ForeignKey(Registrar, blank=True, null=True, on_delete=models.CASCADE)
@@ -155,3 +173,34 @@ class ShiftInterest(models.Model):
     class Meta:
         unique_together = ["shift", "registrar"]
         verbose_name_plural = "shift interests"
+
+
+class Settings(models.Model):
+    """
+    Global settings for the application.
+    """
+
+    publish_start_date = models.DateField(
+        "publish start date", help_text="Shifts and leaves before this date will not be displayed"
+    )
+    publish_end_date = models.DateField(
+        "publish end date", help_text="Shifts and leaves after this date will not be displayed"
+    )
+
+    # Enforce a true singleton at the database level.
+    # Any attempt to create a second Settings row will violate this unique constraint.
+    singleton_id = models.PositiveSmallIntegerField(default=1, unique=True, editable=False)
+    created = models.DateTimeField(auto_now_add=True)
+    last_edited = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"Settings ({self.publish_start_date} - {self.publish_end_date})"
+
+    class Meta:
+        verbose_name_plural = "settings"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(publish_start_date__lte=models.F("publish_end_date")),
+                name="valid_date_range",
+            )
+        ]
