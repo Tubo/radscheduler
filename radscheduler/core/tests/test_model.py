@@ -81,23 +81,27 @@ class TestSettings:
         with pytest.raises(IntegrityError):
             Settings.objects.create(publish_start_date=date(2024, 1, 1), publish_end_date=date(2024, 12, 31))
             
-    def test_settings_limits_shift_queryset(self, db, juniors_db):
+    def test_shift_queryset_returns_all_shifts_regardless_of_settings(self, db, juniors_db):
+        """Shift.objects should return all shifts without date range filtering.
+        
+        The publish date range filtering is now only applied in the calendar API,
+        not at the model manager level.
+        """
         from radscheduler.core.models import Settings, Shift
 
-        # Create settings that limit published shifts to 2023-06-01 to 2023-06-30
+        # Create settings with a limited date range
         Settings.objects.create(publish_start_date=date(2023, 6, 1), publish_end_date=date(2023, 6, 30))
 
         reg = juniors_db[0]
         reg.save()
 
-        # Create shifts on various dates
+        # Create shifts on various dates (before, during, and after the publish range)
         Shift.objects.create(date=date(2023, 5, 31), type=ShiftType.LONG, registrar=reg)
         Shift.objects.create(date=date(2023, 6, 15), type=ShiftType.LONG, registrar=reg)
         Shift.objects.create(date=date(2023, 7, 1), type=ShiftType.LONG, registrar=reg)
 
-        # Query shifts using the custom manager
+        # Query shifts - all should be returned regardless of settings
         shifts = Shift.objects.all()
 
-        # Only the shift on 2023-06-15 should be returned
-        assert len(shifts) == 1
-        assert shifts[0].date == date(2023, 6, 15)
+        # All shifts should be returned
+        assert len(shifts) == 3

@@ -7,26 +7,13 @@ from radscheduler import roster
 from radscheduler.users.models import User
 
 
-class ShiftManager(models.Manager):
-    def get_queryset(self):
-        try:
-            settings = Settings.objects.first()
-            if settings:
-                return (
-                    super()
-                    .get_queryset()
-                    .filter(date__gte=settings.publish_start_date, date__lte=settings.publish_end_date)
-                )
-        except Settings.DoesNotExist:
-            pass
-        return super().get_queryset()
-
-
 class Registrar(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     senior = models.BooleanField(default=False)
     start = models.DateField("start date", help_text="Date started training")
-    finish = models.DateField("finish date", null=True, blank=True, help_text="Date finished training")
+    finish = models.DateField(
+        "finish date", null=True, blank=True, help_text="Date finished training"
+    )
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
 
@@ -45,12 +32,13 @@ class Registrar(models.Model):
 
 
 class Shift(models.Model):
-    objects = ShiftManager()
-    all_objects = models.Manager()  # Use this to get all shifts regardless of publication date
-
     date = models.DateField("shift date")
-    type = models.CharField("shift type", max_length=10, choices=roster.ShiftType.choices)
-    registrar = models.ForeignKey(Registrar, blank=True, null=True, on_delete=models.CASCADE)
+    type = models.CharField(
+        "shift type", max_length=10, choices=roster.ShiftType.choices
+    )
+    registrar = models.ForeignKey(
+        Registrar, blank=True, null=True, on_delete=models.CASCADE
+    )
     stat_day = models.BooleanField(default=False)
     extra_duty = models.BooleanField(default=False)
     fatigue_override = models.FloatField(default=0.0)
@@ -81,7 +69,9 @@ class Status(models.Model):
     start = models.DateField("start date")
     end = models.DateField("end date")
     type = models.CharField(choices=roster.StatusType.choices, max_length=10)
-    registrar = models.ForeignKey(Registrar, blank=False, null=False, on_delete=models.CASCADE)
+    registrar = models.ForeignKey(
+        Registrar, blank=False, null=False, on_delete=models.CASCADE
+    )
     weekdays = ArrayField(
         models.IntegerField(choices=[(x.value, x.name) for x in roster.Weekday]),
         default=list,
@@ -106,7 +96,9 @@ class Status(models.Model):
 
 
 class Leave(models.Model):
-    registrar = models.ForeignKey(Registrar, blank=False, null=False, on_delete=models.CASCADE)
+    registrar = models.ForeignKey(
+        Registrar, blank=False, null=False, on_delete=models.CASCADE
+    )
     date = models.DateField("date of leave")
     type = models.CharField(choices=roster.LeaveType.choices, max_length=10)
     portion = models.CharField(
@@ -163,8 +155,16 @@ class ShiftInterest(models.Model):
     This is used for tracking registrars who are interested in an Extra Duty shift.
     """
 
-    shift = models.ForeignKey(Shift, blank=False, null=False, on_delete=models.CASCADE, related_name="interests")
-    registrar = models.ForeignKey(Registrar, blank=False, null=False, on_delete=models.CASCADE)
+    shift = models.ForeignKey(
+        Shift,
+        blank=False,
+        null=False,
+        on_delete=models.CASCADE,
+        related_name="interests",
+    )
+    registrar = models.ForeignKey(
+        Registrar, blank=False, null=False, on_delete=models.CASCADE
+    )
     comment = models.TextField(blank=True)
 
     created = models.DateTimeField(auto_now_add=True)
@@ -181,15 +181,19 @@ class Settings(models.Model):
     """
 
     publish_start_date = models.DateField(
-        "publish start date", help_text="Shifts and leaves before this date will not be displayed"
+        "publish start date",
+        help_text="Shifts and leaves before this date will not be displayed",
     )
     publish_end_date = models.DateField(
-        "publish end date", help_text="Shifts and leaves after this date will not be displayed"
+        "publish end date",
+        help_text="Shifts and leaves after this date will not be displayed",
     )
 
     # Enforce a true singleton at the database level.
     # Any attempt to create a second Settings row will violate this unique constraint.
-    singleton_id = models.PositiveSmallIntegerField(default=1, unique=True, editable=False)
+    singleton_id = models.PositiveSmallIntegerField(
+        default=1, unique=True, editable=False
+    )
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
 
@@ -200,7 +204,9 @@ class Settings(models.Model):
         verbose_name_plural = "settings"
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(publish_start_date__lte=models.F("publish_end_date")),
+                condition=models.Q(
+                    publish_start_date__lte=models.F("publish_end_date")
+                ),
                 name="valid_date_range",
             )
         ]
