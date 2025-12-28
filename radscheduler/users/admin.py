@@ -44,6 +44,15 @@ class UserAdmin(auth_admin.UserAdmin):
         ),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
     )
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("username", "password1", "password2"),
+            },
+        ),
+    )
     list_display = [
         "username",
         "name",
@@ -57,6 +66,11 @@ class UserAdmin(auth_admin.UserAdmin):
     search_fields = ["name", "username"]
     inlines = [RegistrarInline]
     list_select_related = ["registrar"]
+
+    def get_inline_instances(self, request: HttpRequest, obj: User | None = None):
+        if obj is None:
+            return []
+        return super().get_inline_instances(request, obj)
 
     def registrar_year(self, obj: User) -> Any:
         return obj.registrar.year
