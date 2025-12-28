@@ -16,6 +16,8 @@
     DATABASE_URL = "postgres://${config.env.POSTGRES_USER}:${config.env.POSTGRES_PASSWORD}@${config.env.PGHOST}/${config.env.POSTGRES_DB}";
 
     EMAIL_HOST = "localhost"; # For Mailpit
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = 1;
+    PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
   };
 
   dotenv.enable = true;
@@ -84,19 +86,25 @@
     "db:restore".exec = ''
       latest_backup="$(ls -1t backups/* | head -n 1)" && echo "Latest: $latest_backup"
       dropdb "${config.env.POSTGRES_DB}"
+      echo "Database ${config.env.POSTGRES_DB} dropped"
       createdb "${config.env.POSTGRES_DB}" --owner="${config.env.POSTGRES_USER}"
+      echo "Database ${config.env.POSTGRES_DB} created"
       gunzip -c "$latest_backup" | psql "${config.env.POSTGRES_DB}" >/dev/null 2>&1 && echo "Restore success" || echo "Restore failed"
+      python manage.py drop_test_database --noinput
+      echo "Test database dropped"
     '';
     "pip:compile".exec = ''
       pip-compile --extra local -o requirements/local.txt "$@"
       pip-compile --extra production -o requirements/production.txt "$@"
     '';
+    "pip:sync".exec = ''
+      pip-compile --extra local -o requirements/local.txt "$@" > /dev/null 2>&1 && echo "Compiled local requirements"
+      pip-compile --extra production -o requirements/production.txt "$@" > /dev/null 2>&1 && echo "Compiled production requirements"
+      pip-sync requirements/local.txt
+    '';
     "pip:upgrade".exec = ''
       pip-compile --extra local -o requirements/local.txt --upgrade "$@"
       pip-compile --extra production -o requirements/production.txt --upgrade "$@"
-    '';
-    "pip:sync".exec = ''
-      pip-sync requirements/local.txt
     '';
   };
 

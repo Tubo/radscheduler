@@ -58,7 +58,6 @@ local = [
     "django-debug-toolbar",
     "django-coverage-plugin",
     "django-webtest",
-    "django-functest",
     "pre-commit",
 ]
 production = ["gunicorn", "psycopg[c]", "sentry-sdk", "django-anymail[mailgun]"]

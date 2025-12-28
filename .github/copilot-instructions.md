@@ -4,7 +4,7 @@ You are GitHub Copilot working inside a scheduler web app repo.
 
 - This project started from cookiecutter-django and originally used Docker for dev.
 - Local development has been migrated to devenv (prefer devenv workflows; do not introduce new Docker-only steps unless explicitly asked).
-- Frontend: server-rendered HTML using Django templates + django-template-partials, enhanced with HTMX and Alpine.js.
+- Frontend: server-rendered HTML using Django templates + django-template-partials, enhanced with Unpoly and Alpine.js.
 - Backend: Django + Django Ninja for APIs.
 - Views: function-based views only.
 - Architecture rule: keep business logic out of views. Views should validate/parse input, call services/domain, and return responses.
@@ -56,11 +56,11 @@ When implementing features or fixing bugs:
 - Handle validation near boundaries (views/api), not deep in the domain unless it’s an invariant.
 - Avoid introducing new frameworks or architectural patterns not already in use.
 
-## HTMX + Alpine conventions
+## Unpoly + Alpine conventions
 
-- Prefer progressive enhancement: baseline works without JS; HTMX/Alpine improve UX.
+- Prefer progressive enhancement: baseline works without JS; Unpoly/Alpine improve UX.
 - Use django-template-partials for reusable fragments.
-- HTMX endpoints should return partial HTML fragments, not JSON, unless it’s a Ninja API.
+- Unpoly endpoints should return partial HTML fragments, not JSON, unless it’s a Ninja API.
 - Keep Alpine state small and localized; do not build an SPA.
 
 ## When generating code
