@@ -54,6 +54,15 @@ class Shift(models.Model):
             registrar = "N/A"
         return f"<{roster.ShiftType(self.type).name} Shift {self.date} ({roster.Weekday(self.date.weekday()).name}): {registrar}>"
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["registrar"]),
+            models.Index(fields=["type"]),
+            models.Index(fields=["extra_duty"]),
+            models.Index(fields=["date", "type"]),
+            models.Index(fields=["registrar", "date"]),
+        ]
+
 
 class Status(models.Model):
     """
@@ -93,6 +102,11 @@ class Status(models.Model):
 
     class Meta:
         verbose_name_plural = "statuses"
+        indexes = [
+            models.Index(fields=["registrar"]),
+            models.Index(fields=["registrar", "start", "end"]),
+            models.Index(fields=["type"]),
+        ]
 
 
 class Leave(models.Model):
@@ -146,6 +160,12 @@ class Leave(models.Model):
 
     class Meta:
         unique_together = ["date", "registrar"]
+        indexes = [
+            models.Index(fields=["registrar"]),
+            models.Index(fields=["cancelled"]),
+            models.Index(fields=["registrar", "date"]),
+            models.Index(fields=["cancelled", "reg_approved", "dot_approved"]),
+        ]
 
 
 class ShiftInterest(models.Model):
@@ -173,6 +193,11 @@ class ShiftInterest(models.Model):
     class Meta:
         unique_together = ["shift", "registrar"]
         verbose_name_plural = "shift interests"
+        indexes = [
+            models.Index(fields=["shift"]),
+            models.Index(fields=["registrar"]),
+            models.Index(fields=["shift", "registrar"]),
+        ]
 
 
 class Settings(models.Model):
