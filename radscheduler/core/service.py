@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date, timedelta
 
 from django.db import IntegrityError
@@ -7,7 +8,14 @@ from pandas import DataFrame, concat
 
 from radscheduler.core import domain_mapper
 from radscheduler.core.models import Leave, Registrar, Shift, Status
-from radscheduler.roster import LeaveType, ShiftType, SingleOnCallRoster, StatusType, Weekday, canterbury_holidays
+from radscheduler.roster import (
+    LeaveType,
+    ShiftType,
+    SingleOnCallRoster,
+    StatusType,
+    Weekday,
+    canterbury_holidays,
+)
 from radscheduler.roster.assigner import AutoAssigner
 from radscheduler.roster.generator import generate_shifts, merge_shifts
 from radscheduler.roster.models import DetailedShiftType
