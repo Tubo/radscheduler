@@ -17,12 +17,12 @@
             <div class="d-flex flex-column align-items-start justify-content-start gap-1 px-1 m-0 position-relative event-cell-content">
                 {% if shifts %}
                     {% for shift in shifts %}
-                        {% include "editor/event_shift_button.html" with shift=shift only %}
+                        {% include "editor/event_shift_button.html" with shift=shift %}
                     {% endfor %}
                 {% endif %}
                 {% if leaves %}
                     {% for leave in leaves %}
-                        {% include "editor/event_leave_button.html" with leave=leave only %}
+                        {% include "editor/event_leave_button.html" with leave=leave %}
                     {% endfor %}
                 {% endif %}
                 {% include "editor/event_shift_new_form.html" %}
