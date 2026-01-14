@@ -29,7 +29,6 @@
   # https://devenv.sh/packages/
   packages = with pkgs; [
     libpq.pg_config
-    git
     flyctl
     gzip
     coreutils
