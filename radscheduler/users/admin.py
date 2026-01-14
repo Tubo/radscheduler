@@ -73,13 +73,23 @@ class UserAdmin(auth_admin.UserAdmin):
         return super().get_inline_instances(request, obj)
 
     def registrar_year(self, obj: User) -> Any:
-        return obj.registrar.year
+        try:
+            registrar = obj.registrar
+        except Registrar.DoesNotExist:
+            return None
+        return registrar.compute_year()
 
     def registrar_start(self, obj: User) -> Any:
-        return obj.registrar.start
+        try:
+            return obj.registrar.start
+        except Registrar.DoesNotExist:
+            return None
 
     def registrar_finish(self, obj: User) -> Any:
-        return obj.registrar.finish
+        try:
+            return obj.registrar.finish
+        except Registrar.DoesNotExist:
+            return None
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
         return super().get_queryset(request)
