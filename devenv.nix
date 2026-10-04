@@ -41,6 +41,7 @@
     enable = true;
     version = "3.11";
     venv.enable = true;
+    venv.requirements = ./requirements/local.txt;
   };
   languages.javascript.enable = true;
   languages.javascript.pnpm = {
