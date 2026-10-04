@@ -13,9 +13,10 @@
     FLY_PG_APP = "radscheduler-db";
 
     PGDATABASE = config.env.POSTGRES_DB;
-    DATABASE_URL = "postgres://${config.env.POSTGRES_USER}:${config.env.POSTGRES_PASSWORD}@${config.env.PGHOST}/${config.env.POSTGRES_DB}";
+    DATABASE_URL = "postgres://${config.env.POSTGRES_USER}:${config.env.POSTGRES_PASSWORD}@${config.env.PGHOST}:${toString config.env.PGPORT}/${config.env.POSTGRES_DB}";
 
     EMAIL_HOST = "localhost"; # For Mailpit
+    EMAIL_PORT = config.processes.mailpit.ports.smtp.value;
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = 1;
     PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
   };
@@ -51,9 +52,12 @@
 
   # https://devenv.sh/processes/
   # processes.dev.exec = "${lib.getExe pkgs.watchexec} -n -- ls -la";
-  processes."dev:django".exec = ''
-    python manage.py runserver_plus 0.0.0.0:8000
-  '';
+  processes."dev:django" = {
+    ports.http.allocate = 8000;
+    exec = ''
+      python manage.py runserver_plus 0.0.0.0:${toString config.processes."dev:django".ports.http.value}
+    '';
+  };
   processes."dev:webpack".exec = ''
     pnpm webpack --watch --config webpack/dev.config.js
   '';
