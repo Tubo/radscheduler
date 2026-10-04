@@ -34,18 +34,19 @@ import re
 import signal
 import subprocess
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterator, Tuple
 from urllib.parse import unquote, urlparse
 
 # ------------------------------
 # Pure parsing utilities
 # ------------------------------
 
-def parse_env_output(env_stdout: str) -> Dict[str, str]:
+
+def parse_env_output(env_stdout: str) -> dict[str, str]:
     """Parse `env` output (KEY=VALUE lines) into a dict.
 
     - Splits on the *first* '=' only (values can contain '=')
@@ -65,7 +66,7 @@ def parse_env_output(env_stdout: str) -> Dict[str, str]:
     >>> parse_env_output("DATABASE_URL='postgres://u:p@h:5432/db'")["DATABASE_URL"]
     'postgres://u:p@h:5432/db'
     """
-    env_map: Dict[str, str] = {}
+    env_map: dict[str, str] = {}
     for raw in env_stdout.splitlines():
         line = raw.strip()
         if not line or "=" not in line:
@@ -112,7 +113,7 @@ def extract_database_url(env_stdout: str) -> str:
     raise RuntimeError("Could not find DATABASE_URL in `fly ssh console -C env` output.")
 
 
-def parse_database_url(database_url: str) -> Tuple[str, str, str]:
+def parse_database_url(database_url: str) -> tuple[str, str, str]:
     """Parse DATABASE_URL and return (user, password, dbname).
 
     Note: URL decoding is applied to username/password.
@@ -138,6 +139,7 @@ def parse_database_url(database_url: str) -> Tuple[str, str, str]:
 # Side-effecting helpers
 # ------------------------------
 
+
 def run_checked(cmd: list[str], *, timeout: int | None = None) -> str:
     """Run a command and return stdout. Raises with stderr on failure."""
     try:
@@ -145,8 +147,7 @@ def run_checked(cmd: list[str], *, timeout: int | None = None) -> str:
             cmd,
             timeout=timeout,
             check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
         )
         return p.stdout
@@ -274,7 +275,7 @@ def pg_dump_gzip(*, db_user: str, db_pass: str, db_name: str, host: str, port: i
         raise RuntimeError("gzip failed: " + (gz_stderr or b"").decode(errors="replace"))
     if pg_dump.returncode != 0:
         raise RuntimeError("pg_dump failed: " + (pg_stderr or b"").decode(errors="replace"))
-    
+
     size_mb = out_path.stat().st_size / (1024 * 1024)
     print(f"      ✓ pg_dump complete ({size_mb:.2f} MB)")
 
@@ -282,6 +283,7 @@ def pg_dump_gzip(*, db_user: str, db_pass: str, db_name: str, host: str, port: i
 # ------------------------------
 # Configuration + main
 # ------------------------------
+
 
 @dataclass(frozen=True)
 class Config:
@@ -291,7 +293,7 @@ class Config:
     backup_dir: Path = Path.cwd() / "backups"
 
     @staticmethod
-    def from_env() -> "Config":
+    def from_env() -> Config:
         fly_app = os.environ.get("FLY_APP")
         fly_pg_app = os.environ.get("FLY_PG_APP")
         if not fly_app:
@@ -342,7 +344,7 @@ def main() -> None:
     cfg = Config.from_env()
     print(f"\n{'='*50}")
     print("Fly.io Postgres Backup")
-    print("="*50)
+    print("=" * 50)
     print(f"  FLY_APP:    {cfg.fly_app}")
     print(f"  FLY_PG_APP: {cfg.fly_pg_app}")
     print(f"  LOCAL_PORT: {cfg.local_port}")

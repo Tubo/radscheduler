@@ -1,15 +1,15 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div class="container">
-        <form class="border mt-4 p-4"
-              id="leave-form"
-              hx-post="."
-              hx-trigger="submit"
-              hx-target="body"
-              hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-            {{ form }}
-        </form>
-        <div id="leave-list" class=" mt-4 p-4">{% include "leaves/list.html" %}</div>
-    </div>
+  <div class="container">
+    <form class="border mt-4 p-4"
+          id="leave-form"
+          hx-post="."
+          hx-trigger="submit"
+          hx-target="body"
+          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+      {{ form }}
+    </form>
+    <div id="leave-list" class=" mt-4 p-4">{% include "leaves/list.html" %}</div>
+  </div>
 {% endblock content %}

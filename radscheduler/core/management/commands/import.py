@@ -2,18 +2,16 @@ import argparse
 from datetime import datetime
 
 from django.core.management.base import BaseCommand
-from django.db.utils import IntegrityError
 
 from radscheduler.core.io import import_history, import_status, import_users
 from radscheduler.core.models import Leave, Registrar, Shift, Status
-from radscheduler.users.models import User
 
 
 def valid_date(s):
     try:
         return datetime.strptime(s, "%d/%m/%Y").date()
     except ValueError:
-        msg = "Not a valid date: '{0}'.".format(s)
+        msg = f"Not a valid date: '{s}'."
         raise argparse.ArgumentTypeError(msg)
 
 

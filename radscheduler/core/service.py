@@ -9,15 +9,13 @@ from pandas import DataFrame, concat
 from radscheduler.core import domain_mapper
 from radscheduler.core.models import Leave, Registrar, Shift, Status
 from radscheduler.roster import (
-    LeaveType,
     ShiftType,
     SingleOnCallRoster,
-    StatusType,
     Weekday,
     canterbury_holidays,
 )
 from radscheduler.roster.assigner import AutoAssigner
-from radscheduler.roster.generator import generate_shifts, merge_shifts
+from radscheduler.roster.generator import generate_shifts
 from radscheduler.roster.models import DetailedShiftType
 from radscheduler.roster.utils import daterange, filter_shifts_by_date_range
 from radscheduler.roster.validators import validate_roster
@@ -35,12 +33,10 @@ def calculate_3_week_range(someday: date):
 
 def _merge_shifts_and_leaves(shifts, leaves, active_registrars):
     # Get all active registrars
-    active_registrars_ids = set(reg.id for reg in active_registrars)
-    registrars_in_shifts = set(shift.registrar_id for shift in shifts)
-    registrars_in_leaves = set(leave.registrar_id for leave in leaves)
-    needed_registrars_ids = (
-        registrars_in_shifts | registrars_in_leaves | active_registrars_ids
-    )
+    active_registrars_ids = {reg.id for reg in active_registrars}
+    registrars_in_shifts = {shift.registrar_id for shift in shifts}
+    registrars_in_leaves = {leave.registrar_id for leave in leaves}
+    needed_registrars_ids = registrars_in_shifts | registrars_in_leaves | active_registrars_ids
     regs_qs = (
         Registrar.objects.filter(id__in=needed_registrars_ids)
         .select_related("user")
@@ -54,8 +50,8 @@ def _merge_shifts_and_leaves(shifts, leaves, active_registrars):
     for s in shifts:
         events[s.registrar_id][s.date]["shifts"].append(s)
 
-    for l in leaves:
-        events[l.registrar_id][l.date]["leaves"].append(l)
+    for leave in leaves:
+        events[leave.registrar_id][leave.date]["leaves"].append(leave)
 
     return registrars, events
 
@@ -65,12 +61,12 @@ def get_events(someday: date, shift_types, leave_types):
     Retrieve all events in the given date range.
     """
     start, end = calculate_3_week_range(someday)
-    shifts = Shift.objects.filter(
-        date__range=[start, end], type__in=shift_types
-    ).select_related("registrar", "registrar__user")
-    leaves = Leave.objects.filter(
-        date__range=[start, end], type__in=leave_types
-    ).select_related("registrar", "registrar__user")
+    shifts = Shift.objects.filter(date__range=[start, end], type__in=shift_types).select_related(
+        "registrar", "registrar__user"
+    )
+    leaves = Leave.objects.filter(date__range=[start, end], type__in=leave_types).select_related(
+        "registrar", "registrar__user"
+    )
     # Get all dates in the range
     dates = daterange(start, end)
     active_registrars = get_active_registrars(start, end)
@@ -97,9 +93,7 @@ def get_active_registrars(start: date = None, end: date = None):
     """
     if not (start and end):
         start, end = default_start_and_end(start, end)
-    registrars = Registrar.objects.exclude(start=None).annotate(
-        days=(Now() - F("start"))
-    )
+    registrars = Registrar.objects.exclude(start=None).annotate(days=(Now() - F("start")))
     registrars = registrars.exclude(Q(finish__lt=start) | Q(start__gt=end))
     registrars = registrars.order_by("user__username")
     registrars = registrars.select_related("user")
@@ -115,11 +109,7 @@ def active_and_available_registrars(day):
         Registrar.objects.exclude(start=None)
         .exclude(Q(finish__lt=day) | Q(start__gt=day))
         .annotate(
-            on_leave=Subquery(
-                Leave.objects.filter(registrar=OuterRef("pk"), date=day).values("type")[
-                    :1
-                ]
-            ),
+            on_leave=Subquery(Leave.objects.filter(registrar=OuterRef("pk"), date=day).values("type")[:1]),
         )
     )
     registrars = registrars.order_by("user__username")
@@ -151,9 +141,7 @@ def build_pivot_table(start, end, shifts, leaves, registrars):
     if df.empty:
         pivot = DataFrame(columns=["date", "holiday"])
     else:
-        pivot = df.pivot_table(
-            index="date", columns="registrar", values="id", aggfunc="first"
-        )
+        pivot = df.pivot_table(index="date", columns="registrar", values="id", aggfunc="first")
     pivot.reset_index(inplace=True)
     pivot.fillna("", inplace=True)
     pivot["holiday"] = pivot.date.map(lambda d: canterbury_holidays.get(d, ""))
@@ -174,9 +162,7 @@ def retrieve_roster(start: date = None, end: date = None):
     status_dict = [domain_mapper.status_to_dict(status) for status in statuses]
 
     registrars = get_active_registrars(start, end)
-    df_registrars = build_registrar_table(
-        registrars.values("id", "user__username", "days")
-    )
+    df_registrars = build_registrar_table(registrars.values("id", "user__username", "days"))
 
     pivot = build_pivot_table(
         start,
@@ -200,9 +186,7 @@ def fill_shifts(start: date, end: date):
     registrars = Registrar.objects.exclude(finish__lte=start).select_related("user")
     registrars = list(map(domain_mapper.registrar_from_db, registrars))
 
-    leaves = Leave.objects.filter(date__range=[start, end]).select_related(
-        "registrar", "registrar__user"
-    )
+    leaves = Leave.objects.filter(date__range=[start, end]).select_related("registrar", "registrar__user")
     leaves = list(map(domain_mapper.leave_from_db, leaves))
 
     statuses = (
@@ -212,9 +196,7 @@ def fill_shifts(start: date, end: date):
     )
     statuses = list(map(domain_mapper.status_from_db, statuses))
 
-    shifts_in_db = Shift.objects.filter(date__range=[start, end]).select_related(
-        "registrar", "registrar__user"
-    )
+    shifts_in_db = Shift.objects.filter(date__range=[start, end]).select_related("registrar", "registrar__user")
     filled = list(map(domain_mapper.shift_from_db, shifts_in_db))
     unfilled = generate_shifts(SingleOnCallRoster, start, end, filled)
 
@@ -237,8 +219,7 @@ def group_shifts_by_date_and_type(start: date, end: date, shifts):
     Group shifts by date and type. If the shift is outside the date range, it is ignored.
     """
     result = {
-        day: {shiftType.value: [] for shiftType in ShiftType}
-        | {"holiday": canterbury_holidays.get(day)}
+        day: {shiftType.value: [] for shiftType in ShiftType} | {"holiday": canterbury_holidays.get(day)}
         for day in daterange(start, end + timedelta(days=1))
     }
 
@@ -337,4 +318,6 @@ def swap_shifts(shift, registrar):
         shift.registrar = registrar
         shift.save()
     except IntegrityError:
-        conflict_shift = Shift.objects.get(date=shift.date, type=shift.type, registrar=registrar)
+        conflict_shift = Shift.objects.get(  # noqa: F841 - swap_shifts is unfinished
+            date=shift.date, type=shift.type, registrar=registrar
+        )

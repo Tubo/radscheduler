@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import date
-from enum import Enum, IntEnum, auto
-from typing import Optional
+from enum import IntEnum
 
 from django.db import models
 
@@ -75,7 +74,7 @@ class Registrar:
     username: str
     senior: bool
     start: date
-    finish: Optional[date] = None
+    finish: date | None = None
     id: int = None  # if registrar is already in database
 
 
@@ -117,8 +116,8 @@ class Status:
     end: date
     type: StatusType
     registrar: Registrar
-    weekdays: list[Weekday] = tuple()
-    shift_types: list[ShiftType] = tuple()
+    weekdays: list[Weekday] = ()
+    shift_types: list[ShiftType] = ()
 
     def not_oncall(self, shift: Shift) -> bool:
         if self.type == StatusType.BUDDY:

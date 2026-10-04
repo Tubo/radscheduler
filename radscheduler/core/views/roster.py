@@ -1,7 +1,6 @@
 import json
-from datetime import date
 
-from django.shortcuts import HttpResponse, render
+from django.shortcuts import HttpResponse
 
 from radscheduler.core.forms import DateRangeForm
 from radscheduler.core.service import group_shifts_by_date_and_type, retrieve_roster, retrieve_workload_breakdown

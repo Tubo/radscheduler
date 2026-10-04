@@ -13,7 +13,7 @@ from django.http import FileResponse
 from django.http.request import HttpRequest
 from rangefilter.filters import DateRangeFilterBuilder
 
-from radscheduler.core.models import Leave, Registrar, Settings, Shift, ShiftInterest, Status
+from radscheduler.core.models import Leave, Settings, Shift, Status
 from radscheduler.paper_forms.pdf import leaves_to_buffer
 from radscheduler.roster.models import ShiftType, Weekday
 

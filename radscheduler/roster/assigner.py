@@ -1,20 +1,16 @@
-from datetime import date, timedelta
-from random import choice, shuffle
+from datetime import timedelta
 
 from .models import (
     DetailedShiftType,
     Leave,
-    LeaveType,
-    NoOneAvailable,
     Registrar,
     Shift,
     ShiftType,
     Status,
-    StatusType,
     Weekday,
 )
 from .rosters import SingleOnCallRoster
-from .utils import filter_shifts, find_registrar_from_shifts, sort_shifts_by_date
+from .utils import find_registrar_from_shifts, sort_shifts_by_date
 from .validators import StonzMecaValidator
 
 

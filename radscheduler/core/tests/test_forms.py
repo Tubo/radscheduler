@@ -23,4 +23,3 @@ class TestLeaveForm:
             assert not form.is_valid(), form.errors
             # Error message must include "is a weekend"
             assert "is a weekend" in form.errors["date"][0]
-

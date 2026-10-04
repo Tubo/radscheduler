@@ -2,9 +2,8 @@ from datetime import date, timedelta
 
 import holidays
 
-from .models import DetailedShiftType, LeaveType, Shift, ShiftType, Weekday
-from .rosters import SingleOnCallRoster
-from .utils import daterange, filter_shifts, sort_shifts_by_date
+from .models import Shift, ShiftType, Weekday
+from .utils import daterange, sort_shifts_by_date
 
 canterbury_holidays = holidays.country_holidays("NZ", subdiv="CAN")
 

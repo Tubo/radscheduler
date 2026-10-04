@@ -1,8 +1,16 @@
 from datetime import date
 
+import holidays
+
 import radscheduler.core.models as orm
 import radscheduler.roster.models as domain
-from radscheduler.core.api.roster_calendar import *
+from radscheduler.core.api.roster_calendar import (
+    FullCalendarHolidaySchema,
+    FullCalendarLeaveSchema,
+    FullCalendarShiftSchema,
+    leave_events,
+    shift_events,
+)
 
 
 class TestFullCalendarSchema:
@@ -49,29 +57,18 @@ class TestCalendarAPIPublishDateFiltering:
 
     def test_shift_events_clamps_to_publish_date_range(self, rf, juniors_db):
         """Calendar API should clamp shifts to the publish date range."""
-        from django.test import RequestFactory
 
         # Create settings with a limited publish date range
-        orm.Settings.objects.create(
-            publish_start_date=date(2023, 6, 1), publish_end_date=date(2023, 6, 30)
-        )
+        orm.Settings.objects.create(publish_start_date=date(2023, 6, 1), publish_end_date=date(2023, 6, 30))
 
         reg = juniors_db[0]
         # Create shifts: before, during, and after the publish range
-        orm.Shift.objects.create(
-            date=date(2023, 5, 31), type=domain.ShiftType.LONG, registrar=reg
-        )
-        orm.Shift.objects.create(
-            date=date(2023, 6, 15), type=domain.ShiftType.LONG, registrar=reg
-        )
-        orm.Shift.objects.create(
-            date=date(2023, 7, 1), type=domain.ShiftType.LONG, registrar=reg
-        )
+        orm.Shift.objects.create(date=date(2023, 5, 31), type=domain.ShiftType.LONG, registrar=reg)
+        orm.Shift.objects.create(date=date(2023, 6, 15), type=domain.ShiftType.LONG, registrar=reg)
+        orm.Shift.objects.create(date=date(2023, 7, 1), type=domain.ShiftType.LONG, registrar=reg)
 
         # Request a wide date range
-        request = rf.get(
-            "/api/calendar/shifts", {"start": "2023-05-01", "end": "2023-07-31"}
-        )
+        request = rf.get("/api/calendar/shifts", {"start": "2023-05-01", "end": "2023-07-31"})
         result = shift_events(request, start=date(2023, 5, 1), end=date(2023, 7, 31))
 
         # Only the shift within the publish range should be returned
@@ -80,12 +77,9 @@ class TestCalendarAPIPublishDateFiltering:
 
     def test_leave_events_clamps_to_publish_date_range(self, rf, juniors_db):
         """Calendar API should clamp leaves to the publish date range."""
-        from django.test import RequestFactory
 
         # Create settings with a limited publish date range
-        orm.Settings.objects.create(
-            publish_start_date=date(2023, 6, 1), publish_end_date=date(2023, 6, 30)
-        )
+        orm.Settings.objects.create(publish_start_date=date(2023, 6, 1), publish_end_date=date(2023, 6, 30))
 
         reg = juniors_db[0]
         # Create leaves: before, during, and after the publish range
@@ -112,9 +106,7 @@ class TestCalendarAPIPublishDateFiltering:
         )
 
         # Request a wide date range
-        request = rf.get(
-            "/api/calendar/leaves", {"start": "2023-05-01", "end": "2023-07-31"}
-        )
+        request = rf.get("/api/calendar/leaves", {"start": "2023-05-01", "end": "2023-07-31"})
         result = leave_events(request, start=date(2023, 5, 1), end=date(2023, 7, 31))
 
         # Only the leave within the publish range should be returned
@@ -125,20 +117,12 @@ class TestCalendarAPIPublishDateFiltering:
         """Calendar API should return all shifts if no settings exist."""
         reg = juniors_db[0]
         # Create shifts on various dates
-        orm.Shift.objects.create(
-            date=date(2023, 5, 31), type=domain.ShiftType.LONG, registrar=reg
-        )
-        orm.Shift.objects.create(
-            date=date(2023, 6, 15), type=domain.ShiftType.LONG, registrar=reg
-        )
-        orm.Shift.objects.create(
-            date=date(2023, 7, 1), type=domain.ShiftType.LONG, registrar=reg
-        )
+        orm.Shift.objects.create(date=date(2023, 5, 31), type=domain.ShiftType.LONG, registrar=reg)
+        orm.Shift.objects.create(date=date(2023, 6, 15), type=domain.ShiftType.LONG, registrar=reg)
+        orm.Shift.objects.create(date=date(2023, 7, 1), type=domain.ShiftType.LONG, registrar=reg)
 
         # Request a wide date range
-        request = rf.get(
-            "/api/calendar/shifts", {"start": "2023-05-01", "end": "2023-07-31"}
-        )
+        request = rf.get("/api/calendar/shifts", {"start": "2023-05-01", "end": "2023-07-31"})
         result = shift_events(request, start=date(2023, 5, 1), end=date(2023, 7, 31))
 
         # All shifts within the requested range should be returned

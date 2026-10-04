@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Restore a gzipped plain-SQL Postgres backup into a local Postgres, using local DATABASE_URL.
@@ -52,7 +51,19 @@ class DbConn:
 
     def psql_args(self) -> list[str]:
         """Return common psql connection arguments."""
-        return ["psql", "-h", self.host, "-p", str(self.port), "-U", self.user, "-d", self.dbname, "-v", "ON_ERROR_STOP=1"]
+        return [
+            "psql",
+            "-h",
+            self.host,
+            "-p",
+            str(self.port),
+            "-U",
+            self.user,
+            "-d",
+            self.dbname,
+            "-v",
+            "ON_ERROR_STOP=1",
+        ]
 
     def env(self) -> dict[str, str]:
         """Return environment with PGPASSWORD set."""
@@ -81,14 +92,14 @@ def clean_target_schema(conn: DbConn) -> None:
     """
     Attempt a “wipe” of the public schema (common dev restore workflow).
     Drops all tables, sequences, views, and types in public schema.
-    
+
     This approach works even when the user doesn't own the public schema
     (common with devenv/nix-managed Postgres).
     """
     # Drop all tables, views, sequences, and types in public schema
     # This avoids needing ownership of the schema itself
     clean_sql = """
-    DO $$ 
+    DO $$
     DECLARE
         r RECORD;
     BEGIN
@@ -105,7 +116,8 @@ def clean_target_schema(conn: DbConn) -> None:
             EXECUTE 'DROP VIEW IF EXISTS public.' || quote_ident(r.viewname) || ' CASCADE';
         END LOOP;
         -- Drop all types (enums, etc.)
-        FOR r IN (SELECT typname FROM pg_type t JOIN pg_namespace n ON t.typnamespace = n.oid WHERE n.nspname = 'public' AND t.typtype = 'e') LOOP
+        FOR r IN (SELECT typname FROM pg_type t JOIN pg_namespace n ON t.typnamespace = n.oid
+                  WHERE n.nspname = 'public' AND t.typtype = 'e') LOOP
             EXECUTE 'DROP TYPE IF EXISTS public.' || quote_ident(r.typname) || ' CASCADE';
         END LOOP;
     END $$;
@@ -133,7 +145,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Restore a .sql.gz backup into local Postgres via DATABASE_URL.")
     ap.add_argument("backup", nargs="?", help="Path to .sql.gz backup (omit if --latest).")
     ap.add_argument("--latest", action="store_true", help="Restore the newest *.sql.gz from --backup-dir.")
-    ap.add_argument("--backup-dir", default="backups", help="Directory to search when using --latest (default: backups).")
+    ap.add_argument(
+        "--backup-dir", default="backups", help="Directory to search when using --latest (default: backups)."
+    )
     ap.add_argument("--clean", action="store_true", help="Drop/recreate public schema before restoring (destructive).")
     args = ap.parse_args()
 

@@ -1,12 +1,10 @@
 {
-    "python.testing.pytestArgs": [
-        "radscheduler"
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
-    "[python]": {
-        "editor.defaultFormatter": "charliermarsh.ruff"
-    },
-    "python.formatting.provider": "none",
-    "djlint.showInstallError": false
+  "python.testing.pytestArgs": ["radscheduler"],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "python.formatting.provider": "none",
+  "djlint.showInstallError": false
 }

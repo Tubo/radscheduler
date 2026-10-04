@@ -1,12 +1,12 @@
 <tbody class="text-center">
-    {% for reg_id, registrar in registrars.items %}
-        <tr>
-            <th scope="row"
-                class="text-start align-middle border"
-                style="height: 35px">{{ registrar }}</th>
-            {% for date in dates %}
-                {% include "editor/event_cell.html" with registrar=registrar date=date %}
-            {% endfor %}
-        </tr>
-    {% endfor %}
+  {% for reg_id, registrar in registrars.items %}
+    <tr>
+      <th scope="row"
+          class="text-start align-middle border"
+          style="height: 35px">{{ registrar }}</th>
+      {% for date in dates %}
+        {% include "editor/event_cell.html" with registrar=registrar date=date %}
+      {% endfor %}
+    </tr>
+  {% endfor %}
 </tbody>

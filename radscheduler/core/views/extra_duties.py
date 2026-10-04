@@ -4,14 +4,14 @@ from datetime import date, timedelta
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
-from django.db.models import F, OuterRef, Q, Subquery
+from django.db.models import OuterRef, Subquery
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 
 from radscheduler.core.forms import ShiftChangeForm, ShiftInterestForm
-from radscheduler.core.models import Shift, ShiftInterest, Status
+from radscheduler.core.models import Shift, ShiftInterest
 from radscheduler.core.service import get_active_registrars
-from radscheduler.roster import ShiftType, StatusType, canterbury_holidays
+from radscheduler.roster import canterbury_holidays
 
 
 @login_required

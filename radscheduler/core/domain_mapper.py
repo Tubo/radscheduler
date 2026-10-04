@@ -1,16 +1,12 @@
-import dataclasses
-from datetime import date
-from typing import List, Optional
-
-import dacite
-from ninja import Field, ModelSchema, Schema
-
-import radscheduler.core.models as orm
-import radscheduler.roster.models as domain
-
 """
 This module provides mapping from Django ORM to the domain models
 """
+
+import dacite
+from ninja import Field, ModelSchema
+
+import radscheduler.core.models as orm
+import radscheduler.roster.models as domain
 
 
 class RegistrarDomainSchema(ModelSchema):
@@ -34,8 +30,8 @@ class LeaveDomainSchema(ModelSchema):
 class StatusDomainSchema(ModelSchema):
     registrar: RegistrarDomainSchema
     type: domain.StatusType
-    weekdays: List[domain.Weekday]
-    shift_types: List[domain.ShiftType]
+    weekdays: list[domain.Weekday]
+    shift_types: list[domain.ShiftType]
 
     class Meta:
         model = orm.Status

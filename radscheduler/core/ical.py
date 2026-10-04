@@ -13,9 +13,7 @@ class ShiftFeed(ICalFeed):
     def items(self):
         # Only fetch recent past (30 days) and future shifts to reduce query size
         return (
-            Shift.objects.filter(
-                date__gte=date.today() - timedelta(days=30), registrar__isnull=False
-            )
+            Shift.objects.filter(date__gte=date.today() - timedelta(days=30), registrar__isnull=False)
             .select_related("registrar", "registrar__user")
             .only(
                 "id",
@@ -57,9 +55,7 @@ class LeaveFeed(ICalFeed):
     def items(self):
         # Only fetch recent past (30 days) and future leaves to reduce query size
         return (
-            Leave.objects.filter(
-                date__gte=date.today() - timedelta(days=30), cancelled=False
-            )
+            Leave.objects.filter(date__gte=date.today() - timedelta(days=30), cancelled=False)
             .select_related("registrar", "registrar__user")
             .only(
                 "id",

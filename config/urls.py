@@ -39,9 +39,7 @@ editor_view_urls = [
 ]
 
 roster_view_urls = [
-    path(
-        "", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"
-    ),
+    path("", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"),
     path("editor/", include(editor_view_urls)),
     path("workload/", roster_views.get_workload, name="workload"),
 ]
@@ -72,20 +70,14 @@ extra_duties_urls = [
 ICAL_CACHE_SECONDS = 60 * 15  # 15 minutes
 
 ical_urls = [
-    path(
-        "shifts/", cache_page(ICAL_CACHE_SECONDS)(ical.ShiftFeed()), name="ical_shifts"
-    ),
-    path(
-        "leaves/", cache_page(ICAL_CACHE_SECONDS)(ical.LeaveFeed()), name="ical_leaves"
-    ),
+    path("shifts/", cache_page(ICAL_CACHE_SECONDS)(ical.ShiftFeed()), name="ical_shifts"),
+    path("leaves/", cache_page(ICAL_CACHE_SECONDS)(ical.LeaveFeed()), name="ical_leaves"),
 ]
 
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
-    path(
-        "about/", TemplateView.as_view(template_name="pages/about.html"), name="about"
-    ),
+    path("about/", TemplateView.as_view(template_name="pages/about.html"), name="about"),
     # Django Admin, use {% url 'admin:index' %}
     path(settings.ADMIN_URL, admin.site.urls),
     # User management

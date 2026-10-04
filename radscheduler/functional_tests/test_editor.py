@@ -20,14 +20,10 @@ def test_editor_shift_buttons_render_csrf_tokens(app):
 
     user = UserFactory(is_staff=True, is_superuser=True, password="password")
     registrar = Registrar.objects.create(user=user, start=date(2022, 1, 1))
-    shift = Shift.objects.create(
-        date=date.today(), type=ShiftType.LONG, registrar=registrar
-    )
+    shift = Shift.objects.create(date=date.today(), type=ShiftType.LONG, registrar=registrar)
 
     app.set_user(user)
-    response = app.get(
-        reverse("editor_by_date", args=[shift.date.strftime("%Y-%m-%d")])
-    )
+    response = app.get(reverse("editor_by_date", args=[shift.date.strftime("%Y-%m-%d")]))
 
     # Every CSRF input should be populated (no empty string or NOTPROVIDED).
     csrf_inputs = response.html.find_all("input", attrs={"name": "csrfmiddlewaretoken"})

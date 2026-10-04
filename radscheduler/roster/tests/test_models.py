@@ -17,10 +17,10 @@ def test_status_not_oncall():
         end=date(2022, 1, 1),
         registrar=registrar,
     )
-    assert status.not_oncall(mon_long) == True
-    assert status.not_oncall(fri_long) == True
-    assert status.not_oncall(mon_night) == True
-    assert status.not_oncall(fri_night) == True
+    assert status.not_oncall(mon_long) is True
+    assert status.not_oncall(fri_long) is True
+    assert status.not_oncall(mon_night) is True
+    assert status.not_oncall(fri_night) is True
 
     # No long days if part-time on Fridays
     status = Status(
@@ -31,10 +31,10 @@ def test_status_not_oncall():
         weekdays=[Weekday.FRI],
         shift_types=[ShiftType.LONG],
     )
-    assert status.not_oncall(mon_long) == False
-    assert status.not_oncall(mon_night) == False
-    assert status.not_oncall(fri_night) == False
-    assert status.not_oncall(fri_long) == True
+    assert status.not_oncall(mon_long) is False
+    assert status.not_oncall(mon_night) is False
+    assert status.not_oncall(fri_night) is False
+    assert status.not_oncall(fri_long) is True
 
     # No night shifts if not allowed
     status = Status(
@@ -44,10 +44,10 @@ def test_status_not_oncall():
         registrar=registrar,
         shift_types=[ShiftType.NIGHT],
     )
-    assert status.not_oncall(mon_long) == False
-    assert status.not_oncall(fri_long) == False
-    assert status.not_oncall(mon_night) == True
-    assert status.not_oncall(fri_night) == True
+    assert status.not_oncall(mon_long) is False
+    assert status.not_oncall(fri_long) is False
+    assert status.not_oncall(mon_night) is True
+    assert status.not_oncall(fri_night) is True
 
     status = Status(
         type=StatusType.PRE_ONCALL,
@@ -55,7 +55,7 @@ def test_status_not_oncall():
         end=date(2021, 5, 15),
         registrar=registrar,
     )
-    assert status.not_oncall(mon_long) == True
-    assert status.not_oncall(fri_long) == True
-    assert status.not_oncall(mon_night) == True
-    assert status.not_oncall(fri_night) == True
+    assert status.not_oncall(mon_long) is True
+    assert status.not_oncall(fri_long) is True
+    assert status.not_oncall(mon_night) is True
+    assert status.not_oncall(fri_night) is True

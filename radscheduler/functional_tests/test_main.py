@@ -4,21 +4,19 @@ from datetime import date
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
-import pytest
-from playwright.sync_api import Page, expect
+import pytest  # noqa: E402
+from playwright.sync_api import Page, expect  # noqa: E402
 
-from radscheduler.core.models import Registrar, Shift
-from radscheduler.roster.models import ShiftType
-from radscheduler.users.tests.factories import UserFactory
+from radscheduler.core.models import Registrar, Shift  # noqa: E402
+from radscheduler.roster.models import ShiftType  # noqa: E402
+from radscheduler.users.tests.factories import UserFactory  # noqa: E402
 
 pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
 def admin_user(db):
-    return UserFactory(
-        username="admin", is_staff=True, is_superuser=True, password="password"
-    )
+    return UserFactory(username="admin", is_staff=True, is_superuser=True, password="password")
 
 
 @pytest.fixture

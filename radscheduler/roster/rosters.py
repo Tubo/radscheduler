@@ -1,4 +1,4 @@
-from .models import DetailedShiftType, LeaveType, Shift, ShiftType, Weekday
+from .models import DetailedShiftType, LeaveType, ShiftType, Weekday
 
 
 class SingleOnCallRoster:

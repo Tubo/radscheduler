@@ -1,9 +1,6 @@
 import statistics
-from datetime import date, timedelta
+from datetime import date
 from functools import partial
-
-import holidays
-import pandas as pd
 
 from radscheduler.roster.assigner import AutoAssigner
 from radscheduler.roster.generator import generate_shifts
@@ -245,7 +242,7 @@ def test_three_year_roster_equal_start(juniors, seniors):
     df = shifts_to_dataframe(result)
     breakdown = shift_breakdown(df)
     stdevs = breakdown.std()
-    assert (stdevs < 10).all(), f"New breakdown should be even"
+    assert (stdevs < 10).all(), "New breakdown should be even"
 
     fatigue_breakdown = assigner.registrars_sorted_by_fatigue(result)
     fatigue_stdev = statistics.stdev([f for _, f in fatigue_breakdown])
@@ -308,10 +305,6 @@ def test_first_start_oncall(juniors, seniors):
     assigner = AutoAssigner(registrars=juniors + seniors, unfilled=shifts, statuses=[status])
     result = assigner.fill_roster()
 
-    # Shift and user stats
-    df = shifts_to_dataframe(result)
-    breakdown = shift_breakdown(df)
-
     # Overall fatigue level breakdown
     fatigue_breakdown = [(row[0].username, row[1]) for row in assigner.registrars_sorted_by_fatigue(result)]
     fatigue_stdev = statistics.stdev([f for _, f in fatigue_breakdown])
@@ -321,7 +314,6 @@ def test_first_start_oncall(juniors, seniors):
 
     # Date distance breakdown
     distances = [(registrar.username, registrar_shift_distance(registrar, result)) for registrar in juniors + seniors]
-    dist_mean = statistics.mean([d for _, d in distances])
     dist_stdev = statistics.stdev([d for _, d in distances])
 
     assert dist_stdev < 5, "Distance between shifts should be fairly even"
@@ -358,8 +350,6 @@ def test_return_from_parental_leave(juniors, seniors):
     shifts = generate_shifts(SingleOnCallRoster, date(2023, 1, 2), date(2024, 1, 2))
     assigner = AutoAssigner(registrars=juniors + seniors, unfilled=shifts, leaves=leaves)
     result = assigner.fill_roster()
-
-    breakdown = shift_breakdown(shifts_to_dataframe(result))
 
     fatigue_breakdown = assigner.registrars_sorted_by_fatigue(result)
     fatigue_stdev = statistics.stdev([f for _, f in fatigue_breakdown])

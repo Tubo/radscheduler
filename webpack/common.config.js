@@ -12,10 +12,7 @@ module.exports = {
     editor: path.resolve(__dirname, '../radscheduler/static/js/editor'),
   },
   output: {
-    path: path.resolve(
-      __dirname,
-      '../radscheduler/static/webpack_bundles/',
-    ),
+    path: path.resolve(__dirname, '../radscheduler/static/webpack_bundles/'),
     publicPath: '/static/webpack_bundles/',
     filename: 'js/[name]-[fullhash].js',
     chunkFilename: 'js/[name]-[hash].js',
@@ -34,8 +31,8 @@ module.exports = {
         exclude: [/elm-stuff/, /node_modules/],
         use: {
           loader: 'elm-webpack-loader',
-          options: {}
-        }
+          options: {},
+        },
       },
       {
         test: /\.js$/,

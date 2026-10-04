@@ -1,40 +1,40 @@
 <tr class="{% if row.is_past %}table-secondary{% endif %}"
     id="leave-{{ row.pk }}">
-    <th scope="row" class="font-monospace">{{ row.date|date:"Y" }}</th>
-    <td class="font-monospace">{{ row.date|date:"M" }}</td>
-    <td class="font-monospace">{{ row.date|date:"d, D" }}</td>
-    <td>{{ row.get_type_display }}</td>
-    <td>{{ row.get_portion_display }}</td>
-    <td>{{ row.comment }}</td>
-    <td>
-        {% if row.reg_approved == None %}
-            <span class="badge text-bg-secondary">Not processed</span>
-        {% elif row.cancelled %}
-            <span class="badge text-bg-danger">Cancelled</span>
-        {% elif row.reg_approved %}
-            {% if row.dot_approved == None %}
-                <span class="badge text-bg-warning">Processing</span>
-            {% elif row.dot_approved %}
-                <span class="badge text-bg-success">Approved</span>
-            {% elif not row.dot_approved %}
-                <span class="badge text-bg-danger">Declined</span>
-            {% endif %}
-        {% elif not row.reg_approved %}
-            <span class="badge text-bg-danger">Declined</span>
-        {% endif %}
-    </td>
-    <td>
-        {% if row.reg_approved == None and row.dot_approved == None %}
-            <button class="btn btn-primary"
-                    hx-get="{% url 'leave_form_inline' row.pk %}"
-                    hx-swap="outerHTML"
-                    hx-target="closest tr">
-                <i class="bi bi-pencil-square"></i>
-            </button>
-        {% else %}
-            <button class="btn btn-secondary disabled">
-                <i class="bi bi-pencil-square"></i>
-            </button>
-        {% endif %}
-    </td>
+  <th scope="row" class="font-monospace">{{ row.date|date:"Y" }}</th>
+  <td class="font-monospace">{{ row.date|date:"M" }}</td>
+  <td class="font-monospace">{{ row.date|date:"d, D" }}</td>
+  <td>{{ row.get_type_display }}</td>
+  <td>{{ row.get_portion_display }}</td>
+  <td>{{ row.comment }}</td>
+  <td>
+    {% if row.reg_approved == None %}
+      <span class="badge text-bg-secondary">Not processed</span>
+    {% elif row.cancelled %}
+      <span class="badge text-bg-danger">Cancelled</span>
+    {% elif row.reg_approved %}
+      {% if row.dot_approved == None %}
+        <span class="badge text-bg-warning">Processing</span>
+      {% elif row.dot_approved %}
+        <span class="badge text-bg-success">Approved</span>
+      {% elif not row.dot_approved %}
+        <span class="badge text-bg-danger">Declined</span>
+      {% endif %}
+    {% elif not row.reg_approved %}
+      <span class="badge text-bg-danger">Declined</span>
+    {% endif %}
+  </td>
+  <td>
+    {% if row.reg_approved == None and row.dot_approved == None %}
+      <button class="btn btn-primary"
+              hx-get="{% url 'leave_form_inline' row.pk %}"
+              hx-swap="outerHTML"
+              hx-target="closest tr">
+        <i class="bi bi-pencil-square"></i>
+      </button>
+    {% else %}
+      <button class="btn btn-secondary disabled">
+        <i class="bi bi-pencil-square"></i>
+      </button>
+    {% endif %}
+  </td>
 </tr>

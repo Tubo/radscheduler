@@ -1,5 +1,4 @@
 from datetime import date
-from typing import List
 
 import holidays
 from django.db.models import Q
@@ -30,9 +29,7 @@ class FullCalendarShiftSchema(FullCalendarSchema, ModelSchema):
     @staticmethod
     def resolve_title(shift):
         shift_type = domain.ShiftType(shift.type).name
-        return f"{shift_type}: {shift.registrar.user.username}" + (
-            " (extra)" if shift.extra_duty else ""
-        )
+        return f"{shift_type}: {shift.registrar.user.username}" + (" (extra)" if shift.extra_duty else "")
 
 
 class FullCalendarLeaveSchema(FullCalendarSchema, ModelSchema):
@@ -56,20 +53,20 @@ class FullCalendarHolidaySchema(FullCalendarSchema):
     event_type: str = "holiday"
 
 
-@router.get("/shifts", response=List[FullCalendarShiftSchema])
+@router.get("/shifts", response=list[FullCalendarShiftSchema])
 def shift_events(request, start: date, end: date):
     settings = orm.Settings.objects.first()
     if settings:
         # Clamp the date range to the publish date range
         start = max(start, settings.publish_start_date)
         end = min(end, settings.publish_end_date)
-    shifts = orm.Shift.objects.filter(
-        date__gte=start, date__lte=end, registrar__isnull=False
-    ).select_related("registrar", "registrar__user")
+    shifts = orm.Shift.objects.filter(date__gte=start, date__lte=end, registrar__isnull=False).select_related(
+        "registrar", "registrar__user"
+    )
     return list(shifts)
 
 
-@router.get("/leaves", response=List[FullCalendarLeaveSchema])
+@router.get("/leaves", response=list[FullCalendarLeaveSchema])
 def leave_events(request, start: date, end: date):
     settings = orm.Settings.objects.first()
     if settings:
@@ -84,9 +81,7 @@ def leave_events(request, start: date, end: date):
     return list(leaves)
 
 
-@router.get("/holidays", response=List[FullCalendarHolidaySchema])
+@router.get("/holidays", response=list[FullCalendarHolidaySchema])
 def holiday_events(request, start: date, end: date):
-    cant_holidays = holidays.country_holidays(
-        "NZ", subdiv="CAN", years=[start.year, end.year]
-    )
+    cant_holidays = holidays.country_holidays("NZ", subdiv="CAN", years=[start.year, end.year])
     return [{"start": date, "title": name} for date, name in cant_holidays.items()]

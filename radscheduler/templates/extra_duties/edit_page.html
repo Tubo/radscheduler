@@ -3,86 +3,84 @@
 {% load static %}
 
 {% block title %}
-    Extra duty generation
+  Extra duty generation
 {% endblock title %}
 {% block content %}
-    <div class="container">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th scope="col" class="">Date</th>
-                    <th scope="col">Type</th>
-                    <th scope="col">Applicants</th>
-                    <th scope="col">Winner</th>
-                    <th scope="col" class="w-25">Comment</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for shift in extra_shifts %}
-                    <tr>
-                        <th scope="row">
-                            {{ shift.date|date:"Y-m-d D" }}
-                            {% if shift.date in holidays %}🎉{% endif %}
-                        </th>
-                        <td>
-                            {{ shift.get_type_display }}
-                            {% if shift.buddy %}- {{ shift.buddy }}{% endif %}
-                        </td>
-                        <td>
-                            {% for interest in shift.interests.all %}
-                                {{ interest.registrar }}
-                                {% if not forloop.last %},{% endif %}
-                            {% endfor %}
-                        </td>
-                        <td>
-                            {% if shift.registrar %}
-                                <span class="fw-bold">{{ shift.registrar }}</span>
-                            {% else %}
-                                <div x-data="{shift_id: {{ shift.id }} }" class="input-group">
-                                    <select class="form-select"
-                                            id="registrar_selected"
-                                            name="registrar"
-                                            x-ref="select_element">
-                                        <option value=""></option>
-                                        {% for registrar in registrars %}
-                                            <option value="{{ registrar.pk }}" class="registrar_option">{{ registrar.user.username }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <button class="btn btn-primary"
-                                            type="button"
-                                            @click="$store.select_random(shift_id, $refs.select_element)">
-                                        Roll
-                                    </button>
-                                    <button class="btn btn-warning"
-                                            type="button"
-                                            hx-post="{% url 'extra_save_registrar' shift.pk %}"
-                                            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                                            hx-include="previous #registrar_selected">Save</button>
-                                </div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if shift.comment %}<p>{{ shift.comment }}</p>{% endif %}
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+  <div class="container">
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Type</th>
+          <th scope="col">Applicants</th>
+          <th scope="col">Winner</th>
+          <th scope="col" class="w-25">Comment</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for shift in extra_shifts %}
+          <tr>
+            <th scope="row">
+              {{ shift.date|date:"Y-m-d D" }}
+              {% if shift.date in holidays %}🎉{% endif %}
+            </th>
+            <td>
+              {{ shift.get_type_display }}
+              {% if shift.buddy %}- {{ shift.buddy }}{% endif %}
+            </td>
+            <td>
+              {% for interest in shift.interests.all %}
+                {{ interest.registrar }}
+                {% if not forloop.last %},{% endif %}
+              {% endfor %}
+            </td>
+            <td>
+              {% if shift.registrar %}
+                <span class="fw-bold">{{ shift.registrar }}</span>
+              {% else %}
+                <div x-data="{shift_id: {{ shift.id }} }" class="input-group">
+                  <select class="form-select"
+                          id="registrar_selected"
+                          name="registrar"
+                          x-ref="select_element">
+                    <option value=""></option>
+                    {% for registrar in registrars %}
+                      <option value="{{ registrar.pk }}" class="registrar_option">{{ registrar.user.username }}</option>
+                    {% endfor %}
+                  </select>
+                  <button class="btn btn-primary"
+                          type="button"
+                          @click="$store.select_random(shift_id, $refs.select_element)">Roll</button>
+                  <button class="btn btn-warning"
+                          type="button"
+                          hx-post="{% url 'extra_save_registrar' shift.pk %}"
+                          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                          hx-include="previous #registrar_selected">Save</button>
+                </div>
+              {% endif %}
+            </td>
+            <td>
+              {% if shift.comment %}<p>{{ shift.comment }}</p>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 {% endblock content %}
 {% block inline_javascript %}
-    <script>
-      window.addEventListener('DOMContentLoaded', () => {
-        Alpine.store("select_random", select_random_registrar)
-        Alpine.start();
-      });
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      Alpine.store("select_random", select_random_registrar)
+      Alpine.start();
+    });
 
-      function select_random_registrar(shift_id, select_element) {
-        fetch("{% url 'extra_random_registrar' %}" + "?id=" + shift_id)
-          .then(response => response.json())
-          .then(data => {
-            select_element.value = data.registrar
-          })
-      }
-    </script>
+    function select_random_registrar(shift_id, select_element) {
+      fetch("{% url 'extra_random_registrar' %}" + "?id=" + shift_id)
+        .then(response => response.json())
+        .then(data => {
+          select_element.value = data.registrar
+        })
+    }
+  </script>
 {% endblock inline_javascript %}

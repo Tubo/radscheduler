@@ -7,18 +7,17 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from radscheduler import roster
-from radscheduler.core import domain_mapper
 from radscheduler.core.forms import (
     DateForm,
-    DateRangeForm,
     EventsFilterForm,
     LeaveChangeEditorForm,
     SettingsForm,
     ShiftAddForm,
     ShiftChangeForm,
 )
-from radscheduler.core.models import Registrar, Settings, Shift, Status
-from radscheduler.core.service import *
+from radscheduler.core.models import Leave, Settings, Shift
+from radscheduler.core.service import get_events
+from radscheduler.roster import canterbury_holidays
 
 
 @staff_member_required
@@ -28,9 +27,7 @@ def page(request, date_=None):
     Display the roster generation form.
     """
     date_form = DateForm({"date": date_})
-    week_in_focus = (
-        date_form.cleaned_data["date"] if date_form.is_valid() else date.today()
-    )
+    week_in_focus = date_form.cleaned_data["date"] if date_form.is_valid() else date.today()
 
     # By default, show all shift types and leave types
     shift_types, leave_types = roster.ShiftType.values, roster.LeaveType.values

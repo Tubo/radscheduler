@@ -50,9 +50,7 @@ class TestSettingsView:
         assert resp.status_code == 302
         assert resp.location == reverse("editor")
 
-    def test_settings_renders_form_when_accessed_via_unpoly_layer(
-        self, app, admin_user
-    ):
+    def test_settings_renders_form_when_accessed_via_unpoly_layer(self, app, admin_user):
         """When accessing settings via Unpoly layer, render the settings form."""
         app.set_user(admin_user)
         resp = app.get(reverse("settings"), headers={"X-Up-Mode": "modal"})

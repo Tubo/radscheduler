@@ -3,6 +3,7 @@ Imports the history of shifts and leaves from a CSV file.
 
 The file was exported from Google Sheets designed by the previous roster master (Dr. Ed Ganly).
 """
+
 import csv
 from datetime import date, datetime
 

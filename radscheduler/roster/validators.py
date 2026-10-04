@@ -11,7 +11,7 @@ class StonzMecaValidator:
         self.shifts = shifts
         self.relevant_shifts = [s for s in shifts if s.registrar == registrar]
         self.leaves = kwargs.get("leaves", [])
-        self.relevant_leaves = [l for l in self.leaves if l.registrar == registrar]
+        self.relevant_leaves = [leave for leave in self.leaves if leave.registrar == registrar]
         self.statuses = kwargs.get("statuses", [])
         self.relevant_statuses = [s for s in self.statuses if s.registrar == registrar]
 
@@ -55,10 +55,12 @@ class StonzMecaValidator:
             self.shift
         ):
             leaves_spanning_night = [
-                l for l in self.relevant_leaves if (self.shift.date <= l.date <= self.shift.date + timedelta(3))
+                leave
+                for leave in self.relevant_leaves
+                if (self.shift.date <= leave.date <= self.shift.date + timedelta(3))
             ]
             return len(leaves_spanning_night) == 0
-        leaves_on_this_day = [l for l in self.relevant_leaves if l.date == self.shift.date]
+        leaves_on_this_day = [leave for leave in self.relevant_leaves if leave.date == self.shift.date]
         return len(leaves_on_this_day) == 0
 
     def validate_not_unrostered_status(self):
@@ -198,15 +200,15 @@ def group_shifts_by_date(shifts: list[Shift]) -> dict[date, list[Shift]]:
 
 
 def validate_roster(shifts, leaves, statuses):
-    registrars = set(shift.registrar.username for shift in shifts if shift.registrar is not None)
+    registrars = {shift.registrar.username for shift in shifts if shift.registrar is not None}
 
     for registrar in registrars:
         shifts = [shift for shift in filter(lambda s: s.registrar == registrar, shifts)]
-        leaves = list(filter(lambda l: l.registrar == registrar, leaves))
+        leaves = list(filter(lambda leave: leave.registrar == registrar, leaves))
         statuses = list(filter(lambda s: s.registrar == registrar, statuses))
 
         groupby_date = group_shifts_by_date(shifts)
-        for date, shifts in groupby_date.items():
+        for _day, shifts in groupby_date.items():
             if len(shifts) > 1:
                 assert False, f"{registrar} cannot work more than 1 shift per day: {shifts}"
 

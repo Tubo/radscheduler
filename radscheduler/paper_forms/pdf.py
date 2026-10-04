@@ -1,7 +1,6 @@
 import io
-from datetime import date, timedelta
+from datetime import timedelta
 from itertools import groupby
-from math import ceil
 
 import reportlab.pdfgen.canvas as pdf_canvas
 from pypdf import PdfReader, PdfWriter
