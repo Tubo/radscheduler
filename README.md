@@ -21,8 +21,14 @@ This project uses [devenv](https://devenv.sh/) for local development. It provide
 
 1. Install [devenv](https://devenv.sh/getting-started/)
 2. Clone the repository and enter the directory
-3. Run `devenv shell` to enter the development environment
-4. Run `devenv up` to start all services (PostgreSQL, Mailpit, Django, Webpack)
+3. Run `devenv shell` to enter the development environment (installs Python/JS dependencies and git hooks)
+4. Run `devenv up` to start all services (PostgreSQL, Mailpit, Django, Webpack). Migrations run automatically before Django starts.
+
+Ports are allocated automatically (Django from 8000, PostgreSQL from 5432, Mailpit SMTP 1025 / UI 8025), moving to the next free port if one is taken. Run `devenv processes list` to see the assigned ports.
+
+### Tests
+
+Run `pytest` inside `devenv shell` while `devenv up` is running, or run `devenv test` (with `devenv up` stopped) to start PostgreSQL and run the suite.
 
 ### Available Scripts
 
@@ -30,7 +36,8 @@ This project uses [devenv](https://devenv.sh/) for local development. It provide
 | ------------------- | ------------------------------------------------------- |
 | `manage <args>`     | Run Django management commands (e.g., `manage migrate`) |
 | `db:pull`           | Pull a backup from Fly.io production database           |
-| `db:restore <file>` | Restore a backup to local database                      |
+| `db:restore <args>` | Restore a backup to local database (see below)          |
+| `db:refresh`        | Pull a fresh backup and restore it (`--latest --clean`) |
 
 ## Database Backup & Restore
 

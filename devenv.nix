@@ -52,15 +52,18 @@
 
   # https://devenv.sh/processes/
   # processes.dev.exec = "${lib.getExe pkgs.watchexec} -n -- ls -la";
-  processes."dev:django" = {
-    ports.http.allocate = 8000;
-    exec = ''
-      python manage.py runserver_plus 0.0.0.0:${toString config.processes."dev:django".ports.http.value}
+  # Skipped under `devenv test`, which only needs the services.
+  processes = lib.mkIf (!config.devenv.isTesting) {
+    "dev:django" = {
+      ports.http.allocate = 8000;
+      exec = ''
+        python manage.py runserver_plus 0.0.0.0:${toString config.processes."dev:django".ports.http.value}
+      '';
+    };
+    "dev:webpack".exec = ''
+      pnpm webpack --watch --config webpack/dev.config.js
     '';
   };
-  processes."dev:webpack".exec = ''
-    pnpm webpack --watch --config webpack/dev.config.js
-  '';
 
   # https://devenv.sh/services/
   services.postgres = {
@@ -88,14 +91,11 @@
       python bin/pg_pull_from_fly.py
     '';
     "db:restore".exec = ''
-      latest_backup="$(ls -1t backups/* | head -n 1)" && echo "Latest: $latest_backup"
-      dropdb "${config.env.POSTGRES_DB}"
-      echo "Database ${config.env.POSTGRES_DB} dropped"
-      createdb "${config.env.POSTGRES_DB}" --owner="${config.env.POSTGRES_USER}"
-      echo "Database ${config.env.POSTGRES_DB} created"
-      gunzip -c "$latest_backup" | psql "${config.env.POSTGRES_DB}" >/dev/null 2>&1 && echo "Restore success" || echo "Restore failed"
+      python bin/pg_restore.py "$@" &&
       python manage.py drop_test_database --noinput
-      echo "Test database dropped"
+    '';
+    "db:refresh".exec = ''
+      db:pull && db:restore --latest --clean
     '';
     "pip:compile".exec = ''
       pip-compile --extra local -o requirements/local.txt "$@"
@@ -112,23 +112,82 @@
     '';
   };
 
-  # https://devenv.sh/basics/
-  enterShell = ''
-    git --version # Use packages
-  '';
-
   # https://devenv.sh/tasks/
   tasks = {
+    "app:migrate" = lib.mkIf (!config.devenv.isTesting) {
+      exec = "python manage.py migrate --noinput";
+      after = [ "devenv:processes:postgres" ];
+      before = [ "devenv:processes:dev:django" ];
+    };
+    # Hooks still run on commit; don't run them over the whole repo in `devenv test`.
+    "devenv:git-hooks:run".before = lib.mkForce [ ];
   };
 
   # https://devenv.sh/tests/
   enterTest = ''
-    echo "Running tests"
-    git --version | grep --color=auto "${pkgs.git.version}"
+    wait_for_port ${toString config.env.PGPORT} 60
+    pytest
   '';
 
   # https://devenv.sh/git-hooks/
-  # git-hooks.hooks.shellcheck.enable = true;
+  git-hooks = {
+    excludes = [
+      "^docs/"
+      "/migrations/"
+    ];
+    hooks = {
+      trim-trailing-whitespace.enable = true;
+      end-of-file-fixer.enable = true;
+      check-json.enable = true;
+      check-toml.enable = true;
+      check-xml.enable = true;
+      check-yaml.enable = true;
+      python-debug-statements.enable = true;
+      check-builtin-literals.enable = true;
+      check-case-conflicts.enable = true;
+      check-docstring-first.enable = true;
+      detect-private-keys.enable = true;
+
+      prettier = {
+        enable = true;
+        settings = {
+          single-quote = true;
+          tab-width = 2;
+        };
+        excludes = [
+          "radscheduler/templates/"
+          "pnpm-lock.yaml"
+        ];
+      };
+
+      django-upgrade = {
+        enable = true;
+        name = "django-upgrade";
+        entry = "${pkgs.django-upgrade}/bin/django-upgrade --target-version 4.2";
+        types = [ "python" ];
+      };
+      pyupgrade = {
+        enable = true;
+        args = [ "--py311-plus" ];
+      };
+      black.enable = true;
+      isort.enable = true;
+      flake8.enable = true;
+
+      djlint-reformat-django = {
+        enable = true;
+        name = "djlint-reformat-django";
+        entry = "${pkgs.djlint}/bin/djlint --reformat --profile=django";
+        types_or = [ "html" ];
+      };
+      djlint-django = {
+        enable = true;
+        name = "djlint-django";
+        entry = "${pkgs.djlint}/bin/djlint --profile=django";
+        types_or = [ "html" ];
+      };
+    };
+  };
 
   # See full reference at https://devenv.sh/reference/options/
 }
