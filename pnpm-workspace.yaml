@@ -1,0 +1,5 @@
+# Dependency install scripts pnpm may run. Neither is needed: elm ships
+# prebuilt binaries, and @parcel/watcher uses its prebuilt optional package.
+allowBuilds:
+  elm: false
+  '@parcel/watcher': false

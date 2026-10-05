@@ -1,7 +1,7 @@
 [project]
 name = "radscheduler"
 version = "0.1.0"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "django<6.0",
     "django-environ",
@@ -42,7 +42,7 @@ local = [
     "pytest",
     "pytest-django",
     "pytest-sugar",
-    "playwright==1.54",              # Pinning to match nixpkgs version
+    "playwright==1.61",              # Pinning to match nixpkgs version
     "pytest-playwright",
     "freezegun",
     "coverage",
@@ -78,7 +78,7 @@ plugins = ["django_coverage_plugin"]
 # ==== black ====
 [tool.black]
 line-length = 119
-target-version = ['py311']
+target-version = ['py313']
 
 
 # ==== isort ====
@@ -92,7 +92,7 @@ skip_glob = ["**/migrations/*.py"]
 
 # ==== mypy ====
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 check_untyped_defs = true
 ignore_missing_imports = true
 warn_unused_ignores = true

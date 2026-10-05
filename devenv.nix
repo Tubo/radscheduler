@@ -40,7 +40,7 @@
   # https://devenv.sh/languages/
   languages.python = {
     enable = true;
-    version = "3.11";
+    version = "3.13";
     venv.enable = true;
     venv.requirements = ./requirements/local.txt;
   };
@@ -68,6 +68,8 @@
   # https://devenv.sh/services/
   services.postgres = {
     enable = true;
+    # Pin the major version: a newer default can't open the existing data dir.
+    package = pkgs.postgresql_17;
     listen_addresses = "localhost";
     initialScript = ''
       ALTER USER "${config.env.POSTGRES_USER}" WITH SUPERUSER;
@@ -171,7 +173,7 @@
       };
       pyupgrade = {
         enable = true;
-        args = [ "--py311-plus" ];
+        args = [ "--py313-plus" ];
       };
       black.enable = true;
       isort.enable = true;

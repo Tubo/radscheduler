@@ -11,7 +11,7 @@ License: MIT
 
 This project uses [devenv](https://devenv.sh/) for local development. It provides:
 
-- Python 3.11 with virtual environment
+- Python 3.13 with virtual environment
 - PostgreSQL database
 - Node.js with pnpm
 - Mailpit for email testing
