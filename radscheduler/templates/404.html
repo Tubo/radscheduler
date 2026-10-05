@@ -1,15 +1,11 @@
-{% extends "base.html" %}
+{% extends "error_base.html" %}
 
 {% block title %}
   Page not found
 {% endblock title %}
-{% block content %}
-  <h1>Page not found</h1>
-  <p>
-    {% if exception %}
-      {{ exception }}
-    {% else %}
-      This is not the page you were looking for.
-    {% endif %}
-  </p>
-{% endblock content %}
+{% block heading %}
+  Page not found
+{% endblock heading %}
+{% block message %}
+  The page you're looking for doesn't exist or has moved. Check the address, or head back to the calendar.
+{% endblock message %}

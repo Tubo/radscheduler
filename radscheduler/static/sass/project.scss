@@ -35,6 +35,15 @@ $red: #b94a48;
   color: $red;
 }
 
+//////////////////
+// Account pages //
+//////////////////
+
+// Every field on the allauth forms is required, so crispy's asterisks are just noise there.
+.account-page .asteriskField {
+  display: none;
+}
+
 // smaller fullcalendar header toolbar for smaller screens
 @media (max-width: 768px) {
   .fc-header-toolbar {

@@ -1,12 +1,11 @@
-{% extends "base.html" %}
+{% extends "error_base.html" %}
 
 {% block title %}
-  Server Error
+  Something went wrong
 {% endblock title %}
-{% block content %}
-  <h1>Ooops!!! 500</h1>
-  <h3>Looks like something went wrong!</h3>
-  <p>
-    We track these errors automatically, but if the problem persists feel free to contact us. In the meantime, try refreshing.
-  </p>
-{% endblock content %}
+{% block heading %}
+  Something went wrong
+{% endblock heading %}
+{% block message %}
+  We track these errors automatically, but if the problem persists feel free to contact us. In the meantime, try refreshing.
+{% endblock message %}

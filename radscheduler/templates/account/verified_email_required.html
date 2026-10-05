@@ -3,22 +3,12 @@
 {% load i18n %}
 
 {% block head_title %}
-  {% translate "Verify Your E-mail Address" %}
+  {% translate "Verify your email address" %}
 {% endblock head_title %}
 {% block inner %}
-  <h1>{% translate "Verify Your E-mail Address" %}</h1>
-  {% url 'account_email' as email_url %}
-  <p>
-    {% blocktranslate %}This part of the site requires us to verify that
-you are who you claim to be. For this purpose, we require that you
-verify ownership of your e-mail address. {% endblocktranslate %}
+  <h1 class="h3 mb-2">{% translate "Verify your email address" %}</h1>
+  <p class="text-body-secondary">
+    {% translate "This part of the site needs a verified email address. We've sent you an email with a verification link. Please contact us if it doesn't arrive within a few minutes." %}
   </p>
-  <p>
-    {% blocktranslate %}We have sent an e-mail to you for
-verification. Please click on the link inside this e-mail. Please
-contact us if you do not receive it within a few minutes.{% endblocktranslate %}
-  </p>
-  <p>
-    {% blocktranslate %}<strong>Note:</strong> you can still <a href="{{ email_url }}">change your e-mail address</a>.{% endblocktranslate %}
-  </p>
+  <a class="d-inline-block py-1" href="{% url 'account_email' %}">{% translate "Change your email address" %}</a>
 {% endblock inner %}

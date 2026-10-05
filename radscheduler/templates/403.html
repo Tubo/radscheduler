@@ -1,15 +1,15 @@
-{% extends "base.html" %}
+{% extends "error_base.html" %}
 
 {% block title %}
-  Forbidden (403)
+  Access denied
 {% endblock title %}
-{% block content %}
-  <h1>Forbidden (403)</h1>
-  <p>
-    {% if exception %}
-      {{ exception }}
-    {% else %}
-      You're not allowed to access this page.
-    {% endif %}
-  </p>
-{% endblock content %}
+{% block heading %}
+  Access denied
+{% endblock heading %}
+{% block message %}
+  {% if exception %}
+    {{ exception }}
+  {% else %}
+    You don't have permission to view this page.
+  {% endif %}
+{% endblock message %}

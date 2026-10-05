@@ -1,0 +1,6 @@
+{# Usage: {% include "account/snippets/back_link.html" with href=url label=_("Profile") %} #}
+<a class="d-inline-flex align-items-center gap-1 link-secondary link-underline-opacity-0 link-underline-opacity-100-hover py-1 mb-3"
+   href="{{ href }}">
+  <i class="bi bi-arrow-left" aria-hidden="true"></i>
+  {{ label }}
+</a>
