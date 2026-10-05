@@ -13,3 +13,8 @@ venv
 node_modules
 .devenv
 backups
+radscheduler/static/webpack_bundles
+webpack-stats.json
+staticfiles
+**/__pycache__
+.pytest_cache

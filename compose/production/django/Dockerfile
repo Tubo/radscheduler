@@ -1,17 +1,21 @@
-FROM docker.io/node:20-bookworm-slim AS client-builder
+FROM docker.io/node:24-bookworm-slim AS client-builder
 
 ARG APP_HOME=/app
 WORKDIR ${APP_HOME}
 
-COPY ./package.json ${APP_HOME}
-RUN npm install && npm cache clean --force
+# pnpm version comes from the "packageManager" field in package.json.
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+
+COPY ./package.json ./pnpm-lock.yaml ./pnpm-workspace.yaml ${APP_HOME}/
+RUN pnpm install --frozen-lockfile
 COPY . ${APP_HOME}
-RUN npm run build
+RUN pnpm run build
 # define an alias for the specific python version used in this file.
-FROM python:3.11.6-slim-bookworm as python
+FROM docker.io/python:3.13.16-slim-bookworm AS python
 
 # Python build stage
-FROM python as python-build-stage
+FROM python AS python-build-stage
 
 ARG BUILD_ENVIRONMENT=production
 
@@ -31,14 +35,14 @@ RUN pip wheel --wheel-dir /usr/src/app/wheels  \
 
 
 # Python 'run' stage
-FROM python as python-run-stage
+FROM python AS python-run-stage
 
 ARG BUILD_ENVIRONMENT=production
 ARG APP_HOME=/app
 
-ENV PYTHONUNBUFFERED 1
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV BUILD_ENV ${BUILD_ENVIRONMENT}
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV BUILD_ENV=${BUILD_ENVIRONMENT}
 
 WORKDIR ${APP_HOME}
 
@@ -75,8 +79,10 @@ RUN sed -i 's/\r$//g' /start
 RUN chmod +x /start
 
 
-# copy application code to WORKDIR
-COPY --from=client-builder --chown=django:django ${APP_HOME} ${APP_HOME}
+# copy application code to WORKDIR, then the built frontend (not node_modules)
+COPY --chown=django:django . ${APP_HOME}
+COPY --from=client-builder --chown=django:django ${APP_HOME}/webpack-stats.json ${APP_HOME}/
+COPY --from=client-builder --chown=django:django ${APP_HOME}/radscheduler/static/webpack_bundles ${APP_HOME}/radscheduler/static/webpack_bundles
 
 
 # make django owner of the WORKDIR directory as well.

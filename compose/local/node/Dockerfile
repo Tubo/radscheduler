@@ -1,9 +1,12 @@
-FROM node:18-bullseye-slim
+FROM docker.io/node:24-bookworm-slim
 
 WORKDIR /app
 
-COPY ./package.json /app
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
 
-RUN npm install && npm cache clean --force
+COPY ./package.json ./pnpm-lock.yaml ./pnpm-workspace.yaml /app/
 
-ENV PATH ./node_modules/.bin/:$PATH
+RUN pnpm install --frozen-lockfile
+
+ENV PATH=./node_modules/.bin/:$PATH
