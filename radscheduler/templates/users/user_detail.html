@@ -1,36 +1,87 @@
 {% extends "base.html" %}
 
-{% load static %}
+{% load i18n %}
+{% load crispy_forms_tags %}
 
 {% block title %}
-  User:
-  {{ object.username }}
+  {{ object.name|default:object.username }}
 {% endblock title %}
+{% block messages %}
+{% endblock messages %}
 {% block content %}
-  <div class="container">
-    <div class="row">
-      <div class="col-sm-12">
-        <h2>{{ object.username }}</h2>
-        {% if object.name %}
-          <p>
-            {{ object.name }}
-            {% if object.employee_number %}<span>({{ object.employee_number }})</span>{% endif %}
-          </p>
+  <main class="container py-4 py-md-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-10 col-xl-9">
+        {% include "messages.html" %}
+        <header class="mb-4 mb-md-5">
+          <h1 class="h3 mb-1">{{ object.name|default:object.username }}</h1>
+          {% if object.name or object.employee_number %}
+            <p class="text-body-secondary mb-0">
+              {% if object.name %}{{ object.username }}{% endif %}
+              {% if object.name and object.employee_number %}<span aria-hidden="true">·</span>{% endif %}
+              {% if object.employee_number %}
+                {% translate "Employee" %} {{ object.employee_number }}
+              {% endif %}
+            </p>
+          {% endif %}
+        </header>
+        {% if object == request.user %}
+          <section id="details"
+                   class="border-top py-4"
+                   aria-labelledby="details-heading">
+            <div class="row gy-3">
+              <div class="col-lg-4">
+                <h2 id="details-heading" class="h5 mb-1">{% translate "Details" %}</h2>
+                <p class="text-body-secondary small mb-0">{% translate "These fill in your printed leave forms." %}</p>
+              </div>
+              <div class="col-lg-8">
+                <form id="details-form" method="post" action="{% url 'users:update' %}">
+                  {% csrf_token %}
+                  {{ user_form|crispy }}
+                  <button type="submit" class="btn btn-primary">{% translate "Save details" %}</button>
+                </form>
+              </div>
+            </div>
+          </section>
+          <section id="email" class="border-top py-4" aria-labelledby="email-heading">
+            <div class="row gy-3">
+              <div class="col-lg-4">
+                <h2 id="email-heading" class="h5 mb-1">{% translate "Email" %}</h2>
+                <p class="text-body-secondary small mb-0">{% translate "Used to reset your password." %}</p>
+              </div>
+              <div class="col-lg-8">
+                {% if object.email %}
+                  <p class="text-break mb-3">{{ object.email }}</p>
+                {% else %}
+                  <p class="mb-3">
+                    {% translate "You haven't added an email address yet. Without one, you can't reset a forgotten password." %}
+                  </p>
+                {% endif %}
+                <a class="btn btn-outline-secondary" href="{% url 'account_email' %}">
+                  {% if object.email %}
+                    {% translate "Manage email" %}
+                  {% else %}
+                    {% translate "Add email" %}
+                  {% endif %}
+                </a>
+              </div>
+            </div>
+          </section>
+          <section id="password"
+                   class="border-top py-4"
+                   aria-labelledby="password-heading">
+            <div class="row gy-3">
+              <div class="col-lg-4">
+                <h2 id="password-heading" class="h5 mb-0">{% translate "Password" %}</h2>
+              </div>
+              <div class="col-lg-8">
+                <a class="btn btn-outline-secondary"
+                   href="{% url 'account_change_password' %}">{% translate "Change password" %}</a>
+              </div>
+            </div>
+          </section>
         {% endif %}
       </div>
     </div>
-    {% if object == request.user %}
-      <!-- Action buttons -->
-      <div class="row">
-        <div class="col-sm-12">
-          <a class="btn btn-primary" href="{% url 'users:update' %}" role="button">My Info</a>
-          <a class="btn btn-primary"
-             href="{% url 'account_email' %}"
-             role="button">E-Mail</a>
-          <!-- Your Stuff: Custom user template urls -->
-        </div>
-      </div>
-      <!-- End Action buttons -->
-    {% endif %}
-  </div>
+  </main>
 {% endblock content %}

@@ -1,5 +1,6 @@
 from allauth.account.forms import SignupForm
 from allauth.socialaccount.forms import SignupForm as SocialSignupForm
+from django import forms
 from django.contrib.auth import forms as admin_forms
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
@@ -39,3 +40,23 @@ class UserSocialSignupForm(SocialSignupForm):
     Default fields will be added automatically.
     See UserSignupForm otherwise.
     """
+
+
+class UserProfileForm(forms.ModelForm):
+    """
+    The details a user can edit on their own profile page.
+    """
+
+    class Meta:
+        model = User
+        fields = ["name", "employee_number", "phone"]
+        labels = {
+            "name": _("Name"),
+            "employee_number": _("Employee number"),
+            "phone": _("Phone"),
+        }
+        widgets = {
+            "name": forms.TextInput(attrs={"autocomplete": "name"}),
+            "employee_number": forms.TextInput(attrs={"autocomplete": "off", "spellcheck": "false"}),
+            "phone": forms.TextInput(attrs={"type": "tel", "autocomplete": "tel"}),
+        }
