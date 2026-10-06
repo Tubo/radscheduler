@@ -168,7 +168,7 @@
       django-upgrade = {
         enable = true;
         name = "django-upgrade";
-        entry = "${pkgs.django-upgrade}/bin/django-upgrade --target-version 4.2";
+        entry = "${pkgs.django-upgrade}/bin/django-upgrade --target-version 5.2";
         types = [ "python" ];
       };
       # Lint (incl. import sorting and pyupgrade rules) and format; configured in pyproject.toml.
