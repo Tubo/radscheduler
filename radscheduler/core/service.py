@@ -4,15 +4,10 @@ from datetime import date, timedelta
 from django.db import IntegrityError
 from django.db.models import F, OuterRef, Q, Subquery
 from django.db.models.functions import Now
-from pandas import DataFrame, concat
 
 from radscheduler.core import domain_mapper
 from radscheduler.core.models import Leave, Registrar, Shift, Status
-from radscheduler.roster import (
-    ShiftType,
-    SingleOnCallRoster,
-    canterbury_holidays,
-)
+from radscheduler.roster import SingleOnCallRoster
 from radscheduler.roster.assigner import AutoAssigner
 from radscheduler.roster.generator import generate_shifts
 from radscheduler.roster.models import DetailedShiftType
@@ -116,71 +111,6 @@ def active_and_available_registrars(day):
     return registrars
 
 
-def build_registrar_table(registrars):
-    df_registrars = DataFrame(registrars)
-    df_registrars["year"] = df_registrars.days.dt.days // 365 + 1
-    df_registrars.drop(["days"], axis=1, inplace=True)
-    df_registrars.rename(columns={"user__username": "username"}, inplace=True)
-    return df_registrars
-
-
-def build_pivot_table(start, end, shifts, leaves, registrars):
-    columns = ["id", "date", "registrar"]
-
-    df_shifts = DataFrame(shifts, columns=columns)
-    if not df_shifts.empty:
-        df_shifts["id"] = "shift:" + df_shifts.id.astype("str")
-
-    df_leaves = DataFrame(leaves, columns=columns)
-    if not df_leaves.empty:
-        df_leaves["id"] = "leave:" + df_leaves["id"].astype("str")
-
-    df = concat([df_shifts, df_leaves])
-
-    if df.empty:
-        pivot = DataFrame(columns=["date", "holiday"])
-    else:
-        pivot = df.pivot_table(index="date", columns="registrar", values="id", aggfunc="first")
-    pivot.reset_index(inplace=True)
-    pivot.fillna("", inplace=True)
-    pivot["holiday"] = pivot.date.map(lambda d: canterbury_holidays.get(d, ""))
-    pivot.date = pivot.date.astype("str")
-    return pivot
-
-
-def retrieve_roster(start: date = None, end: date = None):
-    start, end = default_start_and_end(start, end)
-
-    shifts = Shift.objects.filter(date__range=[start, end], registrar__isnull=False)
-    shift_dict = {shift.id: domain_mapper.shift_to_dict(shift) for shift in shifts}
-
-    leaves = Leave.objects.filter(date__range=[start, end])
-    leave_dict = {leave.id: domain_mapper.leave_to_dict(leave) for leave in leaves}
-
-    statuses = Status.objects.exclude(Q(end__lt=start) | Q(start__gt=end))
-    status_dict = [domain_mapper.status_to_dict(status) for status in statuses]
-
-    registrars = get_active_registrars(start, end)
-    df_registrars = build_registrar_table(registrars.values("id", "user__username", "days"))
-
-    pivot = build_pivot_table(
-        start,
-        end,
-        shifts.values("id", "date", "registrar"),
-        leaves.values("id", "date", "registrar"),
-        df_registrars,
-    )
-
-    result = {
-        "columns": df_registrars.to_dict(orient="records"),
-        "table": pivot.to_dict(orient="records"),
-        "shifts": shift_dict,
-        "leaves": leave_dict,
-        "statuses": status_dict,
-    }
-    return result
-
-
 def fill_shifts(start: date, end: date):
     registrars = Registrar.objects.exclude(finish__lte=start).select_related("user")
     registrars = list(map(domain_mapper.registrar_from_db, registrars))
@@ -210,22 +140,6 @@ def fill_shifts(start: date, end: date):
     assert validate_roster(result, leaves, statuses)
 
     result = filter_shifts_by_date_range(result, start, end)
-    return result
-
-
-def group_shifts_by_date_and_type(start: date, end: date, shifts):
-    """
-    Group shifts by date and type. If the shift is outside the date range, it is ignored.
-    """
-    result = {
-        day: {shiftType.value: [] for shiftType in ShiftType} | {"holiday": canterbury_holidays.get(day)}
-        for day in daterange(start, end + timedelta(days=1))
-    }
-
-    for shift in shifts:
-        result[shift.date][shift.type].append(shift)
-
-    result = dict(sorted(result.items(), key=lambda item: item[0]))
     return result
 
 

@@ -69,19 +69,6 @@ class DateTimeRangeForm(forms.Form):
             self.add_error("start", "Start date must be before end date")
 
 
-class DateRangeForm(forms.Form):
-    start = forms.DateField(required=True)
-    end = forms.DateField(required=True)
-
-    def clean(self) -> dict[str, Any]:
-        cleaned_data = super().clean()
-        start = cleaned_data.get("start")
-        end = cleaned_data.get("end")
-
-        if start and end and start > end:
-            self.add_error("start", "Start date must be before end date")
-
-
 class LeaveForm(forms.ModelForm):
     template_name = "leaves/form.html"
     registrar = forms.IntegerField(widget=forms.HiddenInput(), required=False)
