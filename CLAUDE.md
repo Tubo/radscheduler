@@ -6,7 +6,10 @@ Radscheduler is a Django app for rostering radiology registrars in one Canterbur
 
 ## Development environment
 
-Local dev uses [devenv](https://devenv.sh/) (Nix). Prefer devenv workflows and don't add Docker-only steps. The project started from cookiecutter-django, which explains leftovers such as `compose/`, `local.yml` and the Heroku files (`Procfile`, `requirements.txt`, `runtime.txt`, `bin/post_compile`). Keep the Heroku files.
+Local dev uses [devenv](https://devenv.sh/) (Nix). Prefer devenv workflows and don't add Docker-only steps. The project started from cookiecutter-django. Two pieces of that setup are kept on purpose:
+
+- **Docker Compose** (`local.yml`, `production.yml`, `compose/`, `merge_production_dotenvs_in_dotenv.py`): an alternative dev and deploy path. Keep it in step with devenv and production when you change Python, Postgres or Node versions, dependencies or services.
+- **Heroku files** (`Procfile`, `requirements.txt`, `runtime.txt`, `bin/post_compile`).
 
 - `devenv shell`: enter the env (Python 3.13 venv, pnpm deps, git hooks).
 - `devenv up`: start Postgres, Mailpit, Django (`runserver_plus`) and the webpack watcher. Migrations run automatically first. Ports are allocated dynamically; see `devenv processes list`.
