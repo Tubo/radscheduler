@@ -2,7 +2,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from django.db import IntegrityError
-from django.db.models import Case, F, OuterRef, Q, Subquery, Value, When
+from django.db.models import F, OuterRef, Q, Subquery
 from django.db.models.functions import Now
 from pandas import DataFrame, concat
 
@@ -11,7 +11,6 @@ from radscheduler.core.models import Leave, Registrar, Shift, Status
 from radscheduler.roster import (
     ShiftType,
     SingleOnCallRoster,
-    Weekday,
     canterbury_holidays,
 )
 from radscheduler.roster.assigner import AutoAssigner
@@ -259,46 +258,6 @@ def shifts_breakdown(shifts):
         breakdown["WORKLOAD"] = round(workload, 1)
     result = {k: v for k, v in sorted(result.items(), key=lambda item: item[1]["WORKLOAD"], reverse=True)}
     return result
-
-
-def retrieve_workload_breakdown(start: date = None, end: date = None):
-    start, end = default_start_and_end(start, end)
-
-    registrars = Registrar.objects.exclude(start=None)
-    shifts = Shift.objects.filter(
-        date__range=[start, end],
-        type__in=[ShiftType.LONG, ShiftType.NIGHT],
-        extra_duty=False,
-    ).annotate(
-        type_=Case(
-            When(
-                Q(type=ShiftType.LONG) & Q(date__iso_week_day__in=[Weekday.SAT, Weekday.SUN]),
-                then=Value("WEEKEND"),
-            ),
-            When(
-                Q(type=ShiftType.NIGHT)
-                & Q(
-                    date__iso_week_day__in=[
-                        Weekday.FRI,
-                        Weekday.SAT,
-                        Weekday.SUN,
-                    ]
-                ),
-                then=Value("WKD NIGHT"),
-            ),
-            default=F("type"),
-        )
-    )
-
-    df_registrars = DataFrame(registrars.values("id", "username"))
-    df_shifts = DataFrame(shifts.values("registrar", "type_"))
-    workload = df_shifts.groupby(["registrar", "type_"]).size().unstack().fillna(0)
-    workload["FATIGUE"] = (
-        workload["LONG"] * 1 + workload["NIGHT"] * 7 + workload["WEEKEND"] * 4 + workload["WKD NIGHT"] * 5
-    )
-    workload = workload.merge(df_registrars, left_index=True, right_on="id", how="left")
-    workload.drop(["id"], axis=1, inplace=True)
-    return workload
 
 
 def generate_buddy_shifts(start, end):

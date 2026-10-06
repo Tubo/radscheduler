@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 import pytest
-from django.urls import reverse, reverse_lazy
+from django.urls import reverse
 
 from radscheduler.core.models import Leave, Shift, ShiftInterest
 from radscheduler.roster.models import LeaveType, ShiftType
@@ -155,20 +155,6 @@ class TestShiftInterestOwnership:
         resp = app.post(reverse("extra_interests"), {"shift_id": shift.pk}, expect_errors=True)
         assert resp.status_code == 404
         assert not ShiftInterest.objects.exists()
-
-
-class TestWorkloadAccess:
-    URL = reverse_lazy("workload")
-    PARAMS = {"start": "2026-01-01", "end": "2026-02-01"}
-
-    def test_anonymous_is_sent_to_login(self, app):
-        resp = app.get(self.URL, self.PARAMS)
-        assert resp.status_code == 302
-        assert "login" in resp.location
-
-    def test_registrar_is_sent_to_login(self, app, juniors_db):
-        app.set_user(juniors_db[0].user)
-        assert app.get(self.URL, self.PARAMS).status_code == 302
 
 
 class TestSaveExtraDutyWinner:
