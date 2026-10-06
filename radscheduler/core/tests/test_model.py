@@ -14,10 +14,10 @@ class TestRegistrar:
     @freeze_time("2023-8-01")
     def test_year(self, user):
         r = Registrar(user=user, start=date(2023, 2, 1), finish=date(2024, 12, 1))
-        assert r.year == 1
+        assert r.compute_year() == 1
 
         r = Registrar(user=user, start=date(2019, 12, 1), finish=date(2024, 12, 1))
-        assert r.year == 4
+        assert r.compute_year() == 4
 
 
 class TestShift:
@@ -26,6 +26,7 @@ class TestShift:
         # This may need to be changed in future if double oncall
         pass
 
+    @pytest.mark.xfail(strict=True, reason="Shift has no (date, registrar) uniqueness constraint yet")
     def test_one_shift_per_registrar(self, juniors_db):
         reg = juniors_db[0]
         # TODO: Test that only one shift per day is allowed

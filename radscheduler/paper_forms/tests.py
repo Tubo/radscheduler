@@ -1,6 +1,9 @@
+import io
 from datetime import date
 
 from pypdf import PdfWriter
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen.canvas import Canvas
 
 from radscheduler.core.models import Leave
 from radscheduler.roster.models import LeaveType
@@ -64,12 +67,14 @@ def test_leaves_to_rows(juniors_db):
 def test_same_user_different_leave_forms(juniors_db):
     l1 = Leave(date=date(2021, 1, 1), type=LeaveType.ANNUAL, registrar=juniors_db[0])  # Friday
     l2 = Leave(date=date(2021, 1, 5), type=LeaveType.ANNUAL, registrar=juniors_db[0])  # Tuesday
-    result = same_user_different_leave_forms(PdfWriter(), [l1, l2])
-    assert len(result.pages) == 1
+    pdf = PdfWriter()
+    same_user_different_leave_forms(pdf, Canvas(io.BytesIO(), pagesize=A4), [l1, l2])
+    assert len(pdf.pages) == 1
 
     l3 = Leave(date=date(2021, 1, 6), type=LeaveType.EDU, registrar=juniors_db[0])  # Wednesday
-    result = same_user_different_leave_forms(PdfWriter(), [l1, l2, l3])
-    assert len(result.pages) == 2
+    pdf = PdfWriter()
+    same_user_different_leave_forms(pdf, Canvas(io.BytesIO(), pagesize=A4), [l1, l2, l3])
+    assert len(pdf.pages) == 2
 
 
 def test_leaves_to_pdf(juniors_db):
