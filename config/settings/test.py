@@ -33,6 +33,10 @@ TEMPLATES[0]["OPTIONS"]["debug"] = True  # type: ignore # noqa: F405
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#media-url
 MEDIA_URL = "http://media.testserver/"
+# WHITENOISE
+# ------------------------------------------------------------------------------
+# Tests never run collectstatic; autorefresh skips the startup scan of the missing STATIC_ROOT.
+WHITENOISE_AUTOREFRESH = True
 # django-webpack-loader
 # ------------------------------------------------------------------------------
 WEBPACK_LOADER["DEFAULT"]["LOADER_CLASS"] = "webpack_loader.loaders.FakeWebpackLoader"  # noqa: F405
