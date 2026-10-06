@@ -1,4 +1,3 @@
-import json
 from datetime import date
 
 import pytest
@@ -32,12 +31,11 @@ def test_editor_shift_buttons_render_csrf_tokens(app):
         token = csrf_input.get("value", "")
         assert token and token != "NOTPROVIDED"
 
-    # The delete button sends CSRF via Unpoly headers; ensure it is populated too.
+    # The delete button posts through Unpoly, which sends the token from the csrf-token meta tag.
     delete_button = response.html.find(
         "button",
         attrs={"up-href": reverse("delete_shift", args=[shift.id])},
     )
     assert delete_button is not None
-    headers_raw = delete_button["up-headers"]
-    csrf_header = json.loads(headers_raw).get("X-CSRFToken", "")
-    assert csrf_header and csrf_header != "NOTPROVIDED", f"Got: {csrf_header}"
+    csrf_meta = response.html.find("meta", attrs={"name": "csrf-token"})["content"]
+    assert csrf_meta and csrf_meta != "NOTPROVIDED", f"Got: {csrf_meta}"

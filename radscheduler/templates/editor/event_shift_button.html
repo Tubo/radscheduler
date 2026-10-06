@@ -43,7 +43,6 @@
                   up-follow
                   up-href="{% url 'delete_shift' shift.id %}"
                   up-method="post"
-                  up-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                   up-confirm="Are you sure you want to delete this shift?"
                   data-bs-toggle="tooltip"
                   data-bs-title="Delete shift">
