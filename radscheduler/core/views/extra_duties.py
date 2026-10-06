@@ -5,10 +5,11 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.db.models import OuterRef, Subquery
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
-from radscheduler.core.forms import ShiftChangeForm, ShiftInterestForm
+from radscheduler.core.forms import ShiftInterestForm, ShiftRegistrarForm
 from radscheduler.core.models import Shift, ShiftInterest
 from radscheduler.core.service import get_active_registrars
 from radscheduler.roster import canterbury_holidays
@@ -115,12 +116,12 @@ def interested_random_registrar(request):
 
 
 @staff_member_required
+@require_POST
 def save_registrar(request, shift_id):
-    if request.method == "POST":
-        form = ShiftChangeForm(request.POST)
-        if form.is_valid():
-            registrar = form.cleaned_data["registrar"]
-            shift = Shift.objects.get(pk=shift_id)
-            shift.registrar = registrar
-            shift.save()
-            return HttpResponse("Saved", status=200)
+    shift = get_object_or_404(Shift, pk=shift_id, extra_duty=True)
+    form = ShiftRegistrarForm(request.POST, instance=shift)
+    if form.is_valid():
+        form.save()
+    else:
+        messages.error(request, "Choose a registrar before saving.")
+    return redirect("extra_edit_page")

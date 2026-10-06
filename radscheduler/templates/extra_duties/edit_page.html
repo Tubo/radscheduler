@@ -19,7 +19,7 @@
       </thead>
       <tbody>
         {% for shift in extra_shifts %}
-          <tr>
+          <tr id="extra-edit-{{ shift.pk }}">
             <th scope="row">
               {{ shift.date|date:"Y-m-d D" }}
               {% if shift.date in holidays %}🎉{% endif %}
@@ -43,9 +43,9 @@
                       method="post"
                       action="{% url 'extra_save_registrar' shift.pk %}"
                       up-submit
-                      up-target=":none">
+                      up-target="#extra-edit-{{ shift.pk }}">
                   {% csrf_token %}
-                  <select class="form-select" name="registrar" x-ref="select_element">
+                  <select class="form-select" name="registrar" x-ref="select_element" required>
                     <option value=""></option>
                     {% for registrar in registrars %}
                       <option value="{{ registrar.pk }}" class="registrar_option">{{ registrar.user.username }}</option>

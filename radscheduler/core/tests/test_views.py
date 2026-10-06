@@ -169,3 +169,48 @@ class TestWorkloadAccess:
     def test_registrar_is_sent_to_login(self, app, juniors_db):
         app.set_user(juniors_db[0].user)
         assert app.get(self.URL, self.PARAMS).status_code == 302
+
+
+class TestSaveExtraDutyWinner:
+    @pytest.fixture
+    def extra_shift(self):
+        return Shift.objects.create(date=next_weekday(20), type=ShiftType.LONG, extra_duty=True)
+
+    def test_staff_saves_winner(self, app, admin_user, juniors_db, extra_shift):
+        app.set_user(admin_user)
+        resp = app.post(reverse("extra_save_registrar", args=[extra_shift.pk]), {"registrar": juniors_db[0].pk})
+        assert resp.status_code == 302
+        assert resp.location == reverse("extra_edit_page")
+        extra_shift.refresh_from_db()
+        assert extra_shift.registrar == juniors_db[0]
+
+    def test_winner_shows_on_editor_page(self, app, admin_user, juniors_db, extra_shift):
+        app.set_user(admin_user)
+        page = app.post(
+            reverse("extra_save_registrar", args=[extra_shift.pk]), {"registrar": juniors_db[0].pk}
+        ).follow()
+        row = page.html.find(id=f"extra-edit-{extra_shift.pk}")
+        assert row.find(class_="fw-bold").text == juniors_db[0].user.username
+
+    def test_missing_registrar_leaves_shift_unassigned(self, app, admin_user, extra_shift):
+        app.set_user(admin_user)
+        resp = app.post(reverse("extra_save_registrar", args=[extra_shift.pk]), {"registrar": ""})
+        assert resp.status_code == 302
+        extra_shift.refresh_from_db()
+        assert extra_shift.registrar is None
+
+    def test_only_extra_duty_shifts(self, app, admin_user, juniors_db):
+        shift = Shift.objects.create(date=next_weekday(20), type=ShiftType.LONG, extra_duty=False)
+        app.set_user(admin_user)
+        resp = app.post(
+            reverse("extra_save_registrar", args=[shift.pk]), {"registrar": juniors_db[0].pk}, expect_errors=True
+        )
+        assert resp.status_code == 404
+
+    def test_registrar_cannot_save_winner(self, app, juniors_db, extra_shift):
+        app.set_user(juniors_db[0].user)
+        resp = app.post(reverse("extra_save_registrar", args=[extra_shift.pk]), {"registrar": juniors_db[0].pk})
+        assert resp.status_code == 302
+        assert "login" in resp.location
+        extra_shift.refresh_from_db()
+        assert extra_shift.registrar is None

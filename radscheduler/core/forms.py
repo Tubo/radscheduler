@@ -120,6 +120,16 @@ class ShiftChangeForm(forms.ModelForm):
         fields = ["type", "extra_duty"]
 
 
+class ShiftRegistrarForm(forms.ModelForm):
+    class Meta:
+        model = Shift
+        fields = ["registrar"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["registrar"].required = True
+
+
 class ShiftAddForm(forms.ModelForm):
     class Meta:
         model = Shift
