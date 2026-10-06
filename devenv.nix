@@ -134,7 +134,6 @@
   # https://devenv.sh/git-hooks/
   git-hooks = {
     excludes = [
-      "^docs/"
       "/migrations/"
     ];
     hooks = {

@@ -44,8 +44,6 @@ local = [
     "pytest-playwright",
     "freezegun",
     "coverage",
-    "sphinx",
-    "sphinx-autobuild",
     "ruff",
     "djlint",
     "factory-boy",

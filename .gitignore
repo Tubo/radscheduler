@@ -55,7 +55,6 @@ test-results/
 staticfiles/
 
 # Sphinx documentation
-docs/_build/
 
 # PyBuilder
 target/
