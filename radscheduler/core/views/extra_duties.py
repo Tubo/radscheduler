@@ -6,7 +6,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.db.models import OuterRef, Subquery
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from radscheduler.core.forms import ShiftChangeForm, ShiftInterestForm
 from radscheduler.core.models import Shift, ShiftInterest
@@ -43,7 +43,7 @@ def page(request):
 def interests(request):
     if request.method == "POST":
         shift_id = request.POST.get("shift_id")
-        shift = Shift.objects.get(pk=shift_id)
+        shift = get_object_or_404(Shift, pk=shift_id, extra_duty=True)
         interest = ShiftInterest.objects.create(registrar=request.user.registrar, shift=shift)
         shift.interest_id = interest.pk
         shift.comment = interest.comment
@@ -56,7 +56,7 @@ def interests(request):
 
 @login_required
 def interest(request, interest_id):
-    interest = ShiftInterest.objects.get(id=interest_id)
+    interest = get_object_or_404(ShiftInterest, id=interest_id, registrar__user=request.user)
     shift = interest.shift
 
     if request.method == "POST":

@@ -1,11 +1,13 @@
 import json
 
+from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import HttpResponse
 
 from radscheduler.core.forms import DateRangeForm
 from radscheduler.core.service import group_shifts_by_date_and_type, retrieve_roster, retrieve_workload_breakdown
 
 
+@staff_member_required
 def get_generated_roster(request):
     if request.method == "GET":
         form = DateRangeForm(request.GET)
@@ -17,6 +19,7 @@ def get_generated_roster(request):
             return HttpResponse(events_json, content_type="application/json")
 
 
+@staff_member_required
 def get_roster(request):
     if request.method == "GET":
         form = DateRangeForm(request.GET)
@@ -28,6 +31,7 @@ def get_roster(request):
             return HttpResponse(events_json, content_type="application/json")
 
 
+@staff_member_required
 def get_workload(request):
     """
     Various rankings of registrar workload

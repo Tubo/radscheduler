@@ -19,7 +19,10 @@ def leave_page(request):
         return redirect("home")
 
     if request.method == "POST":
-        form = LeaveForm(request.POST)
+        # Ignore the posted registrar: leave is always for the signed-in registrar.
+        data = request.POST.copy()
+        data["registrar"] = registrar.pk
+        form = LeaveForm(data)
         if form.is_valid():
             leave = form.save()
             next_date = leave.date + timedelta(days=1) if leave.date.weekday() < 4 else leave.date + timedelta(days=3)
@@ -47,7 +50,7 @@ def leave_page(request):
 
 @login_required
 def leave_form_inline(request, pk):
-    leave = get_object_or_404(Leave, pk=pk)
+    leave = get_object_or_404(Leave, pk=pk, registrar__user=request.user)
     if request.method == "POST":
         form = LeaveForm(request.POST, instance=leave)
         if form.is_valid():
@@ -60,7 +63,7 @@ def leave_form_inline(request, pk):
 
 @login_required
 def leave_row(request, pk):
-    leave = get_object_or_404(Leave, pk=pk)
+    leave = get_object_or_404(Leave, pk=pk, registrar__user=request.user)
     # Rendered as a list so the row arrives inside a <table> (see leaves/form_inline.html)
     return render(request, "leaves/list.html", {"rows": [leave]})
 
@@ -68,7 +71,7 @@ def leave_row(request, pk):
 @login_required
 def leave_delete(request, pk):
     if request.method == "POST":
-        leave = get_object_or_404(Leave, pk=pk)
+        leave = get_object_or_404(Leave, pk=pk, registrar__user=request.user)
         leave.delete()
     return redirect("leave_list")
 
