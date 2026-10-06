@@ -110,8 +110,6 @@ python-dateutil==2.9.0.post0
     #   holidays
     #   icalendar
     #   pandas
-python-slugify==9.1.2
-    # via radscheduler (pyproject.toml)
 pyyaml==6.0.3
     # via radscheduler (pyproject.toml)
 redis==8.1.0
@@ -128,8 +126,6 @@ six==1.17.0
     # via python-dateutil
 sqlparse==0.6.0
     # via django
-text-unidecode==1.3
-    # via python-slugify
 typing-extensions==4.16.0
     # via
     #   pydantic
