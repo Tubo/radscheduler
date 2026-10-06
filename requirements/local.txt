@@ -21,10 +21,6 @@ asgiref==3.12.1
     #   django
     #   django-allauth
     #   django-htmx
-ast-serialize==0.12.1
-    # via mypy
-astroid==4.3.3
-    # via pylint
 asttokens==3.0.2
     # via stack-data
 attrs==26.1.0
@@ -64,8 +60,6 @@ dacite==1.9.2
     # via radscheduler (pyproject.toml)
 decorator==5.3.1
     # via ipdb
-dill==0.4.1
-    # via pylint
 distlib==0.4.3
     # via virtualenv
 django==5.2.17
@@ -82,8 +76,6 @@ django==5.2.17
     #   django-ninja
     #   django-recurrence
     #   django-redis
-    #   django-stubs
-    #   django-stubs-ext
     #   django-template-partials
     #   radscheduler (pyproject.toml)
 django-admin-rangefilter==0.15.0
@@ -114,10 +106,6 @@ django-recurrence==1.14
     # via django-ical
 django-redis==7.0.0
     # via radscheduler (pyproject.toml)
-django-stubs[compatible-mypy]==6.1.2
-    # via radscheduler (pyproject.toml)
-django-stubs-ext==6.1.2
-    # via django-stubs
 django-template-partials==25.3
     # via radscheduler (pyproject.toml)
 django-webpack-loader==3.2.4
@@ -142,12 +130,6 @@ filelock==4.0.12
     # via
     #   python-discovery
     #   virtualenv
-flake8==7.4.1
-    # via
-    #   flake8-isort
-    #   radscheduler (pyproject.toml)
-flake8-isort==7.0.0
-    # via radscheduler (pyproject.toml)
 freezegun==1.5.5
     # via radscheduler (pyproject.toml)
 greenlet==3.5.6
@@ -176,10 +158,6 @@ ipython==9.17.1
     # via ipdb
 ipython-pygments-lexers==1.1.1
     # via ipython
-isort==9.0.2
-    # via
-    #   flake8-isort
-    #   pylint
 jedi==0.20.0
     # via ipython
 jinja2==3.1.6
@@ -192,26 +170,12 @@ json5==0.15.0
     # via djlint
 legacy-cgi==2.6.4
     # via webob
-librt==0.16.0
-    # via mypy
 markupsafe==3.0.4
     # via
     #   jinja2
     #   werkzeug
 matplotlib-inline==0.2.2
     # via ipython
-mccabe==0.7.0
-    # via
-    #   flake8
-    #   pylint
-mypy==2.4.0
-    # via
-    #   django-stubs
-    #   radscheduler (pyproject.toml)
-mypy-extensions==1.1.0
-    # via
-    #   isort
-    #   mypy
 nodeenv==1.11.0
     # via pre-commit
 numpy==2.4.6
@@ -228,9 +192,7 @@ pandas==3.0.6
 parso==0.8.7
     # via jedi
 pathspec==1.1.1
-    # via
-    #   djlint
-    #   mypy
+    # via djlint
 pexpect==4.9.0
     # via ipython
 pillow==12.3.0
@@ -240,9 +202,7 @@ pillow==12.3.0
 pip-tools==7.6.1
     # via radscheduler (pyproject.toml)
 platformdirs==4.12.3
-    # via
-    #   pylint
-    #   virtualenv
+    # via virtualenv
 playwright==1.61.0
     # via
     #   pytest-playwright
@@ -263,8 +223,6 @@ ptyprocess==0.7.0
     # via pexpect
 pure-eval==0.2.4
     # via stack-data
-pycodestyle==2.15.0
-    # via flake8
 pycparser==3.0
     # via cffi
 pydantic==2.13.5
@@ -273,22 +231,12 @@ pydantic-core==2.46.5
     # via pydantic
 pyee==13.0.1
     # via playwright
-pyflakes==4.0.2
-    # via flake8
 pygments==2.21.0
     # via
     #   ipython
     #   ipython-pygments-lexers
     #   pytest
     #   sphinx
-pylint==4.1.2
-    # via
-    #   pylint-django
-    #   pylint-plugin-utils
-pylint-django==2.8.0
-    # via radscheduler (pyproject.toml)
-pylint-plugin-utils==0.9.0
-    # via pylint-django
 pypdf==6.19.0
     # via radscheduler (pyproject.toml)
 pyproject-hooks==1.3.3
@@ -380,21 +328,14 @@ termcolor==3.3.0
     # via pytest-sugar
 text-unidecode==1.3
     # via python-slugify
-tomlkit==0.15.1
-    # via pylint
 traitlets==5.16.1
     # via
     #   ipython
     #   matplotlib-inline
-types-pyyaml==6.0.12.20260906
-    # via django-stubs
 typing-extensions==4.16.0
     # via
     #   anyio
     #   beautifulsoup4
-    #   django-stubs
-    #   django-stubs-ext
-    #   mypy
     #   pydantic
     #   pydantic-core
     #   pyee

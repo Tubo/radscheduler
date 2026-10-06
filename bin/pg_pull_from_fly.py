@@ -342,18 +342,18 @@ def backup_once(cfg: Config) -> Path:
 
 def main() -> None:
     cfg = Config.from_env()
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print("Fly.io Postgres Backup")
     print("=" * 50)
     print(f"  FLY_APP:    {cfg.fly_app}")
     print(f"  FLY_PG_APP: {cfg.fly_pg_app}")
     print(f"  LOCAL_PORT: {cfg.local_port}")
     print(f"  BACKUP_DIR: {cfg.backup_dir}")
-    print(f"{'='*50}\n")
+    print(f"{'=' * 50}\n")
     out = backup_once(cfg)
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"✓ Backup complete: {out}")
-    print(f"{'='*50}\n")
+    print(f"{'=' * 50}\n")
 
 
 if __name__ == "__main__":

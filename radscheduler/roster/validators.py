@@ -218,14 +218,14 @@ def validate_roster(shifts, leaves, statuses):
                 assert False, f"{registrar} cannot work more than 2 shifts in 7 days"
 
         for leave in leaves:
-            shifts = list(filter(lambda s: (s.date == leave.date), shifts))
+            shifts = list(filter(lambda s: s.date == leave.date, shifts))
             assert shifts == [], f"{registrar} cannot work {shifts} while on leave {leave}"
 
         for leave in leaves:
             if leave.date.weekday() == Weekday.MON:
                 shifts = list(
                     filter(
-                        lambda a: (date - timedelta(2) <= a.shift.date <= date - timedelta(1)),
+                        lambda a: date - timedelta(2) <= a.shift.date <= date - timedelta(1),
                         shifts,
                     )
                 )
@@ -234,7 +234,7 @@ def validate_roster(shifts, leaves, statuses):
         for status in statuses:
             if status.type == StatusType.BUDDY:
                 continue
-            shifts = filter(lambda shift: (status.start <= shift.date <= status.end), shifts)
+            shifts = filter(lambda shift: status.start <= shift.date <= status.end, shifts)
             assert list(shifts) == [], f"{registrar} cannot work while on {status}"
 
     return True

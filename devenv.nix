@@ -171,13 +171,9 @@
         entry = "${pkgs.django-upgrade}/bin/django-upgrade --target-version 4.2";
         types = [ "python" ];
       };
-      pyupgrade = {
-        enable = true;
-        args = [ "--py313-plus" ];
-      };
-      black.enable = true;
-      isort.enable = true;
-      flake8.enable = true;
+      # Lint (incl. import sorting and pyupgrade rules) and format; configured in pyproject.toml.
+      ruff.enable = true;
+      ruff-format.enable = true;
 
       djlint-reformat-django = {
         enable = true;

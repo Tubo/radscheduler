@@ -246,9 +246,9 @@ def test_three_year_roster_equal_start(juniors, seniors):
 
     fatigue_breakdown = assigner.registrars_sorted_by_fatigue(result)
     fatigue_stdev = statistics.stdev([f for _, f in fatigue_breakdown])
-    assert (
-        fatigue_stdev < FATIGUE_STDEV_THRESHOLD
-    ), "Fatigue level should be fairly even across all registrars: f{fatigue_breakdown}"
+    assert fatigue_stdev < FATIGUE_STDEV_THRESHOLD, (
+        "Fatigue level should be fairly even across all registrars: f{fatigue_breakdown}"
+    )
 
     assert validate_roster(result, [], [])
 
@@ -274,9 +274,9 @@ def test_non_rostered_status(juniors, seniors):
     shifts = generate_shifts(SingleOnCallRoster, date(2023, 1, 2), date(2023, 1, 22))
     assigner = AutoAssigner(registrars=juniors + seniors, unfilled=shifts, statuses=[status])
     result = assigner.fill_roster()
-    assert (
-        list(filter(lambda a: a.registrar == junior1, result)) != []
-    ), "Registrar with buddy status should be rostered"
+    assert list(filter(lambda a: a.registrar == junior1, result)) != [], (
+        "Registrar with buddy status should be rostered"
+    )
 
     status = Status(
         start=date(2023, 1, 2),
@@ -286,9 +286,9 @@ def test_non_rostered_status(juniors, seniors):
     )
     assigner.statuses = [status]
     result = assigner.fill_roster()
-    assert (
-        list(filter(lambda a: a.registrar == junior1, result)) == []
-    ), "Registrar with pre-oncall status should not be rostered"
+    assert list(filter(lambda a: a.registrar == junior1, result)) == [], (
+        "Registrar with pre-oncall status should not be rostered"
+    )
 
     assert validate_roster(result, [], statuses=[status])
 
@@ -308,9 +308,9 @@ def test_first_start_oncall(juniors, seniors):
     # Overall fatigue level breakdown
     fatigue_breakdown = [(row[0].username, row[1]) for row in assigner.registrars_sorted_by_fatigue(result)]
     fatigue_stdev = statistics.stdev([f for _, f in fatigue_breakdown])
-    assert (
-        fatigue_stdev < FATIGUE_STDEV_THRESHOLD
-    ), "Fatigue level should be fairly even across all registrars: f{fatigue_breakdown}"
+    assert fatigue_stdev < FATIGUE_STDEV_THRESHOLD, (
+        "Fatigue level should be fairly even across all registrars: f{fatigue_breakdown}"
+    )
 
     # Date distance breakdown
     distances = [(registrar.username, registrar_shift_distance(registrar, result)) for registrar in juniors + seniors]
@@ -353,16 +353,16 @@ def test_return_from_parental_leave(juniors, seniors):
 
     fatigue_breakdown = assigner.registrars_sorted_by_fatigue(result)
     fatigue_stdev = statistics.stdev([f for _, f in fatigue_breakdown])
-    assert (
-        fatigue_stdev < FATIGUE_STDEV_THRESHOLD
-    ), "Fatigue level should be fairly even across all registrars: f{fatigue_breakdown}"
+    assert fatigue_stdev < FATIGUE_STDEV_THRESHOLD, (
+        "Fatigue level should be fairly even across all registrars: f{fatigue_breakdown}"
+    )
 
     distances = [(registrar.username, registrar_shift_distance(registrar, result)) for registrar in juniors + seniors]
     dist_mean = statistics.mean([d for _, d in distances])
     dist_stdev = statistics.stdev([d for _, d in distances])
-    assert (
-        dist_mean - 2 * dist_stdev < distances[0][1]
-    ), "Distance should be higher than mean, as registrar is returning from leave"
+    assert dist_mean - 2 * dist_stdev < distances[0][1], (
+        "Distance should be higher than mean, as registrar is returning from leave"
+    )
 
     assert validate_roster(result, leaves=leaves, statuses=[])
 
