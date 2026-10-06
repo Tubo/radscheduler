@@ -20,7 +20,6 @@ asgiref==3.12.1
     # via
     #   django
     #   django-allauth
-    #   django-htmx
 asttokens==3.0.2
     # via stack-data
 attrs==26.1.0
@@ -70,7 +69,6 @@ django==5.2.17
     #   django-crispy-forms
     #   django-debug-toolbar
     #   django-extensions
-    #   django-htmx
     #   django-ical
     #   django-model-utils
     #   django-ninja
@@ -93,8 +91,6 @@ django-debug-toolbar==8.0.0
 django-environ==0.14.0
     # via radscheduler (pyproject.toml)
 django-extensions==4.1
-    # via radscheduler (pyproject.toml)
-django-htmx==1.29.0
     # via radscheduler (pyproject.toml)
 django-ical==1.9.2
     # via radscheduler (pyproject.toml)

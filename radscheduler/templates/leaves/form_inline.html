@@ -1,60 +1,83 @@
-<tr>
-  {% with date=form.date.value %}
-    <th scope="row" class="font-monospace">{{ date|date:"Y" }}</th>
-    <td class="font-monospace">{{ date|date:"M" }}</td>
-    <td class="font-monospace">{{ date|date:"d, D" }}</td>
-  {% endwith %}
-  <td>
-    <input type="date"
-           class="d-none"
-           name="date"
-           value="{{ form.date.value|date:'Y-m-d' }}" />
-    <select id="inputType" class="form-select mx-auto" name="type"  required>
-      {% for type in form.fields.type.choices %}
-        <option value="{{ type.0 }}"
-                {% if form.type.value == type.0 %}selected{% endif %}>{{ type.1 }}</option>
-      {% endfor %}
-    </select>
-  </td>
-  <td>
-    <select id="inputPortion" class="form-select" name="portion"  required>
-      {% for portion in form.fields.portion.choices %}
-        <option value="{{ portion.0 }}"
-                {% if form.portion.value == portion.0 %}selected{% endif %}>{{ portion.1 }}</option>
-      {% endfor %}
-    </select>
-  </td>
-  <td>
-    <input type="text"
-           class="form-control"
-           id="inputComment"
-           name="comment"
-           value="{{ form.comment.value }}" />
-  </td>
-  <td></td>
-  <td>
-    <button class="btn btn-warning ml-auto"
-            hx-post="{% url 'leave_form_inline' form.instance.pk %}"
-            hx-target="closest tr"
-            hx-swap="outerHTML"
-            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-            hx-include="closest tr"
-            type="button">
-      <i class="bi bi-floppy"></i>
-    </button>
-    <button class="d-inline-block btn"
-            hx-get="{% url 'leave_row' form.instance.pk %}"
-            hx-target="closest tr"
-            hx-swap="outerHTML">
-      <i class="bi bi-x-circle"></i>
-    </button>
-    <button class="btn btn-danger"
-            type="button"
-            hx-post="{% url 'leave_delete' form.instance.pk %}"
-            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-            hx-target="#leave-list"
-            hx-confirm="Are you sure you wish to delete this?">
-      <i class="bi bi-trash"></i>
-    </button>
-  </td>
-</tr>
+{# Wrapped in a table: Unpoly parses responses as documents, which drop a bare <tr>. #}
+<table>
+  <tbody>
+    {% with pk=form.instance.pk %}
+      <tr id="leave-{{ pk }}">
+        {% with date=form.date.value %}
+          <th scope="row" class="font-monospace">{{ date|date:"Y" }}</th>
+          <td class="font-monospace">{{ date|date:"M" }}</td>
+          <td class="font-monospace">{{ date|date:"d, D" }}</td>
+        {% endwith %}
+        <td>
+          <input type="date"
+                 class="d-none"
+                 name="date"
+                 form="leave-edit-{{ pk }}"
+                 value="{{ form.date.value|date:'Y-m-d' }}" />
+          <select id="inputType"
+                  class="form-select mx-auto"
+                  name="type"
+                  form="leave-edit-{{ pk }}"
+                  required>
+            {% for type in form.fields.type.choices %}
+              <option value="{{ type.0 }}"
+                      {% if form.type.value == type.0 %}selected{% endif %}>{{ type.1 }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td>
+          <select id="inputPortion"
+                  class="form-select"
+                  name="portion"
+                  form="leave-edit-{{ pk }}"
+                  required>
+            {% for portion in form.fields.portion.choices %}
+              <option value="{{ portion.0 }}"
+                      {% if form.portion.value == portion.0 %}selected{% endif %}>{{ portion.1 }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td>
+          <input type="text"
+                 class="form-control"
+                 id="inputComment"
+                 name="comment"
+                 form="leave-edit-{{ pk }}"
+                 value="{{ form.comment.value }}" />
+        </td>
+        <td></td>
+        <td>
+          {# The fields above join this form through their form attribute. #}
+          <form id="leave-edit-{{ pk }}"
+                method="post"
+                action="{% url 'leave_form_inline' pk %}"
+                up-submit
+                up-target="#leave-{{ pk }}">
+            {% csrf_token %}
+          </form>
+          <button class="btn btn-warning ml-auto"
+                  type="submit"
+                  form="leave-edit-{{ pk }}">
+            <i class="bi bi-floppy"></i>
+          </button>
+          <button class="d-inline-block btn"
+                  type="button"
+                  up-follow
+                  up-href="{% url 'leave_row' pk %}"
+                  up-target="#leave-{{ pk }}">
+            <i class="bi bi-x-circle"></i>
+          </button>
+          <button class="btn btn-danger"
+                  type="button"
+                  up-follow
+                  up-href="{% url 'leave_delete' pk %}"
+                  up-method="post"
+                  up-target="#leave-table"
+                  up-confirm="Are you sure you wish to delete this?">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+    {% endwith %}
+  </tbody>
+</table>

@@ -26,13 +26,14 @@
   <td>
     {% if row.reg_approved == None and row.dot_approved == None %}
       <button class="btn btn-primary"
-              hx-get="{% url 'leave_form_inline' row.pk %}"
-              hx-swap="outerHTML"
-              hx-target="closest tr">
+              type="button"
+              up-follow
+              up-href="{% url 'leave_form_inline' row.pk %}"
+              up-target="#leave-{{ row.pk }}">
         <i class="bi bi-pencil-square"></i>
       </button>
     {% else %}
-      <button class="btn btn-secondary disabled">
+      <button class="btn btn-secondary disabled" type="button">
         <i class="bi bi-pencil-square"></i>
       </button>
     {% endif %}

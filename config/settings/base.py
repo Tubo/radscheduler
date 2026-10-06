@@ -79,7 +79,6 @@ THIRD_PARTY_APPS = [
     "allauth.socialaccount",
     "webpack_loader",
     "rangefilter",
-    "django_htmx",
     "template_partials",
 ]
 
@@ -141,7 +140,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
-    "django_htmx.middleware.HtmxMiddleware",
     "unpoly.contrib.django.UnpolyMiddleware",
 ]
 

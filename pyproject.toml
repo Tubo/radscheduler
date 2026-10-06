@@ -12,7 +12,6 @@ dependencies = [
     "django-redis",
     "django-webpack-loader",
     "django-admin-rangefilter",
-    "django-htmx",
     "django-extensions",
     "django-ninja",
     "django-template-partials",

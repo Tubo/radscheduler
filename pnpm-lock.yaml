@@ -29,9 +29,6 @@ importers:
       elm-webpack-loader:
         specifier: ^8.0.0
         version: 8.0.0(elm@0.19.1-6)
-      htmx.org:
-        specifier: ^1.9.12
-        version: 1.9.12
       luxon:
         specifier: ^3.7.2
         version: 3.7.2
@@ -1921,9 +1918,6 @@ packages:
   hasown@2.0.4:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
     engines: {node: '>= 0.4'}
-
-  htmx.org@1.9.12:
-    resolution: {integrity: sha512-VZAohXyF7xPGS52IM8d1T1283y+X4D+Owf3qY1NZ9RuBypyu9l8cGsxUMAG5fEAb/DhT7rDoJ9Hpu5/HxFD3cw==}
 
   http-errors@1.8.1:
     resolution: {integrity: sha512-Kpk9Sm7NmI+RHhnj6OIWDI1d6fIoFAtFt9RLaTMRlg/8w49juAStsrBgp0Dp4OdxdVbRIeKhtCUvoi/RuAhO4g==}
@@ -4981,8 +4975,6 @@ snapshots:
   hasown@2.0.4:
     dependencies:
       function-bind: 1.1.2
-
-  htmx.org@1.9.12: {}
 
   http-errors@1.8.1:
     dependencies:

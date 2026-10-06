@@ -61,7 +61,8 @@ def leave_form_inline(request, pk):
 @login_required
 def leave_row(request, pk):
     leave = get_object_or_404(Leave, pk=pk)
-    return render(request, "leaves/row.html", {"row": leave})
+    # Rendered as a list so the row arrives inside a <table> (see leaves/form_inline.html)
+    return render(request, "leaves/list.html", {"rows": [leave]})
 
 
 @login_required

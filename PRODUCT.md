@@ -51,7 +51,7 @@ It also balances on-call load by fatigue weighting, so fairness can be measured 
 ## Capabilities and Constraints
 
 - **Stack:**
-  - Server-rendered Django templates, using django-template-partials, progressively enhanced with Unpoly and Alpine.js. HTMX is still used in places.
+  - Server-rendered Django templates, using django-template-partials, progressively enhanced with Unpoly and Alpine.js.
   - Bootstrap 5 with Bootstrap Icons, plus FullCalendar for the registrar calendar.
   - Django Ninja for the JSON API.
   - Deployed on Fly.io.

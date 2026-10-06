@@ -1,7 +1,4 @@
-<tr hx-target="closest tr"
-    hx-swap="outerHTML"
-    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-    class="h-50">
+<tr id="extra-shift-{{ shift.pk }}" class="h-50">
   <th scope="row" class="font-monospace text-start">
     {{ shift.date|date:"Y-m-d" }}
     {% if shift.date in holidays %}🎉{% endif %}
@@ -15,26 +12,35 @@
     {% if shift.registrar %}
       {{ shift.registrar }}
     {% elif shift.interest_id %}
-      <div class="input-group">
+      <form class="input-group"
+            method="post"
+            action="{% url 'extra_interest' shift.interest_id %}"
+            up-submit
+            up-target="#extra-shift-{{ shift.pk }}">
+        {% csrf_token %}
         <input type="text"
                name="comment"
                class="form-control"
                placeholder="Preferred RDOs etc"
                value="{{ shift.comment }}" />
-        <button class="btn btn-sm btn-primary"
-                type="button"
-                hx-include="previous [name='comment']"
-                hx-post="{% url 'extra_interest' shift.interest_id %}">Save</button>
+        <button class="btn btn-sm btn-primary" type="submit">Save</button>
         <button class="btn btn-sm btn-danger"
                 type="button"
-                hx-delete="{% url 'extra_interest' shift.interest_id %}"
-                hx-confirm="Are you sure you want to delete your interest in this shift?">Delete</button>
-      </div>
+                up-follow
+                up-href="{% url 'extra_interest' shift.interest_id %}"
+                up-method="delete"
+                up-target="#extra-shift-{{ shift.pk }}"
+                up-confirm="Are you sure you want to delete your interest in this shift?">Delete</button>
+      </form>
     {% else %}
-      <input type="hidden" name="shift_id" value="{{ shift.pk }}" />
-      <button class="btn btn-sm btn-primary"
-              hx-post="{% url 'extra_interests' %}"
-              hx-include="previous [name='shift_id']">Keen!</button>
+      <form method="post"
+            action="{% url 'extra_interests' %}"
+            up-submit
+            up-target="#extra-shift-{{ shift.pk }}">
+        {% csrf_token %}
+        <input type="hidden" name="shift_id" value="{{ shift.pk }}" />
+        <button class="btn btn-sm btn-primary" type="submit">Keen!</button>
+      </form>
     {% endif %}
   </td>
 </tr>

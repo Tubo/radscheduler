@@ -48,7 +48,9 @@ def interests(request):
         shift.interest_id = interest.pk
         shift.comment = interest.comment
         return render(
-            request, "extra_duties/row.html", {"shift": shift, "interest": interest, "holidays": canterbury_holidays}
+            request,
+            "extra_duties/row_response.html",
+            {"shift": shift, "interest": interest, "holidays": canterbury_holidays},
         )
 
 
@@ -65,13 +67,13 @@ def interest(request, interest_id):
             shift.comment = interest.comment
             return render(
                 request,
-                "extra_duties/row.html",
+                "extra_duties/row_response.html",
                 {"shift": shift, "interest": interest, "holidays": canterbury_holidays},
             )
     elif request.method == "DELETE":
         interest.delete()
         shift.interest = None
-        return render(request, "extra_duties/row.html", {"shift": shift, "holidays": canterbury_holidays})
+        return render(request, "extra_duties/row_response.html", {"shift": shift, "holidays": canterbury_holidays})
 
 
 @staff_member_required
