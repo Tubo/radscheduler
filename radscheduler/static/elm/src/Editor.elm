@@ -20,6 +20,7 @@ import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onCheck, onClick, onFocus, onInput, onSubmit, preventDefaultOn, targetValue)
+import Html.Lazy
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import OpenApi.Common exposing (Nullable(..))
@@ -105,6 +106,49 @@ type alias Model =
     , clipboard : Maybe Clip
     , batches : Dict Int Batch
     , batchCount : Int
+    , index : Maybe Index
+    }
+
+
+{-| The roster arranged for drawing the grid, rebuilt whenever the roster or the filters change. Each row's
+data keeps its identity between changes, so `Html.Lazy` redraws only the rows a keystroke touches.
+-}
+type alias Index =
+    { context : RowContext
+    , rows : List RowData
+    , days : List DayData
+    , gapCount : Int
+    }
+
+
+{-| A day's column: its cover requirements and how each stands, and how many are on leave.
+-}
+type alias DayData =
+    { date : Date
+    , cover : List ( List String, Cover )
+    , approved : Int
+    , waiting : Int
+    }
+
+
+type alias RowContext =
+    { flags : Flags
+    , hiddenShiftTypes : Set String
+    , hiddenLeaveTypes : Set String
+    , window : Window
+    , maxLoad : Float
+    }
+
+
+{-| One registrar's row: what is in each day (keyed by Rata Die), their statuses and load.
+-}
+type alias RowData =
+    { registrar : T.RegistrarOut
+    , shifts : Dict Int (List T.ShiftOut)
+    , leaves : Dict Int (List T.LeaveOut)
+    , violations : Dict Int (List T.ViolationOut)
+    , statuses : List T.StatusOut
+    , load : Float
     }
 
 
@@ -357,6 +401,7 @@ initialModel flags week =
     , clipboard = Nothing
     , batches = Dict.empty
     , batchCount = 0
+    , index = Nothing
     }
 
 
@@ -532,6 +577,7 @@ type Msg
     | OpenPublish
     | SetPublishStart String
     | SetPublishEnd String
+    | PreviewDue ( String, String )
     | GotPreview ( String, String ) (Result ApiError T.PreviewOut)
     | SavePublish
     | GotPublished (Result (OpenApi.Common.Error T.ErrorOut String) T.PublishedRange)
@@ -544,6 +590,107 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        ( next, cmd ) =
+            updateModel msg model
+    in
+    -- Comparing first checks identity, so this is cheap unless something really changed.
+    if next.roster /= model.roster || next.hiddenShiftTypes /= model.hiddenShiftTypes || next.hiddenLeaveTypes /= model.hiddenLeaveTypes then
+        ( reindex next, cmd )
+
+    else
+        ( next, cmd )
+
+
+reindex : Model -> Model
+reindex model =
+    { model | index = Maybe.map (buildIndex model) model.roster }
+
+
+buildIndex : Model -> T.RosterOut -> Index
+buildIndex model roster =
+    let
+        checks =
+            checksOf roster
+
+        nest : (a -> Maybe Cell) -> List a -> Dict Int (Dict Int (List a))
+        nest cellOf items =
+            List.foldl
+                (\item acc ->
+                    case cellOf item of
+                        Just ( registrar, d ) ->
+                            Dict.update registrar
+                                (\row -> Just (Dict.update d (\list -> Just (Maybe.withDefault [] list ++ [ item ])) (Maybe.withDefault Dict.empty row)))
+                                acc
+
+                        Nothing ->
+                            acc
+                )
+                Dict.empty
+                items
+
+        shifts =
+            nest (\s -> nullable s.registrar |> Maybe.map (\r -> ( r, day s.date ))) roster.shifts
+
+        leaves =
+            nest (\l -> Just ( l.registrar, day l.date )) roster.leaves
+
+        violations =
+            Dict.foldl (\( r, d ) vs acc -> Dict.update r (\row -> Just (Dict.insert d vs (Maybe.withDefault Dict.empty row))) acc) Dict.empty checks.violations
+
+        rowOf registrar =
+            { registrar = registrar
+            , shifts = Dict.get registrar.id shifts |> Maybe.withDefault Dict.empty
+            , leaves = Dict.get registrar.id leaves |> Maybe.withDefault Dict.empty
+            , violations = Dict.get registrar.id violations |> Maybe.withDefault Dict.empty
+            , statuses = Dict.get registrar.id checks.statuses |> Maybe.withDefault []
+            , load = loadOf checks registrar.id
+            }
+
+        window =
+            windowOf { model | publish = Nothing } roster
+
+        shiftsOn =
+            List.foldl (\s -> Dict.update (day s.date) (\l -> Just (s :: Maybe.withDefault [] l))) Dict.empty roster.shifts
+
+        leaveOn =
+            List.foldl (\l -> Dict.update (day l.date) (\ls -> Just (l :: Maybe.withDefault [] ls))) Dict.empty (List.filter isActiveLeave roster.leaves)
+
+        dayOf date =
+            let
+                onDay =
+                    Dict.get (day date) leaveOn |> Maybe.withDefault []
+
+                approved =
+                    List.length (List.filter (\l -> leaveState l == Approved) onDay)
+
+                dayRoster =
+                    { roster | shifts = Dict.get (day date) shiftsOn |> Maybe.withDefault [] }
+            in
+            { date = date
+            , cover = List.map (\alternatives -> ( alternatives, coverFor dayRoster date alternatives )) (coverRule model window date)
+            , approved = approved
+            , waiting = List.length onDay - approved
+            }
+
+        days =
+            List.map dayOf roster.dates
+    in
+    { days = days
+    , gapCount = days |> List.concatMap .cover |> List.filter (\( _, state ) -> state == Missing) |> List.length
+    , context =
+        { flags = model.flags
+        , hiddenShiftTypes = model.hiddenShiftTypes
+        , hiddenLeaveTypes = model.hiddenLeaveTypes
+        , window = window
+        , maxLoad = checks.maxLoad
+        }
+    , rows = List.map rowOf roster.registrars
+    }
+
+
+updateModel : Msg -> Model -> ( Model, Cmd Msg )
+updateModel msg model =
     case msg of
         GotRoster week result ->
             if week /= model.week then
@@ -855,6 +1002,25 @@ update msg model =
 
         SetPublishEnd end ->
             updateDraft (\d -> { d | end = end }) model
+
+        PreviewDue range ->
+            case ( model.publish, model.publish |> Maybe.andThen draftRange ) of
+                ( Just draft, Just dates ) ->
+                    if ( draft.start, draft.end ) == range then
+                        ( model
+                        , Api.previewPublished
+                            { authorization = auth model
+                            , toMsg = GotPreview range
+                            , params = { start = dates.start, end = dates.end }
+                            }
+                        )
+
+                    else
+                        -- Still typing: a later change has its own preview coming.
+                        ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
         GotPreview range (Ok preview) ->
             case model.publish of
@@ -1580,13 +1746,10 @@ updateDraft f model =
                     f { draft | preview = Nothing }
             in
             ( { model | publish = Just changed }
+              -- Asks once typing pauses, not for every digit of a year.
             , case draftRange changed of
-                Just range ->
-                    Api.previewPublished
-                        { authorization = auth model
-                        , toMsg = GotPreview ( changed.start, changed.end )
-                        , params = { start = range.start, end = range.end }
-                        }
+                Just _ ->
+                    Process.sleep 300 |> Task.perform (\_ -> PreviewDue ( changed.start, changed.end ))
 
                 Nothing ->
                     Cmd.none
@@ -1596,20 +1759,36 @@ updateDraft f model =
             ( model, Cmd.none )
 
 
-{-| The draft as a range, if both dates parse and the start isn't after the end.
+{-| The draft as a range, if it makes one.
 -}
 draftRange : PublishDraft -> Maybe T.PublishedRange
 draftRange draft =
+    case ( draftProblem draft, Date.fromIsoString draft.start, Date.fromIsoString draft.end ) of
+        ( Nothing, Ok start, Ok end ) ->
+            Just { start = start, end = end }
+
+        _ ->
+            Nothing
+
+
+{-| What's wrong with the draft, if anything. A year before 2000 is most likely one still being typed: a date
+box holds 0002 on the way to 2026.
+-}
+draftProblem : PublishDraft -> Maybe String
+draftProblem draft =
     case ( Date.fromIsoString draft.start, Date.fromIsoString draft.end ) of
         ( Ok start, Ok end ) ->
-            if Date.compare start end /= GT then
-                Just { start = start, end = end }
+            if Date.year start < 2000 || Date.year end < 2000 then
+                Just "Check the years: the dates need to be from 2000 on."
+
+            else if Date.compare start end == GT then
+                Just "The start must be on or before the end."
 
             else
                 Nothing
 
         _ ->
-            Nothing
+            Just "Enter both dates."
 
 
 {-| Whether publishing the draft would change the published range.
@@ -2056,31 +2235,31 @@ choiceFor choices value =
         |> Maybe.withDefault { value = value, label = value, short = value, key = "" }
 
 
-shiftChoice : Model -> T.ShiftType -> Choice
+shiftChoice : { a | flags : Flags } -> T.ShiftType -> Choice
 shiftChoice model shiftType =
     choiceFor model.flags.shiftTypes (T.shiftTypeToString shiftType)
 
 
-leaveChoice : Model -> T.LeaveType -> Choice
+leaveChoice : { a | flags : Flags } -> T.LeaveType -> Choice
 leaveChoice model leaveType =
     choiceFor model.flags.leaveTypes (T.leaveTypeToString leaveType)
 
 
-statusChoice : Model -> T.StatusType -> Choice
+statusChoice : { a | flags : Flags } -> T.StatusType -> Choice
 statusChoice model statusType =
     choiceFor model.flags.statusTypes (T.statusTypeToString statusType)
 
 
 {-| The page's shift types, in its order, paired with the generated enum.
 -}
-shiftChoices : Model -> List ( T.ShiftType, Choice )
+shiftChoices : { a | flags : Flags } -> List ( T.ShiftType, Choice )
 shiftChoices model =
     List.filterMap (\c -> T.shiftTypeFromString c.value |> Maybe.map (\t -> ( t, c ))) model.flags.shiftTypes
 
 
 {-| "long day", "night", "RDO": lower case, except for an acronym.
 -}
-shiftLabel : Model -> T.ShiftType -> String
+shiftLabel : { a | flags : Flags } -> T.ShiftType -> String
 shiftLabel model shiftType =
     lowerLabel (shiftChoice model shiftType).label
 
@@ -2198,7 +2377,7 @@ coverFor roster date alternatives =
             Missing
 
 
-coverRule : Model -> Window -> Date -> List (List String)
+coverRule : { a | flags : Flags } -> Window -> Date -> List (List String)
 coverRule model window date =
     if Dict.member (day date) window.holidays then
         model.flags.cover.holiday
@@ -2219,7 +2398,7 @@ coverGaps model roster window date =
 
 {-| "a swing day", "a swing day or long day"
 -}
-needsLabel : Model -> List String -> String
+needsLabel : { a | flags : Flags } -> List String -> String
 needsLabel model alternatives =
     case List.map (choiceFor model.flags.shiftTypes >> .label >> lowerLabel) alternatives of
         first :: rest ->
@@ -2271,7 +2450,6 @@ type alias Checks =
     , statuses : Dict Int (List T.StatusOut)
     , load : Dict Int Float
     , maxLoad : Float
-    , selected : Set Cell
     }
 
 
@@ -2317,7 +2495,6 @@ checksOf roster =
     , statuses = List.foldl (\s -> add s.registrar s) Dict.empty roster.statuses
     , load = Dict.fromList (List.map (\w -> ( w.registrar, w.load )) roster.checks.workload)
     , maxLoad = List.foldl (.load >> Basics.max) 0 roster.checks.workload
-    , selected = Set.empty
     }
 
 
@@ -2504,7 +2681,12 @@ viewProblemsButton : Model -> T.RosterOut -> Html Msg
 viewProblemsButton model roster =
     let
         count =
-            List.length (problems model roster (windowOf model roster))
+            case model.index of
+                Just index ->
+                    index.gapCount + List.length roster.checks.violations
+
+                Nothing ->
+                    0
     in
     button
         [ type_ "button"
@@ -2576,13 +2758,6 @@ viewGrid model roster =
         window =
             windowOf model roster
 
-        checks =
-            if model.selectFrom /= Nothing then
-                checksOf roster |> (\c -> { c | selected = Set.fromList (selectedCells model roster) })
-
-            else
-                checksOf roster
-
         cursor =
             case model.cursor of
                 Just c ->
@@ -2590,6 +2765,73 @@ viewGrid model roster =
 
                 Nothing ->
                     Maybe.map2 (\r d -> ( r.id, day d )) (List.head roster.registrars) (List.head roster.dates)
+
+        -- While a range is being drafted for publishing, the rows show its edge too.
+        context index =
+            if model.publish /= Nothing then
+                let
+                    c =
+                        index.context
+                in
+                { c | window = window }
+
+            else
+                index.context
+
+        block =
+            if model.selectFrom /= Nothing then
+                selectedBlock model roster
+
+            else
+                []
+
+        selectedDays =
+            List.head block |> Maybe.map (\cells -> ( List.head cells |> Maybe.map Tuple.second, List.reverse cells |> List.head |> Maybe.map Tuple.second )) |> Maybe.withDefault ( Nothing, Nothing )
+
+        selectedRows =
+            List.filterMap (List.head >> Maybe.map Tuple.first) block
+
+        dayIn registrar cell =
+            case cell of
+                Just ( r, d ) ->
+                    if r == registrar then
+                        d
+
+                    else
+                        -1
+
+                Nothing ->
+                    -1
+
+        openCell_ =
+            case model.popover of
+                Just (CellMenu c _ _) ->
+                    Just c
+
+                _ ->
+                    Nothing
+
+        row index data =
+            let
+                id_ =
+                    data.registrar.id
+
+                ( selFrom, selTo ) =
+                    if List.member id_ selectedRows then
+                        ( Maybe.withDefault -1 (Tuple.first selectedDays), Maybe.withDefault -1 (Tuple.second selectedDays) )
+
+                    else
+                        ( -1, -1 )
+            in
+            Html.Lazy.lazy8 viewRow
+                (context index)
+                data
+                (dayIn id_ cursor)
+                (dayIn id_ openCell_)
+                selFrom
+                selTo
+                (dayIn id_ (Maybe.andThen .cell model.failure))
+                (model.saving |> Set.toList |> List.filter (\( r, _ ) -> r == id_) |> List.map (Tuple.second >> String.fromInt) |> String.join ",")
     in
     div
         ([ class "re-scroll"
@@ -2609,27 +2851,26 @@ viewGrid model roster =
                 , attribute "aria-label" ("Roster, " ++ windowLabel roster.dates)
                 , preventDefaultOn "keydown" (gridKeyDecoder model)
                 ]
-                [ thead []
-                    [ tr [ class "re-head" ]
-                        (th [ scope "col", class "re-corner" ] [ text "Registrar" ]
-                            :: th [ scope "col", class "re-corner re-loadcol", title ("On-call load over the " ++ String.fromInt model.flags.workloadWeeks ++ " weeks to " ++ (List.reverse roster.dates |> List.head |> Maybe.map dayDate |> Maybe.withDefault "")) ]
-                                [ span [ class "re-weekday" ] [ text (String.fromInt model.flags.workloadWeeks ++ " wk") ], span [ class "re-daydate" ] [ text "Load" ] ]
-                            :: List.indexedMap (viewDateHeader window) roster.dates
-                        )
-                    , tr [ class "re-cover" ]
-                        (th [ scope "row", class "re-corner re-rowlabel" ] [ text "Cover" ]
-                            :: td [ class "re-corner re-loadcol" ] []
-                            :: List.indexedMap (viewCover model roster window) roster.dates
-                        )
-                    ]
-                , tbody [] (List.map (viewRow model roster window checks cursor) roster.registrars)
-                , tfoot []
-                    [ tr []
-                        (th [ scope "row", class "re-corner re-rowlabel" ] [ text "On leave" ]
-                            :: td [ class "re-corner re-loadcol" ] []
-                            :: List.indexedMap (viewLeaveCount roster window) roster.dates
-                        )
-                    ]
+                [ case model.index of
+                    Just index ->
+                        Html.Lazy.lazy2 viewHead (context index) index.days
+
+                    Nothing ->
+                        text ""
+                , tbody []
+                    (case model.index of
+                        Just index ->
+                            List.map (row index) index.rows
+
+                        Nothing ->
+                            []
+                    )
+                , case model.index of
+                    Just index ->
+                        Html.Lazy.lazy2 viewFoot (context index) index.days
+
+                    Nothing ->
+                        text ""
                 ]
         ]
 
@@ -2731,17 +2972,55 @@ viewDateHeader window index date =
 
 {-| Only problems stand out: a covered day is a quiet tick, a gap is a button that opens the day's cover menu.
 -}
-viewCover : Model -> T.RosterOut -> Window -> Int -> Date -> Html Msg
-viewCover model roster window index date =
+viewHead : RowContext -> List DayData -> Html Msg
+viewHead context days =
     let
+        flags =
+            context.flags
+    in
+    thead []
+        [ tr [ class "re-head" ]
+            (th [ scope "col", class "re-corner" ] [ text "Registrar" ]
+                :: th [ scope "col", class "re-corner re-loadcol", title ("On-call load over the " ++ String.fromInt flags.workloadWeeks ++ " weeks to " ++ (List.reverse context.window.dates |> List.head |> Maybe.map dayDate |> Maybe.withDefault "")) ]
+                    [ span [ class "re-weekday" ] [ text (String.fromInt flags.workloadWeeks ++ " wk") ], span [ class "re-daydate" ] [ text "Load" ] ]
+                :: List.indexedMap (viewDateHeader context.window) context.window.dates
+            )
+        , tr [ class "re-cover" ]
+            (th [ scope "row", class "re-corner re-rowlabel" ] [ text "Cover" ]
+                :: td [ class "re-corner re-loadcol" ] []
+                :: List.indexedMap (viewCover context) days
+            )
+        ]
+
+
+viewFoot : RowContext -> List DayData -> Html Msg
+viewFoot context days =
+    tfoot []
+        [ tr []
+            (th [ scope "row", class "re-corner re-rowlabel" ] [ text "On leave" ]
+                :: td [ class "re-corner re-loadcol" ] []
+                :: List.indexedMap (viewLeaveCount context.window) days
+            )
+        ]
+
+
+viewCover : RowContext -> Int -> DayData -> Html Msg
+viewCover context index dayData =
+    let
+        date =
+            dayData.date
+
+        window =
+            context.window
+
         rule =
-            coverRule model window date
+            List.map Tuple.first dayData.cover
 
         states =
-            List.map (\alternatives -> ( alternatives, coverFor roster date alternatives )) rule
+            dayData.cover
 
         choice =
-            choiceFor model.flags.shiftTypes
+            choiceFor context.flags.shiftTypes
 
         gaps =
             List.filter (\( _, state ) -> state == Missing) states
@@ -2784,8 +3063,8 @@ viewCover model roster window index date =
                         )
                     , class "re-needs"
                     , attribute "aria-haspopup" "dialog"
-                    , attribute "aria-label" (dayDate date ++ " needs " ++ needsLabel model alternatives ++ ": choose who")
-                    , title ("Needs " ++ needsLabel model alternatives)
+                    , attribute "aria-label" (dayDate date ++ " needs " ++ needsLabel context alternatives ++ ": choose who")
+                    , title ("Needs " ++ needsLabel context alternatives)
                     , onClick (Open (ForCover date) (coverId date))
                     ]
                     [ i [ class "bi bi-plus-lg", attribute "aria-hidden" "true" ] []
@@ -2815,14 +3094,18 @@ viewCover model roster window index date =
         )
 
 
-viewRow : Model -> T.RosterOut -> Window -> Checks -> Maybe Cell -> T.RegistrarOut -> Html Msg
-viewRow model roster window checks cursor registrar =
+{-| A registrar's row. Every argument but the first two is a plain value, so `Html.Lazy` can tell when the
+row needs drawing again: the day (Rata Die) the cursor, the open menu or a failed save is on, or -1, the
+selected days, and the days being saved, joined with commas.
+-}
+viewRow : RowContext -> RowData -> Int -> Int -> Int -> Int -> Int -> String -> Html Msg
+viewRow context data cursorDay openDay selFrom selTo errorDay savingDays =
     let
-        statuses =
-            Dict.get registrar.id checks.statuses |> Maybe.withDefault []
+        registrar =
+            data.registrar
 
-        registrarLoad =
-            loadOf checks registrar.id
+        saving =
+            String.split "," savingDays |> List.filterMap String.toInt
     in
     tr []
         (th [ scope "row", class "re-name", title (registrar.name ++ " (" ++ registrar.username ++ ")") ]
@@ -2838,22 +3121,39 @@ viewRow model roster window checks cursor registrar =
                     Nothing ->
                         text ""
                 ]
-            , if List.isEmpty statuses then
+            , if List.isEmpty data.statuses then
                 text ""
 
               else
-                div [ class "re-statuses" ] (List.map (viewStatusBadge model) statuses)
+                div [ class "re-statuses" ] (List.map (viewStatusBadge context) data.statuses)
             ]
-            :: td [ class "re-load", title ("On-call load " ++ formatLoad registrarLoad ++ " over " ++ String.fromInt model.flags.workloadWeeks ++ " weeks") ]
-                [ span [ class "re-loadvalue" ] [ text (formatLoad registrarLoad) ]
+            :: td [ class "re-load", title ("On-call load " ++ formatLoad data.load ++ " over " ++ String.fromInt context.flags.workloadWeeks ++ " weeks") ]
+                [ span [ class "re-loadvalue" ] [ text (formatLoad data.load) ]
                 , span [ class "re-loadbar", attribute "aria-hidden" "true" ]
-                    [ span [ style "width" (String.fromFloat (100 * registrarLoad / Basics.max 0.1 checks.maxLoad) ++ "%") ] [] ]
+                    [ span [ style "width" (String.fromFloat (100 * data.load / Basics.max 0.1 context.maxLoad) ++ "%") ] [] ]
                 ]
-            :: List.indexedMap (\index date -> viewCell model roster window checks cursor registrar index date) roster.dates
+            :: List.indexedMap
+                (\index date ->
+                    let
+                        d =
+                            day date
+                    in
+                    viewCell context
+                        data
+                        index
+                        date
+                        { cursor = d == cursorDay
+                        , open = d == openDay
+                        , selected = selFrom <= d && d <= selTo && selFrom >= 0
+                        , failed = d == errorDay
+                        , saving = List.member d saving
+                        }
+                )
+                context.window.dates
         )
 
 
-viewStatusBadge : Model -> T.StatusOut -> Html Msg
+viewStatusBadge : { a | flags : Flags } -> T.StatusOut -> Html Msg
 viewStatusBadge model status =
     let
         choice =
@@ -2867,7 +3167,7 @@ viewStatusBadge model status =
 
 {-| "Pre-exam 20 Oct – 3 Nov: no nights. Sitting the part 1."
 -}
-statusSentence : Model -> T.StatusOut -> String
+statusSentence : { a | flags : Flags } -> T.StatusOut -> String
 statusSentence model status =
     let
         choice =
@@ -2907,38 +3207,52 @@ weekdayName n =
     Date.format "EEE" (Date.fromWeekDate 2026 1 (Date.numberToWeekday (n + 1)))
 
 
-viewCell : Model -> T.RosterOut -> Window -> Checks -> Maybe Cell -> T.RegistrarOut -> Int -> Date -> Html Msg
-viewCell model roster window checks cursor registrar index date =
+type alias CellState =
+    { cursor : Bool
+    , open : Bool
+    , selected : Bool
+    , failed : Bool
+    , saving : Bool
+    }
+
+
+viewCell : RowContext -> RowData -> Int -> Date -> CellState -> Html Msg
+viewCell context data index date state =
     let
+        registrar =
+            data.registrar
+
+        d =
+            day date
+
         cell =
-            ( registrar.id, day date )
+            ( registrar.id, d )
 
         shifts =
-            cellShifts roster cell
+            Dict.get d data.shifts |> Maybe.withDefault []
 
         leaves =
-            cellLeaves roster cell
+            Dict.get d data.leaves |> Maybe.withDefault []
 
         violations =
-            Dict.get cell checks.violations |> Maybe.withDefault []
+            Dict.get d data.violations |> Maybe.withDefault []
 
         offDuty =
-            statusesOn checks registrar.id date |> List.filter (rulesOut Nothing)
+            data.statuses
+                |> List.filter (\s -> Date.isBetween s.start s.end date && (List.isEmpty s.weekdays || List.member (Date.weekdayNumber date - 1) s.weekdays))
+                |> List.filter (rulesOut Nothing)
 
         visibleShifts =
-            List.filter (\s -> not (Set.member (T.shiftTypeToString s.type_) model.hiddenShiftTypes)) shifts
+            List.filter (\s -> not (Set.member (T.shiftTypeToString s.type_) context.hiddenShiftTypes)) shifts
 
         visibleLeaves =
-            List.filter (\l -> not (Set.member (T.leaveTypeToString l.type_) model.hiddenLeaveTypes)) leaves
-
-        saving =
-            Set.member cell model.saving
+            List.filter (\l -> not (Set.member (T.leaveTypeToString l.type_) context.hiddenLeaveTypes)) leaves
     in
     td
         [ id (cellId cell)
         , attribute "role" "gridcell"
         , tabindex
-            (if cursor == Just cell then
+            (if state.cursor then
                 0
 
              else
@@ -2946,20 +3260,20 @@ viewCell model roster window checks cursor registrar index date =
             )
         , classList
             ([ ( "re-cell", True )
-             , ( "is-saving", saving )
-             , ( "has-error", Maybe.andThen .cell model.failure == Just cell )
+             , ( "is-saving", state.saving )
+             , ( "has-error", state.failed )
              , ( "has-problem", not (List.isEmpty violations) )
              , ( "is-off", not (List.isEmpty offDuty) )
-             , ( "is-open", isCellOpen cell model.popover )
-             , ( "is-selected", Set.member cell checks.selected )
+             , ( "is-open", state.open )
+             , ( "is-selected", state.selected )
              ]
-                ++ columnClasses window index date
+                ++ columnClasses context.window index date
             )
-        , attribute "aria-label" (cellLabel model registrar date shifts leaves violations offDuty)
-        , attribute "aria-busy" (boolString saving)
+        , attribute "aria-label" (cellLabel context registrar date shifts leaves violations offDuty)
+        , attribute "aria-busy" (boolString state.saving)
         , attribute "aria-haspopup" "dialog"
         , onFocus (Focused cell)
-        , attribute "aria-selected" (boolString (Set.member cell checks.selected))
+        , attribute "aria-selected" (boolString state.selected)
         , on "click" (Decode.map (CellClick cell) (Decode.field "shiftKey" Decode.bool))
         ]
         [ div [ class "re-cellbox" ]
@@ -2967,8 +3281,8 @@ viewCell model roster window checks cursor registrar index date =
                 compact =
                     List.length visibleShifts + List.length visibleLeaves > 1
              in
-             List.map (viewShiftChip model compact) visibleShifts
-                ++ List.map (viewLeaveChip model compact) visibleLeaves
+             List.map (viewShiftChip context compact) visibleShifts
+                ++ List.map (viewLeaveChip context compact) visibleLeaves
             )
         , if List.isEmpty violations then
             text ""
@@ -2986,7 +3300,7 @@ viewCell model roster window checks cursor registrar index date =
 
 {-| What a screen reader says for a cell: who, when, what's there and what's wrong.
 -}
-cellLabel : Model -> T.RegistrarOut -> Date -> List T.ShiftOut -> List T.LeaveOut -> List T.ViolationOut -> List T.StatusOut -> String
+cellLabel : { a | flags : Flags } -> T.RegistrarOut -> Date -> List T.ShiftOut -> List T.LeaveOut -> List T.ViolationOut -> List T.StatusOut -> String
 cellLabel model registrar date shifts leaves violations offDuty =
     let
         contents =
@@ -3028,7 +3342,7 @@ cellLabel model registrar date shifts leaves violations offDuty =
 {-| In a cell holding more than one thing, a shift shows as its key letter and leave as its state icon,
 so both fit; the title and the cell's label still name them in full.
 -}
-viewShiftChip : Model -> Bool -> T.ShiftOut -> Html Msg
+viewShiftChip : { a | flags : Flags } -> Bool -> T.ShiftOut -> Html Msg
 viewShiftChip model compact shift =
     let
         choice =
@@ -3050,7 +3364,7 @@ viewShiftChip model compact shift =
         ]
 
 
-viewLeaveChip : Model -> Bool -> T.LeaveOut -> Html Msg
+viewLeaveChip : { a | flags : Flags } -> Bool -> T.LeaveOut -> Html Msg
 viewLeaveChip model compact leave =
     let
         choice =
@@ -3069,17 +3383,17 @@ viewLeaveChip model compact leave =
         ]
 
 
-viewLeaveCount : T.RosterOut -> Window -> Int -> Date -> Html Msg
-viewLeaveCount roster window index date =
+viewLeaveCount : Window -> Int -> DayData -> Html Msg
+viewLeaveCount window index dayData =
     let
-        onDay =
-            List.filter (\l -> l.date == date && isActiveLeave l) roster.leaves
+        date =
+            dayData.date
 
         approved =
-            List.length (List.filter (\l -> leaveState l == Approved) onDay)
+            dayData.approved
 
         waiting =
-            List.length onDay - approved
+            dayData.waiting
 
         count n icon cls =
             if n > 0 then
@@ -3089,7 +3403,7 @@ viewLeaveCount roster window index date =
                 text ""
     in
     td [ classList (( "re-count", True ) :: columnClasses window index date) ]
-        (if List.isEmpty onDay then
+        (if approved + waiting == 0 then
             [ span [ class "visually-hidden" ] [ text "No one on leave" ] ]
 
          else
@@ -3985,7 +4299,7 @@ viewPublish model =
                                     , field "publish-end" "To" draft.end SetPublishEnd
                                     ]
                                 , if not valid then
-                                    p [ class "re-note is-error mt-3 mb-0", attribute "role" "alert" ] [ text "The start must be on or before the end." ]
+                                    p [ class "re-note is-error mt-3 mb-0", attribute "role" "alert" ] [ text (draftProblem draft |> Maybe.withDefault "") ]
 
                                   else if not changes then
                                     p [ class "re-meta mt-3 mb-0" ] [ text "This is the range that's published now." ]
@@ -4104,13 +4418,24 @@ viewHealth model preview =
 
         extra =
             List.length items - limit
+
+        checkedNote =
+            case nullable preview.checked_to of
+                Just last ->
+                    p [ class "re-meta mb-0" ] [ text ("Gaps and rule breaks were checked to " ++ fullDate last ++ ", a year in; the days after weren't checked.") ]
+
+                Nothing ->
+                    text ""
     in
     if List.isEmpty items && preview.leave_waiting == 0 then
         if preview.shifts_shown + preview.leave_shown > 0 then
-            p [ class "re-note is-ok mb-0" ] [ i [ class "bi bi-check2-circle me-1", attribute "aria-hidden" "true" ] [], text "No cover gaps, rule breaks or undecided leave in the days being published." ]
+            div []
+                [ p [ class "re-note is-ok mb-0" ] [ i [ class "bi bi-check2-circle me-1", attribute "aria-hidden" "true" ] [], text "No cover gaps, rule breaks or undecided leave in the days being published." ]
+                , checkedNote
+                ]
 
         else
-            text ""
+            checkedNote
 
     else
         div [ class "re-health" ]
@@ -4132,6 +4457,7 @@ viewHealth model preview =
 
               else
                 text ""
+            , checkedNote
             ]
 
 

@@ -138,20 +138,14 @@ def roster_violations(start: date, end: date) -> list[rules.Violation]:
     declined doesn't count; leave still waiting for approval does, so a clash shows before it is approved.
     """
     around = [start - CHECK_MARGIN, end + CHECK_MARGIN]
-    shifts = Shift.objects.filter(date__range=around, registrar__isnull=False).select_related("registrar__user")
-    leaves = (
+    shifts, leaves, statuses = domain_mapper.roster_from_db(
+        Shift.objects.filter(date__range=around, registrar__isnull=False),
         Leave.objects.filter(date__range=around, cancelled=False)
         .exclude(reg_approved=False)
-        .exclude(dot_approved=False)
-        .select_related("registrar__user")
+        .exclude(dot_approved=False),
+        Status.objects.filter(start__lte=around[1], end__gte=around[0]),
     )
-    statuses = Status.objects.filter(start__lte=around[1], end__gte=around[0]).select_related("registrar__user")
-    violations = rules.check_roster(
-        [domain_mapper.shift_from_db(shift) for shift in shifts],
-        [domain_mapper.leave_from_db(leave) for leave in leaves],
-        [domain_mapper.status_from_db(status) for status in statuses],
-        period=(start, end),
-    )
+    violations = rules.check_roster(shifts, leaves, statuses, period=(start, end))
     touching = [v for v in violations if any(start <= day <= end for day in v.dates)]
     return sorted(touching, key=lambda v: (v.dates[0], v.registrar.username, v.rule))
 
@@ -193,22 +187,49 @@ def cover_gaps(days: list[date]) -> list[dict]:
     return gaps
 
 
+# The most newly published days the preview checks for gaps and rule breaks. A date box being typed into
+# passes through years like 0002, so a request can span centuries; the counts stay exact, the checks stop here.
+PREVIEW_CHECK_DAYS = 366
+
+
+def newly_published_days(start: date, end: date, settings: Settings | None, limit: int) -> tuple[list[date], bool]:
+    """
+    Up to `limit` days, in order, that are in start..end but not in the current published range, and whether
+    there were more.
+    """
+    if settings:
+        spans = [
+            (start, min(end, settings.publish_start_date - timedelta(days=1))),
+            (max(start, settings.publish_end_date + timedelta(days=1)), end),
+        ]
+    else:
+        spans = [(start, end)]
+    days = []
+    for first, last in spans:
+        day = first
+        while day <= last:
+            if len(days) == limit:
+                return days, True
+            days.append(day)
+            day += timedelta(days=1)
+    return days, False
+
+
 def publish_preview(start: date, end: date) -> dict:
     """
     How many shifts and leave registrars would start or stop seeing if the published range became
     start..end, and the state of the days they would start seeing: cover gaps, rule breaks and leave still
-    waiting for a decision. Only assigned shifts and leave that isn't cancelled count.
+    waiting for a decision. Only assigned shifts and leave that isn't cancelled count. Gaps and rule breaks are
+    checked for the first `PREVIEW_CHECK_DAYS` of those days; `checked_to` names the last one checked when the
+    rest weren't.
     """
     settings = Settings.objects.first()
     new = Q(date__range=[start, end])
     current = Q(date__range=[settings.publish_start_date, settings.publish_end_date]) if settings else Q(pk__in=[])
     shifts = Shift.objects.exclude(registrar=None)
     leaves = Leave.objects.exclude(cancelled=True)
-    shown = [
-        day
-        for day in daterange(start, end + timedelta(days=1))
-        if not (settings and settings.publish_start_date <= day <= settings.publish_end_date)
-    ]
+    shown, more = newly_published_days(start, end, settings, PREVIEW_CHECK_DAYS)
+    checked = set(shown)
     violations = roster_violations(shown[0], shown[-1]) if shown else []
     return {
         "shifts_shown": shifts.filter(new & ~current).count(),
@@ -216,12 +237,13 @@ def publish_preview(start: date, end: date) -> dict:
         "shifts_hidden": shifts.filter(current & ~new).count(),
         "leave_hidden": leaves.filter(current & ~new).count(),
         "gaps": cover_gaps(shown),
-        "violations": [v for v in violations if any(day in shown for day in v.dates)],
+        "violations": [v for v in violations if checked.intersection(v.dates)],
         "leave_waiting": leaves.filter(new & ~current)
         .exclude(reg_approved=False)
         .exclude(dot_approved=False)
         .exclude(reg_approved=True, dot_approved=True)
         .count(),
+        "checked_to": shown[-1] if more else None,
     }
 
 

@@ -432,6 +432,18 @@
       },
       "PreviewOut": {
         "properties": {
+          "checked_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked To"
+          },
           "gaps": {
             "items": {
               "$ref": "#/components/schemas/GapOut"
@@ -474,7 +486,8 @@
           "leave_hidden",
           "gaps",
           "violations",
-          "leave_waiting"
+          "leave_waiting",
+          "checked_to"
         ],
         "title": "PreviewOut",
         "type": "object"

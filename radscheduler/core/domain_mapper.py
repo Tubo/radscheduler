@@ -87,6 +87,54 @@ def status_from_db(status: orm.Leave):
     return dacite.from_dict(domain.Status, StatusDomainSchema.from_orm(status).dict())
 
 
+def roster_from_db(shifts, leaves, statuses):
+    """
+    Domain shifts, leave and statuses from querysets, for checking a roster. Builds the dataclasses straight
+    from the rows, sharing one Registrar per person: the schema-based converters above validate every row,
+    which made checking the editor's weeks several times slower.
+    """
+    registrars = {}
+
+    def registrar(pk):
+        return registrars[pk]
+
+    shift_rows = list(
+        shifts.values_list(
+            "pk", "date", "type", "registrar_id", "stat_day", "extra_duty", "fatigue_override", "series"
+        )
+    )
+    leave_rows = list(leaves.values_list("date", "type", "registrar_id", "no_abutting_weekend", "created", "portion"))
+    status_rows = list(statuses.values_list("registrar_id", "type", "weekdays", "shift_types", "start", "end"))
+
+    ids = {row[3] for row in shift_rows} | {row[2] for row in leave_rows} | {row[0] for row in status_rows}
+    for pk, username, senior, start, finish, contract in orm.Registrar.objects.filter(pk__in=ids).values_list(
+        "pk", "user__username", "senior", "start", "finish", "contract"
+    ):
+        registrars[pk] = domain.Registrar(username, senior, start, finish, pk, domain.Contract(contract))
+
+    return (
+        [
+            domain.Shift(day, domain.ShiftType(kind), registrar(rid), stat, extra, fatigue, series, pk)
+            for pk, day, kind, rid, stat, extra, fatigue, series in shift_rows
+        ],
+        [
+            domain.Leave(day, domain.LeaveType(kind), registrar(rid), abutting, created, portion)
+            for day, kind, rid, abutting, created, portion in leave_rows
+        ],
+        [
+            domain.Status(
+                start,
+                end,
+                domain.StatusType(kind),
+                registrar(rid),
+                [domain.Weekday(d) for d in weekdays],
+                [domain.ShiftType(t) for t in shift_types],
+            )
+            for rid, kind, weekdays, shift_types, start, end in status_rows
+        ],
+    )
+
+
 def shift_to_dict(shift):
     return {
         "date": str(shift.date),

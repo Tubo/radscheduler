@@ -305,3 +305,17 @@ class TestPublishPreview:
         rules = {(v["rule"], v["registrar"]) for v in preview.json["violations"]}
         assert ("no_back_to_back_long_days", juniors_db[3].pk) in rules
         assert preview.json["leave_waiting"] == 1
+
+    def test_a_range_of_centuries_is_checked_only_a_year_ahead(self, app, staff, juniors_db):
+        Settings.objects.create(publish_start_date=date(2024, 12, 1), publish_end_date=date(2024, 12, 31))
+        Shift.objects.create(date=date(2025, 6, 2), type=ShiftType.LONG, registrar=juniors_db[0])
+
+        # What a date box holds while "2026" is typed into it: year 0002.
+        preview = app.get("/api/editor/published/preview", {"start": "2024-12-01", "end": "0002-12-31"}, user=staff)
+        assert preview.json["checked_to"] is None  # start after end: nothing new
+
+        preview = app.get("/api/editor/published/preview", {"start": "0002-01-01", "end": "2025-12-31"}, user=staff)
+
+        assert preview.json["shifts_shown"] == 1  # the counts still cover the whole range
+        assert preview.json["checked_to"] == "0003-01-01"  # 366 days on
+        assert all(gap["date"] <= "0003-01-01" for gap in preview.json["gaps"])

@@ -58,9 +58,23 @@ def editor(page: Page, live_server, real_bundles, roster):
     page.fill("input[name='login']", "chief")
     page.fill("input[name='password']", "password")
     page.click("button[type='submit']")
+
+    # The editor keeps asking in the background (the rule checks after each change, a publish preview once
+    # typing pauses). Let those answers arrive before the test's database is emptied, or the two deadlock.
+    pending = set()
+    page.on("request", lambda request: pending.add(request))
+    page.on("requestfinished", lambda request: pending.discard(request))
+    page.on("requestfailed", lambda request: pending.discard(request))
+
     page.goto(f"{live_server.url}/roster/editor/next/2024-12-23/")
     expect(page.get_by_role("grid")).to_be_visible()
-    return page
+    yield page
+
+    page.wait_for_timeout(350)  # long enough for a debounced request to have started
+    for _ in range(100):
+        if not pending:
+            break
+        page.wait_for_timeout(50)
 
 
 def cell(page: Page, day: str, registrar: Registrar):
@@ -281,6 +295,11 @@ def test_publish_with_a_preview(editor: Page, roster):
     dialog.get_by_label("From").fill("2024-12-31")
     dialog.get_by_label("To").fill("2024-12-01")
     expect(dialog.get_by_text("The start must be on or before the end.")).to_be_visible()
+    expect(dialog.get_by_role("button", name="Publish")).to_be_disabled()
+
+    # A year still being typed asks nothing of the server.
+    dialog.get_by_label("From").fill("0002-12-01")
+    expect(dialog.get_by_text("Check the years: the dates need to be from 2000 on.")).to_be_visible()
     expect(dialog.get_by_role("button", name="Publish")).to_be_disabled()
 
     dialog.get_by_label("From").fill("2024-12-01")

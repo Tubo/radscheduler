@@ -162,6 +162,8 @@ class PreviewOut(Schema):
     gaps: list[GapOut]
     violations: list[ViolationOut]
     leave_waiting: int
+    # The last day checked for gaps and rule breaks, when the range was too long to check it all.
+    checked_to: date | None
 
 
 class ErrorOut(Schema):

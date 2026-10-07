@@ -114,7 +114,8 @@ type alias LeavesPatch =
 
 
 type alias PreviewOut =
-    { gaps : List GapOut
+    { checked_to : OpenApi.Common.Nullable Date.Date
+    , gaps : List GapOut
     , leave_hidden : Int
     , leave_shown : Int
     , leave_waiting : Int

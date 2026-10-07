@@ -298,7 +298,15 @@ encodeLeavesPatch rec =
 encodePreviewOut : Radscheduler.Types.PreviewOut -> Json.Encode.Value
 encodePreviewOut rec =
     Json.Encode.object
-        [ ( "gaps", Json.Encode.list encodeGapOut rec.gaps )
+        [ ( "checked_to"
+          , case rec.checked_to of
+                OpenApi.Common.Null ->
+                    Json.Encode.null
+
+                OpenApi.Common.Present value ->
+                    OpenApi.Common.encodeStringDate value
+          )
+        , ( "gaps", Json.Encode.list encodeGapOut rec.gaps )
         , ( "leave_hidden", Json.Encode.int rec.leave_hidden )
         , ( "leave_shown", Json.Encode.int rec.leave_shown )
         , ( "leave_waiting", Json.Encode.int rec.leave_waiting )
@@ -815,8 +823,9 @@ decodeLeavesPatch =
 decodePreviewOut : Json.Decode.Decoder Radscheduler.Types.PreviewOut
 decodePreviewOut =
     Json.Decode.succeed
-        (\gaps leave_hidden leave_shown leave_waiting shifts_hidden shifts_shown violations ->
-            { gaps = gaps
+        (\checked_to gaps leave_hidden leave_shown leave_waiting shifts_hidden shifts_shown violations ->
+            { checked_to = checked_to
+            , gaps = gaps
             , leave_hidden = leave_hidden
             , leave_shown = leave_shown
             , leave_waiting = leave_waiting
@@ -825,6 +834,17 @@ decodePreviewOut =
             , violations = violations
             }
         )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "checked_to"
+                (Json.Decode.oneOf
+                    [ Json.Decode.map
+                        OpenApi.Common.Present
+                        OpenApi.Common.decodeStringDate
+                    , Json.Decode.null OpenApi.Common.Null
+                    ]
+                )
+            )
         |> OpenApi.Common.jsonDecodeAndMap
             (Json.Decode.field "gaps" (Json.Decode.list decodeGapOut))
         |> OpenApi.Common.jsonDecodeAndMap
