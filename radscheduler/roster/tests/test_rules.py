@@ -10,14 +10,26 @@ Each test names the rule and clause it covers. Dates are January 2023:
     Sun  8  15  22  29
 """
 
+from dataclasses import replace
 from datetime import date, datetime
 from functools import partial
 
-from radscheduler.roster.models import Leave, LeaveType, Registrar, Shift, ShiftType, Status, StatusType, Weekday
-from radscheduler.roster.rules import Timeline, check_roster, infer_ordinary_days, max_hours, weekend_of
+from radscheduler.roster.models import (
+    Contract,
+    Leave,
+    LeaveType,
+    Registrar,
+    Shift,
+    ShiftType,
+    Status,
+    StatusType,
+    Weekday,
+)
+from radscheduler.roster.rules import RDA, STONZ, Timeline, check_roster, infer_ordinary_days, max_hours, weekend_of
 
 ALICE = Registrar("alice", senior=False, start=date(2022, 1, 1))
 BOB = Registrar("bob", senior=False, start=date(2022, 1, 1))
+RAY = Registrar("ray", senior=False, start=date(2022, 1, 1), contract=Contract.RDA)
 
 
 def jan(day):
@@ -42,6 +54,10 @@ def sleeps(*days, **kwargs):
 
 def rdos(*days, **kwargs):
     return shifts(ShiftType.RDO, *days, **kwargs)
+
+
+def retag(roster, registrar):
+    return [replace(shift, registrar=registrar) for shift in roster]
 
 
 def leave(day, leave_type=LeaveType.ANNUAL, **kwargs):
@@ -322,3 +338,29 @@ def test_check_roster_ignores_unassigned_shifts_and_separates_registrars():
     violation = check_roster(longs(4, 5, registrar=BOB))[0]
     assert violation.registrar == BOB
     assert violation.dates == (jan(4), jan(5))
+
+
+def test_rda_covers_the_same_rules_as_stonz():
+    assert [rule.func for rule in RDA] == [rule.func for rule in STONZ]
+    assert all(rule.keywords["clause"].startswith("RDA ") for rule in RDA)
+
+
+def test_each_registrar_is_checked_against_their_contract():
+    roster = longs(12, 14, 15) + longs(12, 14, 15, registrar=RAY)
+    clauses = {(v.registrar.username, v.clause) for v in check_roster(roster) if v.rule == "max_long_days"}
+    assert clauses == {("alice", "STONZ 17.2.2"), ("ray", "RDA 13.4.8")}
+
+
+def test_post_night_recovery_rda_13_4_7():
+    # RDA sets no extra rest after fewer than 5 nights, where STONZ needs two days after four
+    four_nights = nights(2, 3, 4, 5) + sleeps(6) + longs(7)
+    assert found("post_night_recovery", four_nights) != []
+    assert [v for v in check_roster(retag(four_nights, RAY)) if v.rule == "post_night_recovery"] == []
+
+    # Five nights end Sat 7: Saturday, Sunday and Monday must be free
+    five_nights = nights(2, 3, 4, 5, 6, registrar=RAY)
+    [violation] = [v for v in check_roster(five_nights + longs(9, registrar=RAY)) if v.rule == "post_night_recovery"]
+    assert violation.clause == "RDA 13.4.7"
+    assert dates([violation]) == [[9]]
+    roster = five_nights + sleeps(9, registrar=RAY) + longs(10, registrar=RAY)
+    assert [v for v in check_roster(roster) if v.rule == "post_night_recovery"] == []

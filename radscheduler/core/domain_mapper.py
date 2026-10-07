@@ -12,10 +12,11 @@ import radscheduler.roster.models as domain
 class RegistrarDomainSchema(ModelSchema):
     id: int = Field(..., alias="pk")
     username: str = Field(..., alias="user.username")
+    contract: domain.Contract
 
     class Meta:
         model = orm.Registrar
-        fields = ["senior", "start", "finish"]
+        fields = ["senior", "start", "finish", "contract"]
 
 
 class LeaveDomainSchema(ModelSchema):

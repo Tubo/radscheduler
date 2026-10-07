@@ -100,6 +100,7 @@ class Registrar:
     start: date
     finish: date | None = None
     id: int = None  # if registrar is already in database
+    contract: Contract = Contract.STONZ
 
 
 @dataclass

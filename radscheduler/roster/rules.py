@@ -10,7 +10,7 @@ A contract is a tuple of rules with their parameters and clause numbers bound. M
 differences between agreements are numbers, so a new contract reuses the same rules.
 """
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta
 from functools import partial
@@ -19,6 +19,7 @@ from itertools import groupby, pairwise
 from radscheduler.roster.canterbury import canterbury_holidays
 from radscheduler.roster.models import (
     MIDDAY,
+    Contract,
     Leave,
     LeaveType,
     OrdinaryDay,
@@ -89,7 +90,7 @@ def weekend_of(shift: Shift) -> date | None:
     """
     The Saturday of the weekend a duty falls in, or None if it is a weekday duty.
 
-    A weekend starts when Friday's day duty finishes, so a Friday night is part of it (STONZ 21.4.2).
+    A weekend starts when Friday's day duty finishes, so a Friday night is part of it (STONZ 21.4.2, RDA 16.5.2).
     """
     saturday = shift.date + timedelta(days=Weekday.SAT - shift.date.weekday())
     weekend_start = datetime.combine(saturday - timedelta(days=1), time(22))
@@ -223,14 +224,19 @@ def min_break_between_duties(t: Timeline, *, hours=8, clause: str) -> Iterable[V
             )
 
 
-def post_night_recovery(t: Timeline, *, long_block=4, long_rest=2, short_rest=1, clause: str) -> Iterable[Violation]:
+def post_night_recovery(
+    t: Timeline, *, long_block=4, long_rest=2, short_rest: int | None = 1, clause: str
+) -> Iterable[Violation]:
     """
     After a block of nights, the rest of the day the last night ends plus `long_rest` days off
     when the block has `long_block` nights or more, or `short_rest` days off for a shorter block.
+    A `short_rest` of None means the contract sets no rest for shorter blocks.
     """
     for block in t.night_blocks:
         finished = block[-1].end
         rest_days = long_rest if len(block) >= long_block else short_rest
+        if rest_days is None:
+            continue
         free_until = datetime.combine(finished.date() + timedelta(days=rest_days + 1), time(0))
         clashes = [shift for shift in t.duties if finished <= shift.start < free_until]
         if clashes:
@@ -247,9 +253,10 @@ def no_weekend_next_to_leave(t: Timeline, *, clause: str) -> Iterable[Violation]
     """
     Someone on leave on the Friday before or the Monday after a weekend cannot be rostered that weekend.
 
-    Lieu days don't count (STONZ 21.4.5). Someone whose leave ends on the Friday can still be rostered for the
-    Sunday night (STONZ 21.4.3). Other leave counts unless it is marked as allowing an abutting weekend. A half
-    day counts when it touches the weekend: a Friday afternoon or a Monday morning.
+    Lieu days don't count (STONZ 21.4.5, RDA 16.5.4). Someone whose leave ends on the Friday can still be
+    rostered for the Sunday night (STONZ 21.4.3, RDA 16.5.3). Other leave counts unless it is marked as
+    allowing an abutting weekend. A half day counts when it touches the weekend: a Friday afternoon or a
+    Monday morning.
     """
     leave_dates = {
         leave.date
@@ -392,6 +399,23 @@ STONZ: tuple[Rule, ...] = (
     partial(lieu_day_notice, notice=14, long_notice=28, clause="STONZ 24.1"),
 )
 
+# The main body of the agreement. Schedule 10 (Safer Rosters) is stricter but only covers the rosters it
+# lists, and Canterbury radiology isn't one of them.
+RDA: tuple[Rule, ...] = (
+    partial(max_hours, limit=72, days=7, clause="RDA 13.4.1"),
+    partial(max_hours, limit=140, days=14, clause="RDA 13.4.1"),
+    partial(one_duty_per_day, clause="RDA 13.4.5"),
+    partial(max_long_days, limit=2, days=7, clause="RDA 13.4.8"),
+    partial(max_consecutive_days, limit=12, clause="RDA 13.5.1"),
+    partial(every_second_weekend_free, clause="RDA 13.5"),
+    partial(min_break_between_duties, hours=8, clause="RDA 13.4.6"),
+    partial(post_night_recovery, long_block=5, long_rest=2, short_rest=None, clause="RDA 13.4.7"),
+    partial(no_weekend_next_to_leave, clause="RDA 16.5"),
+    partial(lieu_day_notice, notice=14, long_notice=28, clause="RDA 19.0"),
+)
+
+CONTRACTS: Mapping[Contract, tuple[Rule, ...]] = {Contract.STONZ: STONZ, Contract.RDA: RDA}
+
 DEPARTMENT: tuple[Rule, ...] = (
     employed,
     not_on_leave,
@@ -449,11 +473,12 @@ def check_roster(
     shifts: Iterable[Shift],
     leaves: Iterable[Leave] = (),
     statuses: Iterable[Status] = (),
-    rules: Iterable[Rule] = STONZ + DEPARTMENT,
+    rules: Iterable[Rule] | None = None,
     period: tuple[date, date] | None = None,
 ) -> list[Violation]:
     """
-    Check every registrar on the roster against `rules`. Unassigned shifts are ignored.
+    Check every registrar on the roster against their contract's rules and the department's, or against
+    `rules` when given. Unassigned shifts are ignored.
 
     Ordinary days are filled in from `period` (first and last day, inclusive), which defaults to the dates the
     shifts cover. Pass shifts from a week or two either side of the period, so limits that look back or ahead
@@ -476,5 +501,11 @@ def check_roster(
     for timeline in timelines.values():
         timeline.ordinary_days = infer_ordinary_days(timeline, *period)
 
-    rules = list(rules)
-    return [violation for timeline in timelines.values() for rule in rules for violation in rule(timeline)]
+    if rules is not None:
+        rules = list(rules)
+    return [
+        violation
+        for timeline in timelines.values()
+        for rule in (rules if rules is not None else CONTRACTS[timeline.registrar.contract] + DEPARTMENT)
+        for violation in rule(timeline)
+    ]
