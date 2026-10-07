@@ -13,6 +13,13 @@ SECRET_KEY = env(
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "dev-ace-us", ".ts.net"]
 
+# COOKIES
+# ------------------------------------------------------------------------------
+# Browsers share cookies between ports on one host, so another Django dev server on this machine (e.g. on
+# :8000) would overwrite the default `sessionid` and `csrftoken` and sign you out here. Name ours apart.
+SESSION_COOKIE_NAME = "radscheduler_sessionid"
+CSRF_COOKIE_NAME = "radscheduler_csrftoken"
+
 # CACHES
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#caches
