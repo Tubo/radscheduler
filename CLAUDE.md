@@ -23,7 +23,7 @@ Tests need Postgres. Run `pytest` inside `devenv shell` while `devenv up` is run
 ```bash
 pytest                                                    # whole suite
 pytest radscheduler/core/tests/test_views.py::TestLeaves::test_form
-pytest -k validators
+pytest -k rules
 pytest --create-db                                        # after migration changes (addopts has --reuse-db)
 ```
 
@@ -48,8 +48,7 @@ pytest --create-db                                        # after migration chan
 - **Views** (`radscheduler/core/views/`): thin, function-based views only. They parse input, call services and render templates.
 - **Services** (`radscheduler/core/service.py`): ORM queries and straightforward business rules, such as building the editor's event grid and workload breakdowns.
 - **Domain** (`radscheduler/roster/`): roster rules, kept free of the ORM. It uses dataclasses (`roster/models.py`), which share names with the ORM models: `Registrar`, `Shift`, `Leave` and `Status`. Only use this layer for complex algorithms; simple rules belong in services.
-  - `validators.StonzMecaValidator`: the contract rules, checked one shift at a time. Not yet wired into the editor.
-  - `rosters.SingleOnCallRoster.is_start_of_set`: where night, weekend and RDO blocks begin.
+  - `rules.check_roster`: checks each registrar's shifts, leave and statuses and returns `Violation`s, each with the clause it breaks. Rules are plain functions over shift times (`models.SHIFT_HOURS`); a contract such as `rules.STONZ` is a tuple of rules with their parameters and clause numbers bound, and `rules.DEPARTMENT` holds the department's own rules. Not yet wired into the editor. The agreement text is not in the repo.
   - `canterbury.canterbury_holidays`: the stat-day calendar.
   - There is no automatic roster generation; the chief registrar builds rosters by hand in the editor.
 - **`core/domain_mapper.py`**: converts between ORM and domain objects using Django Ninja `ModelSchema` and `dacite`. Watch for the duplicate names when importing; the code uses `import ... as orm` and `as domain`.

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, time, timedelta
 from enum import IntEnum
 
 from django.db import models
@@ -26,12 +26,22 @@ class LeaveType(models.TextChoices):
 
 
 class ShiftType(models.TextChoices):
-    SWING = "SWING", "Swing day"  # from 12pm to 10pm
-    HELP = "HELP", "Help desk"  # from 8am to 12pm
-    LONG = "LONG", "Long day"  # from 8am to 10pm
+    SWING = "SWING", "Swing day"
+    HELP = "HELP", "Help desk"
+    LONG = "LONG", "Long day"
     RDO = "RDO", "RDO"
-    NIGHT = "NIGHT", "Night"  # from 10pm to 8am
+    NIGHT = "NIGHT", "Night"
     SLEEP = "SLEEP", "Sleep"
+
+
+# Start time and length of each shift type that is a period of duty.
+# RDO and SLEEP are days off, so they have no hours.
+SHIFT_HOURS = {
+    ShiftType.SWING: (time(12), timedelta(hours=10)),
+    ShiftType.HELP: (time(8), timedelta(hours=4)),
+    ShiftType.LONG: (time(8), timedelta(hours=14)),
+    ShiftType.NIGHT: (time(22), timedelta(hours=10)),
+}
 
 
 class DetailedShiftType(models.TextChoices):
@@ -98,6 +108,24 @@ class Shift:
             return self.date.weekday() in [Weekday.FRI, Weekday.SAT, Weekday.SUN]
         return False
 
+    @property
+    def is_duty(self) -> bool:
+        return self.type in SHIFT_HOURS
+
+    @property
+    def start(self) -> datetime:
+        start_time, _ = SHIFT_HOURS[self.type]
+        return datetime.combine(self.date, start_time)
+
+    @property
+    def end(self) -> datetime:
+        _, length = SHIFT_HOURS[self.type]
+        return self.start + length
+
+    @property
+    def hours(self) -> float:
+        return (self.end - self.start) / timedelta(hours=1)
+
     def same_shift(self, shift):
         return self.date == shift.date and self.type == shift.type and self.series == shift.series
 
@@ -108,6 +136,7 @@ class Leave:
     type: LeaveType
     registrar: Registrar
     no_abutting_weekend: bool = True
+    created: datetime | None = None  # when the leave was requested
 
 
 @dataclass

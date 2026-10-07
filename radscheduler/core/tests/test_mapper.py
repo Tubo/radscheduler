@@ -32,6 +32,7 @@ def test_leave_from_db(juniors_db):
             start=leave_in_db.registrar.start,
             id=juniors_db[0].pk,
         ),
+        created=leave_in_db.created,
     )
     assert from_dict(domain.Leave, mapped) == leave_in_domain
 
