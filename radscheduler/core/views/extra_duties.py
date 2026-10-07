@@ -2,7 +2,6 @@ import random
 from datetime import date, timedelta
 
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.db.models import OuterRef, Subquery
 from django.http import JsonResponse
@@ -12,6 +11,7 @@ from django.views.decorators.http import require_POST
 from radscheduler.core.forms import ShiftInterestForm, ShiftRegistrarForm
 from radscheduler.core.models import Shift, ShiftInterest
 from radscheduler.core.service import get_active_registrars
+from radscheduler.core.views.decorators import staff_required
 from radscheduler.roster import canterbury_holidays
 
 
@@ -77,7 +77,7 @@ def interest(request, interest_id):
         return render(request, "extra_duties/row_response.html", {"shift": shift, "holidays": canterbury_holidays})
 
 
-@staff_member_required
+@staff_required
 def edit_page(request):
     subquery = ShiftInterest.objects.filter(registrar=OuterRef("registrar"), shift=OuterRef("pk"))
     buddy_shifts = Shift.objects.filter(date=OuterRef("date"), type=OuterRef("type"), extra_duty=False).values(
@@ -105,7 +105,7 @@ def edit_page(request):
     )
 
 
-@staff_member_required
+@staff_required
 def interested_random_registrar(request):
     shift_id = request.GET.get("id")
     interests = Shift.objects.get(pk=shift_id).interests.values("registrar").all()
@@ -115,7 +115,7 @@ def interested_random_registrar(request):
         return JsonResponse(random.choice(list(interests)), safe=True)
 
 
-@staff_member_required
+@staff_required
 @require_POST
 def save_registrar(request, shift_id):
     shift = get_object_or_404(Shift, pk=shift_id, extra_duty=True)

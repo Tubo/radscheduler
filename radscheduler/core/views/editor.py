@@ -1,7 +1,6 @@
 import json
 from datetime import date, timedelta
 
-from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
@@ -19,10 +18,11 @@ from radscheduler.core.forms import (
 )
 from radscheduler.core.models import Leave, Settings, Shift
 from radscheduler.core.service import get_events
+from radscheduler.core.views.decorators import staff_required
 from radscheduler.roster import canterbury_holidays
 
 
-@staff_member_required
+@staff_required
 @require_GET
 def page(request, date_=None):
     """
@@ -93,7 +93,7 @@ LEAVE_SHORT = {
 }
 
 
-@staff_member_required
+@staff_required
 @require_GET
 def next_page(request, date_=None):
     """
@@ -121,13 +121,13 @@ def next_page(request, date_=None):
     return render(request, "editor/next.html", {"flags": flags})
 
 
-@staff_member_required
+@staff_required
 @require_GET
 def update_cell(request):
     pass
 
 
-@staff_member_required
+@staff_required
 @require_POST
 def add_shift(request):
     "Add shift button"
@@ -150,7 +150,7 @@ def add_shift(request):
     return HttpResponse(status=304)
 
 
-@staff_member_required
+@staff_required
 @require_POST
 def change_shift(request, pk):
     shift_types = roster.ShiftType.choices
@@ -166,7 +166,7 @@ def change_shift(request, pk):
     return HttpResponse(status=304)
 
 
-@staff_member_required
+@staff_required
 @require_POST
 def delete_shift(request, pk):
     try:
@@ -181,7 +181,7 @@ def delete_shift(request, pk):
         return HttpResponse(status=500)
 
 
-@staff_member_required
+@staff_required
 @require_POST
 def change_leave(request, pk):
     leave = Leave.objects.get(pk=pk)
@@ -192,7 +192,7 @@ def change_leave(request, pk):
     return HttpResponse(status=304)
 
 
-@staff_member_required
+@staff_required
 @require_GET
 def settings(request):
     """
@@ -213,7 +213,7 @@ def settings(request):
     return render(request, "editor/settings.html", {"form": form})
 
 
-@staff_member_required
+@staff_required
 @require_POST
 def update_settings(request):
     """

@@ -33,11 +33,26 @@ class TestLeaves:
         pass
 
 
-class TestAccess:
-    def ordinary_user_cannot_access_roster_generation(self):
-        # Cannot see the button on the menu
-        # Cannot access the page
-        pass
+STAFF_PAGES = ["editor", "editor_next", "extra_edit_page"]
+
+
+class TestStaffPages:
+    @pytest.mark.parametrize("page", STAFF_PAGES)
+    def test_signed_out_visitors_go_to_the_sign_in_page(self, app, page):
+        resp = app.get(reverse(page))
+
+        assert resp.status_code == 302
+        assert resp.location == f"{reverse('account_login')}?next={reverse(page)}"
+
+    @pytest.mark.parametrize("page", STAFF_PAGES)
+    def test_registrars_are_told_the_page_is_for_staff(self, app, juniors_db, page):
+        resp = app.get(reverse(page), user=juniors_db[0].user, status=403)
+
+        assert "Only staff who edit the roster can open this page." in resp.text
+
+    @pytest.mark.parametrize("page", STAFF_PAGES)
+    def test_staff_get_in(self, app, admin_user, page):
+        app.get(reverse(page), user=admin_user, status=200)
 
 
 class TestRosterGeneration:
@@ -195,8 +210,7 @@ class TestSaveExtraDutyWinner:
 
     def test_registrar_cannot_save_winner(self, app, juniors_db, extra_shift):
         app.set_user(juniors_db[0].user)
-        resp = app.post(reverse("extra_save_registrar", args=[extra_shift.pk]), {"registrar": juniors_db[0].pk})
-        assert resp.status_code == 302
-        assert "login" in resp.location
+        url = reverse("extra_save_registrar", args=[extra_shift.pk])
+        app.post(url, {"registrar": juniors_db[0].pk}, status=403)
         extra_shift.refresh_from_db()
         assert extra_shift.registrar is None
