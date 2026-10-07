@@ -91,6 +91,24 @@ def editor_roster(week: date) -> dict:
     }
 
 
+def publish_preview(start: date, end: date) -> dict:
+    """
+    How many shifts and leave registrars would start or stop seeing if the published range became
+    start..end. Only assigned shifts and leave that isn't cancelled count.
+    """
+    settings = Settings.objects.first()
+    new = Q(date__range=[start, end])
+    current = Q(date__range=[settings.publish_start_date, settings.publish_end_date]) if settings else Q(pk__in=[])
+    shifts = Shift.objects.exclude(registrar=None)
+    leaves = Leave.objects.exclude(cancelled=True)
+    return {
+        "shifts_shown": shifts.filter(new & ~current).count(),
+        "leave_shown": leaves.filter(new & ~current).count(),
+        "shifts_hidden": shifts.filter(current & ~new).count(),
+        "leave_hidden": leaves.filter(current & ~new).count(),
+    }
+
+
 def set_published(start: date, end: date) -> Settings:
     """Set the date range registrars can see. There is only ever one Settings row."""
     settings, _ = Settings.objects.update_or_create(

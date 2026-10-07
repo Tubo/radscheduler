@@ -1,0 +1,779 @@
+// The Elm roster editor. Bootstrap (from the vendors bundle) supplies buttons, forms and the modal; this
+// file owns the grid, its colour system and the popover layer. Every colour pair below meets WCAG AA.
+
+.roster-editor {
+  // Ink and lines
+  --re-ink: #1f2933;
+  --re-muted: #5c6670;
+  --re-line: #dfe3e8;
+  --re-line-strong: #aab3bc;
+  --re-panel: #f6f7f9;
+  --re-accent: #0b5ed7;
+  --re-accent-soft: #9ec5fe;
+
+  // Shifts: one hue each, white text
+  --re-long: #b54708;
+  --re-swing: #8e3a8e;
+  --re-night: #1d2b5c;
+  --re-help: #0b6e6e;
+  --re-off-bg: #eef0f3;
+  --re-off-ink: #3d4650;
+  --re-off-line: #8a949e;
+
+  // Leave and cover states
+  --re-ok: #146c43;
+  --re-ok-bg: #edf7f1;
+  --re-ok-line: #9fd3b5;
+  --re-wait: #7a4a00;
+  --re-wait-bg: #fff4d6;
+  --re-wait-line: #d9a63a;
+  --re-bad: #a52834;
+  --re-bad-line: #e4a1a8;
+
+  // Days
+  --re-weekend: #f2f3f5;
+  --re-holiday: #f1eefb;
+  --re-unpublished: repeating-linear-gradient(
+    135deg,
+    transparent 0 7px,
+    rgba(31, 41, 51, 0.06) 7px 9px
+  );
+
+  --re-head-h: 64px;
+  --re-cover-h: 40px;
+  --re-col: 84px;
+  --re-name-col: 132px;
+
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--re-top, 64px));
+  padding: 0 0.75rem 0.5rem;
+  color: var(--re-ink);
+  font-variant-numeric: tabular-nums;
+
+  ::selection {
+    background: var(--re-accent-soft);
+    color: var(--re-ink);
+  }
+
+  kbd {
+    padding: 0 0.3em;
+    border: 1px solid #c3c9cf;
+    border-radius: 3px;
+    background: var(--re-off-bg);
+    color: var(--re-off-ink);
+    font-size: 0.6875rem;
+    font-family: inherit;
+    box-shadow: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--re-accent);
+    outline-offset: 1px;
+  }
+}
+
+// Toolbar
+
+.re-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0;
+}
+
+.re-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.re-nav,
+.re-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.re-tools {
+  margin-left: auto;
+}
+
+.re-week-input {
+  max-width: 9.5rem;
+}
+
+.re-window,
+.re-published,
+.re-hidden-note,
+.re-loading {
+  color: var(--re-muted);
+  font-size: 0.8125rem;
+}
+
+.re-published.is-none {
+  color: var(--re-bad);
+}
+
+.re-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+// Grid
+
+.re-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--re-line);
+  border-radius: 0.375rem;
+  background: #fff;
+  transition: opacity 150ms ease-out;
+
+  &.is-stale {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+}
+
+.re-empty {
+  padding: 2rem;
+  color: var(--re-muted);
+}
+
+.re-grid {
+  width: max-content;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-size: 0.8125rem;
+
+  th,
+  td {
+    width: var(--re-col);
+    min-width: var(--re-col);
+    max-width: var(--re-col);
+    padding: 2px 3px;
+    border-right: 1px solid var(--re-line);
+    border-bottom: 1px solid var(--re-line);
+  }
+
+  // Column states, shared by the header, cover, cells and footer of a day.
+  .is-weekend {
+    background-color: var(--re-weekend);
+  }
+
+  .is-holiday {
+    background-color: var(--re-holiday);
+  }
+
+  .is-unpublished {
+    background-image: var(--re-unpublished);
+  }
+
+  .is-week-start {
+    border-left: 2px solid var(--re-off-line);
+  }
+
+  .is-publish-edge {
+    border-left: 2px dashed var(--re-accent);
+  }
+}
+
+// Sticky header: dates, then the cover strip.
+.re-head th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: var(--re-head-h);
+  vertical-align: top;
+  background-color: var(--re-panel);
+  font-weight: 500;
+}
+
+.re-head .is-weekend {
+  background-color: var(--re-weekend);
+}
+
+.re-head .is-holiday {
+  background-color: var(--re-holiday);
+}
+
+.re-date {
+  &.is-focus-week {
+    box-shadow: inset 0 3px 0 var(--re-line-strong);
+  }
+
+  &.is-today {
+    box-shadow: inset 0 3px 0 var(--re-accent);
+  }
+}
+
+.re-weekday,
+.re-daydate {
+  display: block;
+  line-height: 1.2;
+}
+
+.re-weekday {
+  color: var(--re-muted);
+  font-size: 0.75rem;
+}
+
+.re-daydate {
+  font-weight: 600;
+}
+
+.re-tag {
+  display: block;
+  overflow: hidden;
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.re-tag--today {
+  color: var(--re-accent);
+  font-weight: 600;
+}
+
+.re-tag--holiday {
+  color: #4b2e83;
+}
+
+.re-tag--unpublished {
+  color: var(--re-muted);
+}
+
+.re-cover th,
+.re-cover td {
+  position: sticky;
+  top: var(--re-head-h);
+  z-index: 3;
+  height: var(--re-cover-h);
+  background-color: var(--re-panel);
+  border-bottom-color: var(--re-line-strong);
+}
+
+.re-cover-cell {
+  white-space: nowrap;
+}
+
+.re-coverchip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  margin-bottom: 1px;
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+
+  &.is-ok {
+    color: var(--re-ok);
+  }
+
+  &.is-open {
+    border: 1px dashed var(--re-wait-line);
+    color: var(--re-wait);
+  }
+
+  &.is-gap {
+    background: var(--re-bad);
+    color: #fff;
+  }
+}
+
+// Corners and the name column stay put both ways.
+.re-corner,
+.re-name {
+  position: sticky;
+  left: 0;
+  width: var(--re-name-col) !important;
+  min-width: var(--re-name-col) !important;
+  max-width: var(--re-name-col) !important;
+  text-align: left;
+  box-shadow: inset -1px 0 0 var(--re-line-strong);
+}
+
+.re-corner {
+  z-index: 4;
+  background-color: var(--re-panel);
+  color: var(--re-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.re-name {
+  z-index: 2;
+  background-color: #fff;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.re-username {
+  display: inline-block;
+  max-width: calc(var(--re-name-col) - 36px);
+  overflow: hidden;
+  vertical-align: bottom;
+  text-overflow: ellipsis;
+}
+
+.re-year {
+  margin-left: 0.25rem;
+  color: var(--re-muted);
+  font-size: 0.6875rem;
+  font-weight: 400;
+}
+
+tfoot th,
+tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  background-color: var(--re-panel);
+  border-top: 1px solid var(--re-line-strong);
+}
+
+tfoot .re-corner {
+  z-index: 4;
+}
+
+.re-count {
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.re-count-approved,
+.re-count-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  margin-right: 0.4rem;
+}
+
+.re-count-approved {
+  color: var(--re-ok);
+}
+
+.re-count-pending {
+  color: var(--re-wait);
+}
+
+.re-count-none {
+  color: var(--re-muted);
+}
+
+// Cells
+
+.re-cell {
+  position: relative;
+  height: 32px;
+  vertical-align: top;
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: inset 0 0 0 1px var(--re-accent-soft);
+  }
+
+  &:focus-visible,
+  &.is-open {
+    z-index: 1;
+    outline: 2px solid var(--re-accent);
+    outline-offset: -2px;
+  }
+
+  &.has-clash {
+    box-shadow: inset 0 0 0 2px var(--re-bad);
+  }
+
+  &.has-error {
+    outline: 2px dashed var(--re-bad);
+    outline-offset: -2px;
+  }
+
+  &.is-saving {
+    animation: re-saving 900ms ease-in-out infinite alternate;
+  }
+}
+
+@keyframes re-saving {
+  from {
+    box-shadow: inset 0 -2px 0 var(--re-accent-soft);
+  }
+
+  to {
+    box-shadow: inset 0 -2px 0 var(--re-accent);
+  }
+}
+
+.re-add {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--re-accent);
+  font-size: 1rem;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+
+  .re-cell:hover &,
+  .re-cell:focus-visible & {
+    opacity: 0.8;
+  }
+}
+
+.re-cell.has-clash {
+  padding-right: 15px;
+}
+
+.re-clash {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  color: var(--re-bad);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+// Chips: shifts filled with their hue, leave outlined with its state.
+// Inline-block rather than flex, so a long label ends in an ellipsis.
+.re-chip {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+  margin: 1px 1px 0 0;
+  padding: 3px 5px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  .bi {
+    margin-right: 3px;
+  }
+}
+
+.re-shift,
+.re-swatch {
+  &.is-long {
+    background-color: var(--re-long);
+    color: #fff;
+  }
+
+  &.is-swing {
+    background-color: var(--re-swing);
+    color: #fff;
+  }
+
+  &.is-night {
+    background-color: var(--re-night);
+    color: #fff;
+  }
+
+  &.is-help {
+    background-color: var(--re-help);
+    color: #fff;
+  }
+
+  &.is-rdo,
+  &.is-sleep {
+    border: 1px dashed var(--re-off-line);
+    background-color: var(--re-off-bg);
+    color: var(--re-off-ink);
+  }
+}
+
+.re-extra {
+  margin-left: 3px;
+  font-size: 0.6875rem;
+
+  .bi {
+    margin-right: 0;
+  }
+}
+
+.re-leave {
+  border-color: var(--re-line-strong);
+  background-color: #fff;
+  color: var(--re-ink);
+
+  &.is-pending {
+    border-color: var(--re-wait-line);
+    background-color: var(--re-wait-bg);
+    color: var(--re-wait);
+  }
+
+  &.is-partial {
+    border: 1px dashed var(--re-wait-line);
+    color: var(--re-wait);
+  }
+
+  &.is-approved {
+    border-color: var(--re-ok-line);
+    background-color: var(--re-ok-bg);
+    color: var(--re-ok);
+  }
+
+  &.is-declined {
+    border-color: var(--re-bad-line);
+    color: var(--re-bad);
+    text-decoration: line-through;
+  }
+
+  &.is-cancelled {
+    border: 1px dashed #c3c9cf;
+    background-color: transparent;
+    color: var(--re-muted);
+    text-decoration: line-through;
+  }
+}
+
+// Popovers
+
+.re-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1040;
+}
+
+.re-popover {
+  position: fixed;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  border: 1px solid var(--re-line-strong);
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow:
+    0 12px 32px rgba(15, 23, 42, 0.18),
+    0 2px 6px rgba(15, 23, 42, 0.08);
+  animation: re-pop 120ms ease-out;
+}
+
+@keyframes re-pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .re-popover,
+  .re-cell.is-saving {
+    animation: none;
+  }
+}
+
+.re-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--re-line);
+}
+
+.re-popover-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.re-popover-body {
+  padding: 0 0.75rem;
+}
+
+.re-popover-foot {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--re-line);
+  text-align: right;
+}
+
+.re-section {
+  margin: 0;
+  padding: 0.625rem 0;
+  border: 0;
+
+  & + & {
+    border-top: 1px solid var(--re-line);
+  }
+}
+
+.re-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.375rem;
+  padding: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.re-status {
+  margin: 0 0 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.re-comment {
+  margin: 0 0 0.25rem;
+  font-size: 0.8125rem;
+  font-style: italic;
+}
+
+.re-label {
+  color: var(--re-muted);
+  font-size: 0.75rem;
+}
+
+.re-meta {
+  margin: 0.5rem 0 0;
+  color: var(--re-muted);
+  font-size: 0.75rem;
+}
+
+.re-note {
+  margin: 0.5rem 0;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  background: var(--re-panel);
+  font-size: 0.8125rem;
+
+  &.is-warning {
+    background: var(--re-wait-bg);
+    color: #5c3a00;
+  }
+
+  &.is-error {
+    background: #fbe9eb;
+    color: #8a1f2b;
+  }
+}
+
+.re-typegrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+}
+
+.re-typebtn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--re-line);
+  text-align: left;
+
+  kbd {
+    margin-left: auto;
+  }
+
+  &:hover {
+    border-color: var(--re-line-strong);
+    background: var(--re-panel);
+  }
+
+  &.is-current:disabled {
+    border-color: var(--re-line-strong);
+    background: var(--re-panel);
+    color: var(--re-ink);
+    font-weight: 600;
+    opacity: 1;
+  }
+}
+
+.re-swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+
+  &.is-weekend {
+    border: 1px solid var(--re-line-strong);
+    background: var(--re-weekend);
+  }
+
+  &.is-holiday {
+    border: 1px solid var(--re-line-strong);
+    background: var(--re-holiday);
+  }
+
+  &.is-unpublished {
+    border: 1px solid var(--re-line-strong);
+    background: var(--re-unpublished);
+  }
+}
+
+.re-approval {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.375rem;
+}
+
+.re-keylist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 2px 0;
+    font-size: 0.8125rem;
+  }
+
+  li > kbd {
+    margin-left: auto;
+  }
+
+  &.is-keys li > kbd {
+    min-width: 5.5rem;
+    margin-left: 0;
+    text-align: center;
+  }
+}
+
+.re-preview {
+  font-size: 0.875rem;
+}
+
+// Failures sit over the grid instead of pushing it down.
+.re-toast {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 1060;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 36rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #2b2f33;
+  color: #fff;
+  font-size: 0.875rem;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.3);
+
+  .bi {
+    color: #ff8f99;
+  }
+}
+
+.re-toast-text {
+  flex: 1;
+}

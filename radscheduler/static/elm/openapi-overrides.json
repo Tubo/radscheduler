@@ -1,0 +1,7 @@
+{
+  "components": {
+    "securitySchemes": {
+      "StaffAuth": { "type": "apiKey", "in": "header", "name": "X-CSRFToken" }
+    }
+  }
+}

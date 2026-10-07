@@ -5,10 +5,16 @@
 {% block title %}
   Roster
 {% endblock title %}
+{% block css %}
+  {{ block.super }}
+  {% render_bundle 'editor_elm' 'css' %}
+{% endblock css %}
 {% block javascript %}
   {{ block.super }}
   {% render_bundle 'editor_elm' 'js' attrs='defer' %}
 {% endblock javascript %}
+{% block messages %}
+{% endblock messages %}
 {% block content %}
   <main>
     {{ flags|json_script:"editor-flags" }}

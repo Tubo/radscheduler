@@ -96,8 +96,10 @@ class TestShifts:
         changed = app.patch_json(f"/api/editor/shifts/{shift.pk}", {"extra_duty": True}, user=staff).json
         assert (changed["type"], changed["extra_duty"]) == ("SWING", True)
 
-    def test_delete(self, app, staff, shift):
-        app.delete(f"/api/editor/shifts/{shift.pk}", user=staff, status=204)
+    def test_delete_returns_the_deleted_shift(self, app, staff, shift):
+        deleted = app.delete(f"/api/editor/shifts/{shift.pk}", user=staff, status=200).json
+
+        assert (deleted["id"], deleted["type"]) == (shift.pk, "LONG")
         assert not Shift.objects.filter(pk=shift.pk).exists()
 
         app.delete(f"/api/editor/shifts/{shift.pk}", user=staff, status=404)
@@ -141,3 +143,33 @@ class TestPublished:
 
         assert "start" in response.json["detail"]
         assert Settings.objects.get().publish_start_date == date(2025, 1, 1)
+
+
+class TestUnassignedShifts:
+    def test_roster_includes_shifts_without_a_registrar(self, app, staff):
+        open_shift = Shift.objects.create(date=CHRISTMAS, type=ShiftType.LONG, extra_duty=True)
+
+        roster = app.get("/api/editor/roster", {"week": "2024-12-25"}, user=staff).json
+
+        assert {"id": open_shift.pk, "date": "2024-12-25", "type": "LONG", "registrar": None, "extra_duty": True} in (
+            roster["shifts"]
+        )
+
+
+class TestPublishPreview:
+    def test_counts_what_registrars_gain_and_lose(self, app, staff, juniors_db):
+        Settings.objects.create(publish_start_date=date(2025, 1, 1), publish_end_date=date(2025, 1, 31))
+        Shift.objects.create(date=date(2025, 1, 10), type=ShiftType.LONG, registrar=juniors_db[0])
+        Shift.objects.create(date=date(2025, 2, 10), type=ShiftType.LONG, registrar=juniors_db[0])
+        Shift.objects.create(date=date(2025, 2, 11), type=ShiftType.NIGHT, registrar=juniors_db[1])
+        Leave.objects.create(date=date(2025, 2, 12), type=LeaveType.ANNUAL, registrar=juniors_db[2])
+        Leave.objects.create(date=date(2025, 2, 13), type=LeaveType.ANNUAL, registrar=juniors_db[2], cancelled=True)
+
+        preview = app.get("/api/editor/published/preview", {"start": "2025-01-15", "end": "2025-02-28"}, user=staff)
+
+        assert preview.json == {"shifts_shown": 2, "leave_shown": 1, "shifts_hidden": 1, "leave_hidden": 0}
+
+    def test_everything_is_new_when_nothing_is_published(self, app, staff, shift, leave):
+        preview = app.get("/api/editor/published/preview", {"start": "2024-12-01", "end": "2024-12-31"}, user=staff)
+
+        assert preview.json == {"shifts_shown": 1, "leave_shown": 1, "shifts_hidden": 0, "leave_hidden": 0}

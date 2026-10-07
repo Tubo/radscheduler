@@ -4,7 +4,6 @@ JSON API for the roster editor. Staff only; changes need the CSRF token.
 
 from datetime import date, datetime
 
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Field, Router, Schema, Status
@@ -34,7 +33,8 @@ class ShiftOut(Schema):
     id: int
     date: date
     type: ShiftType
-    registrar: int = Field(..., alias="registrar_id")
+    # None for an extra duty posted but not yet given to anyone.
+    registrar: int | None = Field(..., alias="registrar_id")
     extra_duty: bool
 
 
@@ -66,7 +66,7 @@ class HolidayOut(Schema):
     name: str
 
 
-class PublishedOut(Schema):
+class PublishedRange(Schema):
     start: date
     end: date
 
@@ -81,7 +81,14 @@ class RosterOut(Schema):
     shifts: list[ShiftOut]
     leaves: list[LeaveOut]
     holidays: list[HolidayOut]
-    published: PublishedOut | None
+    published: PublishedRange | None
+
+
+class PreviewOut(Schema):
+    shifts_shown: int
+    leave_shown: int
+    shifts_hidden: int
+    leave_hidden: int
 
 
 class ErrorOut(Schema):
@@ -107,7 +114,7 @@ class LeavePatch(Schema):
 
 
 @router.get("/roster", response=RosterOut)
-def roster(request, week: date):
+def get_roster(request, week: date):
     return service.editor_roster(week)
 
 
@@ -126,12 +133,13 @@ def change_shift(request, shift_id: int, payload: ShiftPatch):
     return shift
 
 
-@router.delete("/shifts/{shift_id}", response={204: None})
+# Returns the deleted shift rather than an empty 204: the generated Elm client decodes every response body.
+@router.delete("/shifts/{shift_id}", response=ShiftOut)
 def delete_shift(request, shift_id: int):
-    get_object_or_404(Shift, pk=shift_id).delete()
-    response = HttpResponse(status=204)
-    del response["Content-Type"]
-    return response
+    shift = get_object_or_404(Shift, pk=shift_id)
+    deleted = ShiftOut.from_orm(shift)
+    shift.delete()
+    return deleted
 
 
 @router.patch("/leaves/{leave_id}", response=LeaveOut)
@@ -143,8 +151,13 @@ def change_leave(request, leave_id: int, payload: LeavePatch):
     return leave
 
 
-@router.put("/published", response={200: PublishedOut, 422: ErrorOut})
-def set_published(request, payload: PublishedOut):
+@router.get("/published/preview", response=PreviewOut)
+def preview_published(request, start: date, end: date):
+    return service.publish_preview(start, end)
+
+
+@router.put("/published", response={200: PublishedRange, 422: ErrorOut})
+def set_published(request, payload: PublishedRange):
     if payload.start > payload.end:
         return Status(422, {"detail": "The start of the published range must be on or before its end."})
     settings = service.set_published(payload.start, payload.end)

@@ -11,6 +11,7 @@
     "bootstrap": "^5.3.8",
     "concurrently": "^10.0.5",
     "css-loader": "^7.1.5",
+    "elm-open-api": "0.8.0",
     "elm-tooling": "^1.20.0",
     "mini-css-extract-plugin": "^2.10.2",
     "node-sass-tilde-importer": "^1.0.2",

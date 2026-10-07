@@ -1,0 +1,960 @@
+{
+  "components": {
+    "schemas": {
+      "ErrorOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorOut",
+        "type": "object"
+      },
+      "FullCalendarHolidaySchema": {
+        "properties": {
+          "allDay": {
+            "default": true,
+            "title": "Allday",
+            "type": "boolean"
+          },
+          "event_type": {
+            "default": "holiday",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "title"
+        ],
+        "title": "FullCalendarHolidaySchema",
+        "type": "object"
+      },
+      "FullCalendarLeaveSchema": {
+        "properties": {
+          "allDay": {
+            "default": true,
+            "title": "Allday",
+            "type": "boolean"
+          },
+          "event_type": {
+            "default": "leave",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "ID"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "title"
+        ],
+        "title": "FullCalendarLeaveSchema",
+        "type": "object"
+      },
+      "FullCalendarShiftSchema": {
+        "properties": {
+          "allDay": {
+            "default": true,
+            "title": "Allday",
+            "type": "boolean"
+          },
+          "event_type": {
+            "default": "shift",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "ID"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "title"
+        ],
+        "title": "FullCalendarShiftSchema",
+        "type": "object"
+      },
+      "HolidayOut": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "name"
+        ],
+        "title": "HolidayOut",
+        "type": "object"
+      },
+      "LeaveOut": {
+        "properties": {
+          "cancelled": {
+            "title": "Cancelled",
+            "type": "boolean"
+          },
+          "comment": {
+            "title": "Comment",
+            "type": "string"
+          },
+          "created": {
+            "format": "date-time",
+            "title": "Created",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "dot_approved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dot Approved"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_edited": {
+            "format": "date-time",
+            "title": "Last Edited",
+            "type": "string"
+          },
+          "portion": {
+            "title": "Portion",
+            "type": "string"
+          },
+          "reg_approved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reg Approved"
+          },
+          "registrar": {
+            "title": "Registrar",
+            "type": "integer"
+          },
+          "type": {
+            "$ref": "#/components/schemas/LeaveType"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "type",
+          "portion",
+          "registrar",
+          "comment",
+          "reg_approved",
+          "dot_approved",
+          "cancelled",
+          "created",
+          "last_edited"
+        ],
+        "title": "LeaveOut",
+        "type": "object"
+      },
+      "LeavePatch": {
+        "properties": {
+          "cancelled": {
+            "title": "Cancelled",
+            "type": "boolean"
+          },
+          "dot_approved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dot Approved"
+          },
+          "reg_approved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reg Approved"
+          }
+        },
+        "title": "LeavePatch",
+        "type": "object"
+      },
+      "LeaveType": {
+        "enum": [
+          "ANNUAL",
+          "EDU",
+          "CONF",
+          "LIEU",
+          "SICK",
+          "PAR",
+          "BE"
+        ],
+        "title": "LeaveType",
+        "type": "string"
+      },
+      "PreviewOut": {
+        "properties": {
+          "leave_hidden": {
+            "title": "Leave Hidden",
+            "type": "integer"
+          },
+          "leave_shown": {
+            "title": "Leave Shown",
+            "type": "integer"
+          },
+          "shifts_hidden": {
+            "title": "Shifts Hidden",
+            "type": "integer"
+          },
+          "shifts_shown": {
+            "title": "Shifts Shown",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "shifts_shown",
+          "leave_shown",
+          "shifts_hidden",
+          "leave_hidden"
+        ],
+        "title": "PreviewOut",
+        "type": "object"
+      },
+      "PublishedRange": {
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "PublishedRange",
+        "type": "object"
+      },
+      "RegistrarOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "year"
+        ],
+        "title": "RegistrarOut",
+        "type": "object"
+      },
+      "RosterOut": {
+        "properties": {
+          "dates": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Dates",
+            "type": "array"
+          },
+          "holidays": {
+            "items": {
+              "$ref": "#/components/schemas/HolidayOut"
+            },
+            "title": "Holidays",
+            "type": "array"
+          },
+          "leaves": {
+            "items": {
+              "$ref": "#/components/schemas/LeaveOut"
+            },
+            "title": "Leaves",
+            "type": "array"
+          },
+          "next": {
+            "format": "date",
+            "title": "Next",
+            "type": "string"
+          },
+          "prev": {
+            "format": "date",
+            "title": "Prev",
+            "type": "string"
+          },
+          "published": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublishedRange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "registrars": {
+            "items": {
+              "$ref": "#/components/schemas/RegistrarOut"
+            },
+            "title": "Registrars",
+            "type": "array"
+          },
+          "shifts": {
+            "items": {
+              "$ref": "#/components/schemas/ShiftOut"
+            },
+            "title": "Shifts",
+            "type": "array"
+          },
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "week": {
+            "format": "date",
+            "title": "Week",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week",
+          "prev",
+          "next",
+          "today",
+          "dates",
+          "registrars",
+          "shifts",
+          "leaves",
+          "holidays",
+          "published"
+        ],
+        "title": "RosterOut",
+        "type": "object"
+      },
+      "ShiftIn": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "extra_duty": {
+            "default": false,
+            "title": "Extra Duty",
+            "type": "boolean"
+          },
+          "registrar": {
+            "title": "Registrar",
+            "type": "integer"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ShiftType"
+          }
+        },
+        "required": [
+          "date",
+          "type",
+          "registrar"
+        ],
+        "title": "ShiftIn",
+        "type": "object"
+      },
+      "ShiftOut": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "extra_duty": {
+            "title": "Extra Duty",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "registrar": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registrar"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ShiftType"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "type",
+          "registrar",
+          "extra_duty"
+        ],
+        "title": "ShiftOut",
+        "type": "object"
+      },
+      "ShiftPatch": {
+        "properties": {
+          "extra_duty": {
+            "title": "Extra Duty",
+            "type": "boolean"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShiftType"
+              }
+            ]
+          }
+        },
+        "title": "ShiftPatch",
+        "type": "object"
+      },
+      "ShiftType": {
+        "enum": [
+          "SWING",
+          "HELP",
+          "LONG",
+          "RDO",
+          "NIGHT",
+          "SLEEP"
+        ],
+        "title": "ShiftType",
+        "type": "string"
+      }
+    },
+    "securitySchemes": {
+      "StaffAuth": {
+        "in": "cookie",
+        "name": "sessionid",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "",
+    "title": "Radscheduler API",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/calendar/holidays": {
+      "get": {
+        "operationId": "holidayEvents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FullCalendarHolidaySchema"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Holiday Events"
+      }
+    },
+    "/api/calendar/leaves": {
+      "get": {
+        "operationId": "leaveEvents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FullCalendarLeaveSchema"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Leave Events"
+      }
+    },
+    "/api/calendar/shifts": {
+      "get": {
+        "operationId": "shiftEvents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FullCalendarShiftSchema"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Shift Events"
+      }
+    },
+    "/api/editor/leaves/{leave_id}": {
+      "patch": {
+        "operationId": "changeLeave",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leave_id",
+            "required": true,
+            "schema": {
+              "title": "Leave Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeavePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaveOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Change Leave"
+      }
+    },
+    "/api/editor/published": {
+      "put": {
+        "operationId": "setPublished",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishedRange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedRange"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Set Published"
+      }
+    },
+    "/api/editor/published/preview": {
+      "get": {
+        "operationId": "previewPublished",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Preview Published"
+      }
+    },
+    "/api/editor/roster": {
+      "get": {
+        "operationId": "getRoster",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "week",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Week",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Get Roster"
+      }
+    },
+    "/api/editor/shifts": {
+      "post": {
+        "operationId": "addShift",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShiftIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShiftOut"
+                }
+              }
+            },
+            "description": "Created"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Add Shift"
+      }
+    },
+    "/api/editor/shifts/{shift_id}": {
+      "delete": {
+        "operationId": "deleteShift",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shift_id",
+            "required": true,
+            "schema": {
+              "title": "Shift Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShiftOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Delete Shift"
+      },
+      "patch": {
+        "operationId": "changeShift",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shift_id",
+            "required": true,
+            "schema": {
+              "title": "Shift Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShiftPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShiftOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Change Shift"
+      }
+    }
+  },
+  "servers": []
+}

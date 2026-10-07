@@ -79,6 +79,20 @@ def page(request, date_=None):
     )
 
 
+# How the editor names things in its compact grid, and the key that adds or changes to each shift type.
+SHIFT_SHORT = {"SWING": "Swing", "HELP": "Help", "LONG": "Long", "RDO": "RDO", "NIGHT": "Night", "SLEEP": "Sleep"}
+SHIFT_KEYS = {"SWING": "s", "HELP": "h", "LONG": "l", "RDO": "r", "NIGHT": "n", "SLEEP": "z"}
+LEAVE_SHORT = {
+    "ANNUAL": "Annual",
+    "EDU": "Educ",
+    "CONF": "Conf",
+    "LIEU": "Lieu",
+    "SICK": "Sick",
+    "PAR": "Parental",
+    "BE": "Bereav",
+}
+
+
 @staff_member_required
 @require_GET
 def next_page(request, date_=None):
@@ -88,12 +102,21 @@ def next_page(request, date_=None):
     """
     date_form = DateForm({"date": date_})
     week = date_form.cleaned_data["date"] if date_form.is_valid() else date.today()
+    shift_types = roster.ShiftType
     flags = {
         "csrfToken": get_token(request),
         "week": week.isoformat(),
         "editorUrl": reverse("editor_next"),
-        "shiftTypes": [{"value": value, "label": label} for value, label in roster.ShiftType.choices],
-        "leaveTypes": [{"value": value, "label": label} for value, label in roster.LeaveType.choices],
+        "shiftTypes": [
+            {"value": value, "label": label, "short": SHIFT_SHORT[value], "key": SHIFT_KEYS[value]}
+            for value, label in shift_types.choices
+        ],
+        "leaveTypes": [
+            {"value": value, "label": label, "short": LEAVE_SHORT[value], "key": ""}
+            for value, label in roster.LeaveType.choices
+        ],
+        # The shifts the department needs filled every day; the editor shows each as covered or missing.
+        "cover": [shift_types.LONG, shift_types.NIGHT],
     }
     return render(request, "editor/next.html", {"flags": flags})
 

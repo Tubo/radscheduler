@@ -80,6 +80,7 @@ THIRD_PARTY_APPS = [
     "webpack_loader",
     "rangefilter",
     "template_partials",
+    "ninja",  # for its export_openapi_schema command
 ]
 
 LOCAL_APPS = [
