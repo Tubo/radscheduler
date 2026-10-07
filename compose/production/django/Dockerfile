@@ -7,7 +7,7 @@ WORKDIR ${APP_HOME}
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
 
-COPY ./package.json ./pnpm-lock.yaml ./pnpm-workspace.yaml ${APP_HOME}/
+COPY ./package.json ./pnpm-lock.yaml ./pnpm-workspace.yaml ./elm-tooling.json ${APP_HOME}/
 RUN pnpm install --frozen-lockfile
 COPY . ${APP_HOME}
 RUN pnpm run build

@@ -6,6 +6,7 @@ from datetime import date, datetime
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from ninja import Field, Router, Schema, Status
 from ninja.security import SessionAuth
 
@@ -49,6 +50,15 @@ class LeaveOut(Schema):
     cancelled: bool
     created: datetime
     last_edited: datetime
+
+    # In the department's time zone, so the editor can show them as they are.
+    @staticmethod
+    def resolve_created(leave):
+        return timezone.localtime(leave.created)
+
+    @staticmethod
+    def resolve_last_edited(leave):
+        return timezone.localtime(leave.last_edited)
 
 
 class HolidayOut(Schema):

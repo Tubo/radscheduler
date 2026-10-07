@@ -3,7 +3,9 @@ from datetime import date, timedelta
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from radscheduler import roster
@@ -75,6 +77,25 @@ def page(request, date_=None):
             "settings": settings,
         },
     )
+
+
+@staff_member_required
+@require_GET
+def next_page(request, date_=None):
+    """
+    The Elm roster editor. The page only carries start-up settings; the grid is drawn in the browser
+    from /api/editor/roster.
+    """
+    date_form = DateForm({"date": date_})
+    week = date_form.cleaned_data["date"] if date_form.is_valid() else date.today()
+    flags = {
+        "csrfToken": get_token(request),
+        "week": week.isoformat(),
+        "editorUrl": reverse("editor_next"),
+        "shiftTypes": [{"value": value, "label": label} for value, label in roster.ShiftType.choices],
+        "leaveTypes": [{"value": value, "label": label} for value, label in roster.LeaveType.choices],
+    }
+    return render(request, "editor/next.html", {"flags": flags})
 
 
 @staff_member_required

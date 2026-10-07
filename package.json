@@ -38,6 +38,7 @@
     ]
   },
   "scripts": {
+    "postinstall": "elm-tooling install",
     "build": "webpack --config webpack/prod.config.js",
     "dev": "concurrently npm:dev:*",
     "dev:webpack": "webpack --config webpack/dev.config.js --watch",

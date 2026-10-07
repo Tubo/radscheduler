@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% load render_bundle from webpack_loader %}
+
+{% block title %}
+  Roster
+{% endblock title %}
+{% block javascript %}
+  {{ block.super }}
+  {% render_bundle 'editor_elm' 'js' attrs='defer' %}
+{% endblock javascript %}
+{% block content %}
+  <main>
+    {{ flags|json_script:"editor-flags" }}
+    <div id="editor-app"></div>
+    <noscript>
+      <div class="container py-4">
+        <p>
+          The roster editor needs JavaScript. Shifts and leave can still be edited in the <a href="{% url 'admin:index' %}">admin</a>.
+        </p>
+      </div>
+    </noscript>
+  </main>
+{% endblock content %}
