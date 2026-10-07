@@ -50,11 +50,16 @@ INSTALLED_APPS += ["debug_toolbar"]  # noqa: F405
 # https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#middleware
 MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]  # noqa: F405
 # https://django-debug-toolbar.readthedocs.io/en/latest/configuration.html#debug-toolbar-config
+# The profiling panel stays off: since Python 3.12 only one profiler can run per process, so two requests
+# at once (the editor saves a change and fetches the checks together) made one fail with a 500. The JSON
+# API is left out too: instrumenting every editor call doubled its time.
 DEBUG_TOOLBAR_CONFIG = {
-    "DISABLE_PANELS": ["debug_toolbar.panels.redirects.RedirectsPanel"],
+    "DISABLE_PANELS": [
+        "debug_toolbar.panels.redirects.RedirectsPanel",
+        "debug_toolbar.panels.profiling.ProfilingPanel",
+    ],
     "SHOW_TEMPLATE_CONTEXT": True,
-    "SHOW_TOOLBAR_CALLBACK": lambda _request: DEBUG,
-    "UPDATE_ON_FETCH": True,
+    "SHOW_TOOLBAR_CALLBACK": lambda request: DEBUG and not request.path.startswith("/api/"),
 }
 # https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#internal-ips
 INTERNAL_IPS = ["127.0.0.1"]

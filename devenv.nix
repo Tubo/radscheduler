@@ -56,8 +56,10 @@
   processes = lib.mkIf (!config.devenv.isTesting) {
     "dev:django" = {
       ports.http.allocate = 8000;
+      # The stat reloader: the default watchdog one watches the whole tree (node_modules and the venv
+      # included) and spins at 100% CPU after a burst of writes such as `pnpm build`, slowing every request.
       exec = ''
-        python manage.py runserver_plus 0.0.0.0:${toString config.processes."dev:django".ports.http.value}
+        python manage.py runserver_plus --reloader-type stat 0.0.0.0:${toString config.processes."dev:django".ports.http.value}
       '';
     };
     "dev:webpack".exec = ''
@@ -119,7 +121,8 @@
     # Regenerate the Elm API client from the Django Ninja schema. The overrides tell the generator to
     # send the CSRF token header: the browser sends the session cookie itself, and scripts can't set it.
     "elm:api".exec = ''
-      python manage.py export_openapi_schema --api radscheduler.core.api.api --indent 2 --sorted \
+      # Test settings, as test_openapi.py uses: the schema mustn't depend on local overrides (cookie names).
+      DJANGO_SETTINGS_MODULE=config.settings.test python manage.py export_openapi_schema --api radscheduler.core.api.api --indent 2 --sorted \
         --output radscheduler/static/elm/openapi.json &&
       echo >> radscheduler/static/elm/openapi.json &&
       pnpm exec elm-open-api radscheduler/static/elm/openapi.json \
