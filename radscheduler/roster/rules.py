@@ -248,9 +248,20 @@ def no_weekend_next_to_leave(t: Timeline, *, clause: str) -> Iterable[Violation]
     Someone on leave on the Friday before or the Monday after a weekend cannot be rostered that weekend.
 
     Lieu days don't count (STONZ 21.4.5). Someone whose leave ends on the Friday can still be rostered for the
-    Sunday night (STONZ 21.4.3). Other leave counts unless it is marked as allowing an abutting weekend.
+    Sunday night (STONZ 21.4.3). Other leave counts unless it is marked as allowing an abutting weekend. A half
+    day counts when it touches the weekend: a Friday afternoon or a Monday morning.
     """
-    leave_dates = {leave.date for leave in t.leaves if leave.no_abutting_weekend and leave.type != LeaveType.LIEU}
+    leave_dates = {
+        leave.date
+        for leave in t.leaves
+        if leave.no_abutting_weekend
+        and leave.type != LeaveType.LIEU
+        and (
+            leave.portion == "ALL"
+            or (leave.portion == "PM" and leave.date.weekday() == Weekday.FRI)
+            or (leave.portion == "AM" and leave.date.weekday() == Weekday.MON)
+        )
+    }
     weekends = {}
     for shift in t.rostered:
         if saturday := weekend_of(shift):

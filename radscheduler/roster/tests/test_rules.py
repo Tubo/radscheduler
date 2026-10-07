@@ -229,6 +229,12 @@ def test_no_weekend_next_to_leave_stonz_21_4():
     assert found("no_weekend_next_to_leave", nights(15), [leave(13)]) == []
     assert len(found("no_weekend_next_to_leave", nights(15), [leave(16)])) == 1
 
+    # A half day counts only when it touches the weekend: Friday afternoon or Monday morning
+    assert len(found("no_weekend_next_to_leave", longs(14), [leave(13, portion="PM")])) == 1
+    assert found("no_weekend_next_to_leave", longs(14), [leave(13, portion="AM")]) == []
+    assert len(found("no_weekend_next_to_leave", longs(14), [leave(16, portion="AM")])) == 1
+    assert found("no_weekend_next_to_leave", longs(14), [leave(16, portion="PM")]) == []
+
     # 21.4.5: lieu days don't count, and leave can be marked as allowing an abutting weekend
     assert found("no_weekend_next_to_leave", longs(7), [leave(9, LeaveType.LIEU)]) == []
     assert found("no_weekend_next_to_leave", longs(7), [leave(9, no_abutting_weekend=False)]) == []
