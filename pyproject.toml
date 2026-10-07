@@ -27,7 +27,6 @@ dependencies = [
     "hiredis",
     "holidays",
     "pyyaml",
-    "pandas",
 ]
 
 [project.optional-dependencies]

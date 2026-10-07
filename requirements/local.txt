@@ -151,16 +151,12 @@ matplotlib-inline==0.2.2
     # via ipython
 nodeenv==1.11.0
     # via pre-commit
-numpy==2.4.6
-    # via pandas
 packaging==26.3
     # via
     #   build
     #   pytest
     #   virtualenv
     #   wheel
-pandas==3.0.6
-    # via radscheduler (pyproject.toml)
 parso==0.8.7
     # via jedi
 pathspec==1.1.1
@@ -235,7 +231,6 @@ python-dateutil==2.9.0.post0
     #   freezegun
     #   holidays
     #   icalendar
-    #   pandas
 python-discovery==1.6.1
     # via virtualenv
 python-slugify==8.0.4
