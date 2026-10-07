@@ -121,3 +121,23 @@ class TestLeaves:
 
     def test_unknown_leave(self, app, staff):
         app.patch_json("/api/editor/leaves/999999", {"cancelled": True}, user=staff, status=404)
+
+
+class TestPublished:
+    def test_set_and_change_the_published_range(self, app, staff):
+        body = {"start": "2025-01-01", "end": "2025-06-30"}
+        assert app.put_json("/api/editor/published", body, user=staff).json == body
+
+        body = {"start": "2025-02-01", "end": "2025-12-31"}
+        app.put_json("/api/editor/published", body, user=staff)
+        settings = Settings.objects.get()
+        assert (settings.publish_start_date, settings.publish_end_date) == (date(2025, 2, 1), date(2025, 12, 31))
+
+    def test_start_after_end_is_rejected(self, app, staff):
+        Settings.objects.create(publish_start_date=date(2025, 1, 1), publish_end_date=date(2025, 6, 30))
+
+        body = {"start": "2025-07-01", "end": "2025-06-30"}
+        response = app.put_json("/api/editor/published", body, user=staff, status=422)
+
+        assert "start" in response.json["detail"]
+        assert Settings.objects.get().publish_start_date == date(2025, 1, 1)

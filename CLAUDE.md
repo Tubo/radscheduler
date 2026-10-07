@@ -52,7 +52,7 @@ pytest --create-db                                        # after migration chan
   - `canterbury.canterbury_holidays`: the stat-day calendar.
   - There is no automatic roster generation; the chief registrar builds rosters by hand in the editor.
 - **`core/domain_mapper.py`**: converts between ORM and domain objects using Django Ninja `ModelSchema` and `dacite`. Watch for the duplicate names when importing; the code uses `import ... as orm` and `as domain`.
-- **API**: Django Ninja (`core/api/`). It feeds FullCalendar on the registrar calendar.
+- **API**: Django Ninja (`core/api/`). `roster_calendar.py` feeds FullCalendar on the registrar calendar; `editor.py` is the staff-only API behind the Elm roster editor (session auth, so writes need the `X-CSRFToken` header).
 - **iCal feeds**: `core/ical.py`, cached for 15 minutes in `config/urls.py`.
 - **Publishing**: a singleton `core.models.Settings` row holds `publish_start_date`/`publish_end_date`. This range limits what registrars see in the calendar API and the feeds.
 
@@ -68,8 +68,8 @@ Signed-in registrars use the calendar, leave and extra-duty pages. Staff (`is_st
 
 ## Frontend conventions
 
-- Server-rendered Django templates with Bootstrap 5, progressively enhanced with **Unpoly**, plus Alpine.js for small local state. Pages must work without JS. htmx has been removed; don't reintroduce it.
-- Elm tooling (`elm.json`, `elm-webpack-loader`) is set up on purpose: **Elm is the planned future frontend**, even though no `.elm` sources exist yet.
+- Server-rendered Django templates with Bootstrap 5, progressively enhanced with **Unpoly**, plus Alpine.js for small local state. Pages must work without JS, except the Elm roster editor. htmx has been removed; don't reintroduce it.
+- **Elm is the future frontend.** The roster editor is being rebuilt in Elm at `/roster/editor/next/` (`radscheduler/static/elm/`, entry `static/js/editor_elm.js`), loading everything from `/api/editor/` and drawing menus only when opened; the old template editor at `/roster/editor/` stays until it's replaced. `pnpm install` runs `elm-tooling install` to link `elm` and `elm-format`. Format with `elm-format`. The Playwright tests in `functional_tests/test_editor_elm.py` use the real bundles, so run `pnpm build` first.
 - Unpoly is configured in `radscheduler/static/js/vendors.js`. Non-GET requests send the CSRF token in the `X-CSRFToken` header (read from the `csrf-token` meta tag in `base.html`), and `wrapMethod = false`, so `up-method="delete"` sends a real DELETE.
 - Prefer real `<form method="post">` with `{% csrf_token %}`, `up-submit` and `up-target`. Unpoly endpoints return HTML, not JSON. A non-form element can use `up-follow up-href up-method`.
 - Unpoly parses responses as full documents, which **drops a bare `<tr>`**. Views that return a single table row must wrap it in a `<table>` (see `leaves/form_inline.html` and `extra_duties/row_response.html`). The `up-target` must also match an element in the response, usually a row id like `#leave-{{ pk }}`.

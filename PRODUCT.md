@@ -56,7 +56,7 @@ It also weights on-call load, so fairness can be measured rather than argued abo
   - Bootstrap 5 with Bootstrap Icons, plus FullCalendar for the registrar calendar.
   - Django Ninja for the JSON API.
   - Deployed on Fly.io.
-  - Not a SPA: the baseline must work without JavaScript.
+  - Not a SPA: the baseline must work without JavaScript. The exception is the roster editor, a staff-only Elm app; staff can still edit shifts and leave in the Django admin without JavaScript.
 - **Roles:** registrar (signed in), and staff (`is_staff`) for roster and extra-duty editing. Accounts use django-allauth.
 - **Roster editor:** a dense grid of dates by registrars, with shift and leave cells, a workload breakdown, and settings shown in a modal layer.
 - **Undecided:** how department-specific configuration (supervisor, holidays, shift definitions) will work once multiple departments are supported.

@@ -10,7 +10,7 @@ drawn only while open, so the grid stays light however many cells it has.
 import Browser
 import Browser.Events
 import Dict exposing (Dict)
-import Editor.Api as Api exposing (Choice, Leave, Registrar, Roster, Shift)
+import Editor.Api as Api exposing (Choice, Leave, Published, Registrar, Roster, Shift)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onCheck, onClick, targetValue)
@@ -58,6 +58,7 @@ type alias Model =
     , hiddenShiftTypes : Set String
     , hiddenLeaveTypes : Set String
     , menu : Maybe Menu
+    , settings : Maybe Published
     }
 
 
@@ -90,6 +91,7 @@ init value =
               , hiddenShiftTypes = Set.empty
               , hiddenLeaveTypes = Set.empty
               , menu = Nothing
+              , settings = Nothing
               }
             , Api.getRoster flags.week (GotRoster flags.week)
             )
@@ -103,6 +105,7 @@ init value =
               , hiddenShiftTypes = Set.empty
               , hiddenLeaveTypes = Set.empty
               , menu = Nothing
+              , settings = Nothing
               }
             , Cmd.none
             )
@@ -128,6 +131,12 @@ type Msg
     | ShiftDeleted Int (Result Http.Error ())
     | ChangeLeave Int String Encode.Value
     | GotLeave (Result Http.Error Leave)
+    | OpenSettings
+    | SetPublishStart String
+    | SetPublishEnd String
+    | SaveSettings
+    | GotPublished (Result Http.Error Published)
+    | CloseSettings
     | DismissError
 
 
@@ -218,8 +227,50 @@ update msg model =
         GotLeave (Err err) ->
             ( saveFailed err model, Cmd.none )
 
+        OpenSettings ->
+            let
+                draft =
+                    model.roster
+                        |> Maybe.andThen .published
+                        |> Maybe.withDefault { start = model.week, end = model.week }
+            in
+            ( { model | settings = Just draft, menu = Nothing }, Cmd.none )
+
+        SetPublishStart start ->
+            ( { model | settings = Maybe.map (\d -> { d | start = start }) model.settings }, Cmd.none )
+
+        SetPublishEnd end ->
+            ( { model | settings = Maybe.map (\d -> { d | end = end }) model.settings }, Cmd.none )
+
+        SaveSettings ->
+            case model.settings of
+                Just draft ->
+                    if validRange draft then
+                        ( model, Api.setPublished model.flags.csrfToken draft GotPublished )
+
+                    else
+                        ( model, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        GotPublished (Ok published) ->
+            ( updateRoster (\r -> { r | published = Just published }) { model | settings = Nothing }, Cmd.none )
+
+        GotPublished (Err err) ->
+            ( saveFailed err model, Cmd.none )
+
+        CloseSettings ->
+            ( { model | settings = Nothing }, Cmd.none )
+
         DismissError ->
             ( { model | error = Nothing }, Cmd.none )
+
+
+validRange : Published -> Bool
+validRange range =
+    -- ISO dates sort as strings.
+    not (String.isEmpty range.start) && not (String.isEmpty range.end) && range.start <= range.end
 
 
 load : String -> Model -> ( Model, Cmd Msg )
@@ -290,23 +341,31 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ onUrlChange UrlChanged
-        , case model.menu of
-            Just _ ->
-                Browser.Events.onKeyDown
-                    (Decode.field "key" Decode.string
-                        |> Decode.andThen
-                            (\key ->
-                                if key == "Escape" then
-                                    Decode.succeed CloseMenu
+        , case ( model.settings, model.menu ) of
+            ( Just _, _ ) ->
+                onEscape CloseSettings
 
-                                else
-                                    Decode.fail key
-                            )
-                    )
+            ( Nothing, Just _ ) ->
+                onEscape CloseMenu
 
-            Nothing ->
+            ( Nothing, Nothing ) ->
                 Sub.none
         ]
+
+
+onEscape : Msg -> Sub Msg
+onEscape msg =
+    Browser.Events.onKeyDown
+        (Decode.field "key" Decode.string
+            |> Decode.andThen
+                (\key ->
+                    if key == "Escape" then
+                        Decode.succeed msg
+
+                    else
+                        Decode.fail key
+                )
+        )
 
 
 
@@ -322,6 +381,7 @@ view model =
             ]
         , viewMenuBar model
         , viewError model.error
+        , viewSettings model.settings
         , case model.roster of
             Just roster ->
                 viewTable model roster
@@ -406,7 +466,52 @@ viewMenuBar model =
 
           else
             text ""
+        , button [ type_ "button", class "btn btn-secondary text-nowrap", onClick OpenSettings ]
+            [ i [ class "bi bi-gear-fill me-1", attribute "aria-hidden" "true" ] [], text "Settings" ]
         ]
+
+
+viewSettings : Maybe Published -> Html Msg
+viewSettings settings =
+    case settings of
+        Just draft ->
+            let
+                field fieldId labelText current toMsg =
+                    div [ class "mb-3" ]
+                        [ label [ class "form-label", for fieldId ] [ text labelText ]
+                        , input [ type_ "date", class "form-control", id fieldId, value current, Html.Events.onInput toMsg ] []
+                        ]
+            in
+            div []
+                [ div [ class "modal d-block", attribute "role" "dialog", attribute "aria-modal" "true", attribute "aria-labelledby" "settings-title" ]
+                    [ div [ class "modal-dialog" ]
+                        [ Html.form [ class "modal-content", Html.Events.onSubmit SaveSettings ]
+                            [ div [ class "modal-header" ]
+                                [ h2 [ class "modal-title fs-5", id "settings-title" ] [ text "Published dates" ]
+                                , button [ type_ "button", class "btn-close", attribute "aria-label" "Close", onClick CloseSettings ] []
+                                ]
+                            , div [ class "modal-body" ]
+                                [ p [ class "text-body-secondary small" ] [ text "Registrars only see shifts and leave between these dates." ]
+                                , field "publish-start" "Start" draft.start SetPublishStart
+                                , field "publish-end" "End" draft.end SetPublishEnd
+                                , if validRange draft then
+                                    text ""
+
+                                  else
+                                    p [ class "text-danger small mb-0" ] [ text "The start must be on or before the end." ]
+                                ]
+                            , div [ class "modal-footer" ]
+                                [ button [ type_ "button", class "btn btn-outline-secondary", onClick CloseSettings ] [ text "Cancel" ]
+                                , button [ type_ "submit", class "btn btn-primary", disabled (not (validRange draft)) ] [ text "Save" ]
+                                ]
+                            ]
+                        ]
+                    ]
+                , div [ class "modal-backdrop show" ] []
+                ]
+
+        Nothing ->
+            text ""
 
 
 viewFilter : String -> String -> List Choice -> Set String -> (String -> Bool -> Msg) -> Html Msg

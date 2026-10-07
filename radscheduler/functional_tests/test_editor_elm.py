@@ -15,7 +15,7 @@ from playwright.sync_api import Page, expect  # noqa: E402
 from webpack_loader import config as webpack_config  # noqa: E402
 from webpack_loader.utils import get_loader  # noqa: E402
 
-from radscheduler.core.models import Leave, Registrar, Shift  # noqa: E402
+from radscheduler.core.models import Leave, Registrar, Settings, Shift  # noqa: E402
 from radscheduler.roster.models import LeaveType, ShiftType  # noqa: E402
 from radscheduler.users.tests.factories import UserFactory  # noqa: E402
 
@@ -126,3 +126,21 @@ def test_week_navigation_and_back_button(editor: Page, live_server):
     editor.go_back()
     expect(editor).to_have_url(re.compile(r"/roster/editor/next/2024-12-23/$"))
     expect(editor.locator("thead")).to_contain_text("2024-12-16")
+
+
+def test_change_the_published_dates(editor: Page):
+    editor.get_by_role("button", name="Settings").click()
+    dialog = editor.get_by_role("dialog", name="Published dates")
+    dialog.get_by_label("Start").fill("2024-12-31")
+    dialog.get_by_label("End").fill("2024-12-01")
+    expect(dialog.get_by_text("The start must be on or before the end.")).to_be_visible()
+    expect(dialog.get_by_role("button", name="Save")).to_be_disabled()
+
+    dialog.get_by_label("Start").fill("2024-12-01")
+    dialog.get_by_label("End").fill("2024-12-31")
+    dialog.get_by_role("button", name="Save").click()
+
+    expect(dialog).to_have_count(0)
+    expect(editor.get_by_text("Published: Dec 1, 2024 – Dec 31, 2024")).to_be_visible()
+    settings = Settings.objects.get()
+    assert (settings.publish_start_date, settings.publish_end_date) == (date(2024, 12, 1), date(2024, 12, 31))

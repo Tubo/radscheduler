@@ -91,6 +91,14 @@ def editor_roster(week: date) -> dict:
     }
 
 
+def set_published(start: date, end: date) -> Settings:
+    """Set the date range registrars can see. There is only ever one Settings row."""
+    settings, _ = Settings.objects.update_or_create(
+        singleton_id=1, defaults={"publish_start_date": start, "publish_end_date": end}
+    )
+    return settings
+
+
 def add_shift(day: date, shift_type: str, registrar: Registrar, extra_duty: bool = False) -> Shift:
     return Shift.objects.create(
         date=day,

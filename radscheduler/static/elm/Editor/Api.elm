@@ -13,6 +13,7 @@ module Editor.Api exposing
     , deleteShift
     , getRoster
     , httpErrorMessage
+    , setPublished
     )
 
 {-| Types, JSON decoders and requests for the roster editor API at /api/editor/.
@@ -261,3 +262,12 @@ httpErrorMessage error =
 
         Http.BadBody _ ->
             "The server sent a response the editor didn't understand."
+
+
+setPublished : String -> Published -> (Result Http.Error Published -> msg) -> Cmd msg
+setPublished csrfToken range toMsg =
+    write csrfToken
+        "PUT"
+        "/api/editor/published"
+        (Http.jsonBody (Encode.object [ ( "start", Encode.string range.start ), ( "end", Encode.string range.end ) ]))
+        (Http.expectJson toMsg publishedDecoder)

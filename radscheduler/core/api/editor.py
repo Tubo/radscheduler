@@ -84,6 +84,10 @@ class RosterOut(Schema):
     published: PublishedOut | None
 
 
+class ErrorOut(Schema):
+    detail: str
+
+
 class ShiftIn(Schema):
     date: date
     type: ShiftType
@@ -137,3 +141,11 @@ def change_leave(request, leave_id: int, payload: LeavePatch):
         setattr(leave, field, value)
     leave.save()
     return leave
+
+
+@router.put("/published", response={200: PublishedOut, 422: ErrorOut})
+def set_published(request, payload: PublishedOut):
+    if payload.start > payload.end:
+        return Status(422, {"detail": "The start of the published range must be on or before its end."})
+    settings = service.set_published(payload.start, payload.end)
+    return {"start": settings.publish_start_date, "end": settings.publish_end_date}
