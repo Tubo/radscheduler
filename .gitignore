@@ -298,3 +298,5 @@ devenv.local.yaml
 
 # Elm
 elm-stuff/
+# Built by elm-watch
+radscheduler/static/elm-build/

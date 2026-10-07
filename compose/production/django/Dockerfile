@@ -83,6 +83,7 @@ RUN chmod +x /start
 COPY --chown=django:django . ${APP_HOME}
 COPY --from=client-builder --chown=django:django ${APP_HOME}/webpack-stats.json ${APP_HOME}/
 COPY --from=client-builder --chown=django:django ${APP_HOME}/radscheduler/static/webpack_bundles ${APP_HOME}/radscheduler/static/webpack_bundles
+COPY --from=client-builder --chown=django:django ${APP_HOME}/radscheduler/static/elm-build ${APP_HOME}/radscheduler/static/elm-build
 
 
 # make django owner of the WORKDIR directory as well.

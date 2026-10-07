@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+{% load static %}
 {% load render_bundle from webpack_loader %}
 
 {% block title %}
@@ -11,6 +12,7 @@
 {% endblock css %}
 {% block javascript %}
   {{ block.super }}
+  <script defer src="{% static 'elm-build/editor.js' %}"></script>
   {% render_bundle 'editor_elm' 'js' attrs='defer' %}
 {% endblock javascript %}
 {% block messages %}

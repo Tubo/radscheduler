@@ -1,6 +1,5 @@
-# Dependency install scripts pnpm may run. Neither is needed: the root
-# postinstall (`elm-tooling install`) links the Elm binaries listed in
-# elm-tooling.json, and @parcel/watcher uses its prebuilt optional package.
+# Dependency install scripts pnpm may run. Not needed: @parcel/watcher uses
+# its prebuilt optional package. Elm binaries come from the root postinstall
+# (`elm-tooling install`, see elm-tooling.json).
 allowBuilds:
-  elm: false
   '@parcel/watcher': false

@@ -5,6 +5,7 @@ The Elm roster editor, driven in a real browser. Needs the built bundles: run `p
 import json
 import os
 import re
+import socket
 from datetime import date
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
@@ -26,8 +27,13 @@ pytestmark = pytest.mark.django_db
 def real_bundles(monkeypatch):
     """Serve the built bundles instead of the test settings' fake ones."""
     stats = django_settings.BASE_DIR / "webpack-stats.json"
-    if not stats.exists() or "editor_elm" not in json.loads(stats.read_text()).get("chunks", {}):
-        pytest.fail("The Elm editor bundle is missing; run `pnpm build` first.")
+    elm = django_settings.BASE_DIR / "radscheduler/static/elm-build/editor.js"
+    if not elm.exists() or not stats.exists() or "editor_elm" not in json.loads(stats.read_text()).get("chunks", {}):
+        pytest.fail("The Elm editor isn't built; run `pnpm build` first.")
+    # A build from `elm-watch hot` loads its code from elm-watch, so it only works while that runs.
+    hot = re.search(r'webSocketPort":(\d+)', elm.read_text())
+    if hot and socket.socket().connect_ex(("localhost", int(hot[1]))) != 0:
+        pytest.fail("The Elm editor build is from `elm-watch hot`, which isn't running: run `pnpm build` first.")
     # django-webpack-loader reads its settings once, at import.
     real = {**webpack_config.user_config["DEFAULT"], "LOADER_CLASS": "webpack_loader.loaders.WebpackLoader"}
     monkeypatch.setitem(webpack_config.user_config, "DEFAULT", real)

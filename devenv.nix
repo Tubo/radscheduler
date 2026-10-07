@@ -63,6 +63,10 @@
     "dev:webpack".exec = ''
       pnpm webpack --watch --config webpack/dev.config.js
     '';
+    # Compiles the Elm editor and hot-reloads it in the browser, keeping its state; errors show on the page.
+    "dev:elm".exec = ''
+      pnpm exec elm-watch hot
+    '';
   };
 
   # https://devenv.sh/services/

@@ -1,0 +1,9 @@
+{
+  "postprocess": ["elm-watch-node", "elm-watch-postprocess.mjs"],
+  "targets": {
+    "Roster editor": {
+      "inputs": ["radscheduler/static/elm/src/Editor.elm"],
+      "output": "radscheduler/static/elm-build/editor.js"
+    }
+  }
+}

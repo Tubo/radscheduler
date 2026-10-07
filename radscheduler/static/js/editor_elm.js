@@ -1,5 +1,13 @@
 import '../css/editor_elm.scss';
-import { Elm } from '../elm/src/Editor.elm';
+
+// The Elm app is built by elm-watch into static/elm-build/editor.js, loaded by its own script tag before
+// this bundle; in development `elm-watch hot` reloads it in place, keeping the editor's state.
+const { Elm } = window;
+if (!Elm?.Editor) {
+  throw new Error(
+    'The Elm editor is not built: run `pnpm build`, or `devenv up` for elm-watch.',
+  );
+}
 
 const FILTERS_KEY = 'radscheduler.editor.filters';
 
