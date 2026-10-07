@@ -36,6 +36,7 @@ class ShiftType(models.TextChoices):
 
 # Start time and length of each shift type that is a period of duty. A rostered shift takes the place
 # of that day's ordinary hours, so a weekday long day is the ordinary 8am-5pm followed by 5pm-10pm.
+# The exception is help desk: a morning, after which the registrar carries on with ordinary work.
 # RDO and SLEEP are days off, so they have no hours.
 SHIFT_HOURS = {
     ShiftType.SWING: (time(12), timedelta(hours=10)),
@@ -46,7 +47,8 @@ SHIFT_HOURS = {
 
 # Registrars work ordinary hours on weekdays unless rostered for a shift or on leave.
 # Meal breaks taken in the hospital count as time on duty (STONZ 20.2).
-ORDINARY_HOURS = (time(8), timedelta(hours=9))
+# Half-day leave takes the morning or the afternoon, split at midday.
+ORDINARY_START, MIDDAY, ORDINARY_END = time(8), time(12), time(17)
 
 
 class DetailedShiftType(models.TextChoices):
@@ -140,18 +142,18 @@ class OrdinaryDay:
     """A weekday of ordinary work. These aren't stored; the roster rules infer them."""
 
     date: date
+    from_time: time = ORDINARY_START
+    to_time: time = ORDINARY_END
     type = None
     is_duty = True
 
     @property
     def start(self) -> datetime:
-        start_time, _ = ORDINARY_HOURS
-        return datetime.combine(self.date, start_time)
+        return datetime.combine(self.date, self.from_time)
 
     @property
     def end(self) -> datetime:
-        _, length = ORDINARY_HOURS
-        return self.start + length
+        return datetime.combine(self.date, self.to_time)
 
     @property
     def hours(self) -> float:
@@ -165,6 +167,17 @@ class Leave:
     registrar: Registrar
     no_abutting_weekend: bool = True
     created: datetime | None = None  # when the leave was requested
+    portion: str = "ALL"  # ALL, AM or PM
+
+    @property
+    def start(self) -> datetime:
+        return datetime.combine(self.date, {"ALL": time(0), "AM": ORDINARY_START, "PM": MIDDAY}[self.portion])
+
+    @property
+    def end(self) -> datetime:
+        if self.portion == "ALL":
+            return datetime.combine(self.date + timedelta(days=1), time(0))
+        return datetime.combine(self.date, MIDDAY if self.portion == "AM" else ORDINARY_END)
 
 
 @dataclass

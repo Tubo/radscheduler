@@ -24,7 +24,7 @@ class LeaveDomainSchema(ModelSchema):
 
     class Meta:
         model = orm.Leave
-        fields = ["date", "type", "registrar", "no_abutting_weekend", "created"]
+        fields = ["date", "type", "registrar", "no_abutting_weekend", "created", "portion"]
 
 
 class StatusDomainSchema(ModelSchema):

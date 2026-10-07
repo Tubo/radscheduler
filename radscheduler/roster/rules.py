@@ -11,13 +11,14 @@ differences between agreements are numbers, so a new contract reuses the same ru
 """
 
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta
 from functools import partial
 from itertools import groupby, pairwise
 
 from radscheduler.roster.canterbury import canterbury_holidays
 from radscheduler.roster.models import (
+    MIDDAY,
     Leave,
     LeaveType,
     OrdinaryDay,
@@ -309,11 +310,12 @@ def employed(t: Timeline) -> Iterable[Violation]:
 
 
 def not_on_leave(t: Timeline) -> Iterable[Violation]:
-    """No duty that overlaps a day of leave, including a night that ends on the morning of the leave."""
+    """
+    No duty that overlaps leave. A full day includes a night that ends that morning; a half day only
+    covers its morning or afternoon, so the registrar can work the other half or a night.
+    """
     for leave in t.leaves:
-        day_start = datetime.combine(leave.date, time(0))
-        day_end = day_start + timedelta(days=1)
-        clashes = [shift for shift in t.rostered if shift.start < day_end and shift.end > day_start]
+        clashes = [shift for shift in t.rostered if shift.start < leave.end and shift.end > leave.start]
         if clashes:
             yield t.violation(
                 "not_on_leave",
@@ -391,11 +393,15 @@ DEPARTMENT: tuple[Rule, ...] = (
 def infer_ordinary_days(t: Timeline, start: date, end: date) -> list[OrdinaryDay]:
     """
     The weekdays from `start` to `end` the registrar works ordinary hours: employed, not a public holiday,
-    no rostered shift of any kind (an RDO or sleep day is a day off), not on leave, and not a part-time
-    non-working day.
+    no rostered shift other than help desk (an RDO or sleep day is a day off), not on a full day of leave,
+    and not a part-time non-working day. Help desk and half-day leave shorten the day.
     """
-    rostered = {shift.date for shift in t.shifts}
-    on_leave = {leave.date for leave in t.leaves}
+    rostered: dict[date, list[Shift]] = {}
+    for shift in t.shifts:
+        rostered.setdefault(shift.date, []).append(shift)
+    leaves: dict[date, list[Leave]] = {}
+    for leave in t.leaves:
+        leaves.setdefault(leave.date, []).append(leave)
     finish = t.registrar.finish or end
 
     def part_time_off(day):
@@ -407,15 +413,25 @@ def infer_ordinary_days(t: Timeline, start: date, end: date) -> list[OrdinaryDay
             for status in t.statuses
         )
 
-    return [
-        OrdinaryDay(day)
-        for day in daterange(max(start, t.registrar.start), min(end, finish) + timedelta(days=1))
-        if day.weekday() < Weekday.SAT
-        and day not in canterbury_holidays
-        and day not in rostered
-        and day not in on_leave
-        and not part_time_off(day)
-    ]
+    def ordinary_hours(day) -> OrdinaryDay | None:
+        if day.weekday() >= Weekday.SAT or day in canterbury_holidays or part_time_off(day):
+            return None
+        hours = OrdinaryDay(day)
+        for shift in rostered.get(day, []):
+            if shift.type != ShiftType.HELP:
+                return None
+            hours = replace(hours, from_time=max(hours.from_time, shift.end.time()))
+        for leave in leaves.get(day, []):
+            if leave.portion == "ALL":
+                return None
+            if leave.portion == "AM":
+                hours = replace(hours, from_time=max(hours.from_time, MIDDAY))
+            else:
+                hours = replace(hours, to_time=min(hours.to_time, MIDDAY))
+        return hours if hours.from_time < hours.to_time else None
+
+    days = daterange(max(start, t.registrar.start), min(end, finish) + timedelta(days=1))
+    return [hours for day in days if (hours := ordinary_hours(day))]
 
 
 def check_roster(

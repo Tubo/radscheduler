@@ -84,6 +84,29 @@ def test_ordinary_days_fill_weekdays_without_shifts_or_leave():
     assert monday.hours == 9
 
 
+def test_help_desk_morning_continues_into_ordinary_work():
+    [afternoon] = infer_ordinary_days(Timeline(ALICE, shifts(ShiftType.HELP, 11)), jan(11), jan(11))
+    assert (afternoon.start, afternoon.end) == (datetime(2023, 1, 11, 12), datetime(2023, 1, 11, 17))
+
+    # A help desk day is still one duty, and four ordinary days plus it is 45 hours
+    roster = shifts(ShiftType.HELP, 11)
+    period = (jan(9), jan(13))
+    assert found("one_duty_per_day", roster, period=period) == []
+    assert found("min_break_between_duties", roster, period=period) == []
+    [violation] = check_roster(roster, period=period, rules=[partial(max_hours, limit=44, days=7, clause="test")])
+    assert "Up to 45 hours" in violation.message
+
+
+def test_half_day_leave_shortens_the_ordinary_day():
+    def ordinary(portion):
+        timeline = Timeline(ALICE, [], leaves=[leave(11, portion=portion)])
+        return [(d.from_time.hour, d.to_time.hour) for d in infer_ordinary_days(timeline, jan(11), jan(11))]
+
+    assert ordinary("AM") == [(12, 17)]
+    assert ordinary("PM") == [(8, 12)]
+    assert ordinary("ALL") == []
+
+
 def test_weekday_long_day_includes_the_ordinary_day():
     # Ordinary 8-5 then on until 10pm is one 14-hour duty, not an ordinary day plus a long day
     roster = longs(11)
@@ -242,6 +265,13 @@ def test_not_on_leave():
     assert found("not_on_leave", longs(3, 5), [leave(4)]) == []
     # Days off aren't duties
     assert found("not_on_leave", shifts(ShiftType.RDO, 4), [leave(4)]) == []
+
+    # Half-day leave only clashes with duties in its half
+    assert found("not_on_leave", shifts(ShiftType.SWING, 11), [leave(11, portion="AM")]) == []
+    assert found("not_on_leave", nights(10), [leave(11, portion="AM")]) == []
+    assert found("not_on_leave", nights(11), [leave(11, portion="PM")]) == []
+    assert len(found("not_on_leave", longs(11), [leave(11, portion="PM")])) == 1
+    assert len(found("not_on_leave", shifts(ShiftType.HELP, 11), [leave(11, portion="AM")])) == 1
 
 
 def test_status_allows_duty():
