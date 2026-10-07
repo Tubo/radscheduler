@@ -5,6 +5,8 @@ from django.contrib.auth import forms as admin_forms
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 
+from radscheduler.core.models import Registrar
+
 User = get_user_model()
 
 
@@ -60,3 +62,16 @@ class UserProfileForm(forms.ModelForm):
             "employee_number": forms.TextInput(attrs={"autocomplete": "off", "spellcheck": "false"}),
             "phone": forms.TextInput(attrs={"type": "tel", "autocomplete": "tel"}),
         }
+
+
+class RegistrarContractForm(forms.ModelForm):
+    """
+    The collective agreement a registrar chooses on their profile page.
+    """
+
+    class Meta:
+        model = Registrar
+        fields = ["contract"]
+        labels = {"contract": _("Collective agreement")}
+        help_texts = {"contract": ""}
+        widgets = {"contract": forms.RadioSelect}

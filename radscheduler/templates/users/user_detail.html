@@ -43,6 +43,27 @@
               </div>
             </div>
           </section>
+          {% if contract_form %}
+            <section id="contract"
+                     class="border-top py-4"
+                     aria-labelledby="contract-heading">
+              <div class="row gy-3">
+                <div class="col-lg-4">
+                  <h2 id="contract-heading" class="h5 mb-1">{% translate "Contract" %}</h2>
+                  <p class="text-body-secondary small mb-0">
+                    {% translate "Your roster is checked against the rules in this agreement." %}
+                  </p>
+                </div>
+                <div class="col-lg-8">
+                  <form id="contract-form" method="post" action="{% url 'users:contract' %}">
+                    {% csrf_token %}
+                    {{ contract_form|crispy }}
+                    <button type="submit" class="btn btn-primary">{% translate "Save contract" %}</button>
+                  </form>
+                </div>
+              </div>
+            </section>
+          {% endif %}
           <section id="email" class="border-top py-4" aria-labelledby="email-heading">
             <div class="row gy-3">
               <div class="col-lg-4">

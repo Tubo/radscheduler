@@ -29,6 +29,13 @@ class Registrar(models.Model):
     senior = models.BooleanField(default=False)
     start = models.DateField("start date", help_text="Date started training")
     finish = models.DateField("finish date", null=True, blank=True, help_text="Date finished training")
+    contract = models.CharField(
+        "collective agreement",
+        max_length=10,
+        choices=roster.Contract.choices,
+        default=roster.Contract.STONZ,
+        help_text="The agreement the registrar's roster is checked against",
+    )
     created = models.DateTimeField(auto_now_add=True)
     last_edited = models.DateTimeField(auto_now=True)
 

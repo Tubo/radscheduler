@@ -25,6 +25,13 @@ class LeaveType(models.TextChoices):
     BE = "BE", "Bereavement"
 
 
+class Contract(models.TextChoices):
+    """The collective agreement a registrar is employed under."""
+
+    STONZ = "STONZ", "STONZ"
+    RDA = "RDA", "RDA"
+
+
 class ShiftType(models.TextChoices):
     SWING = "SWING", "Swing day"
     HELP = "HELP", "Help desk"
