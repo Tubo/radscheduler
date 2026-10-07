@@ -3,7 +3,8 @@ Roster rules from the registrars' collective agreement, plus the department's ow
 
 Each rule takes one registrar's timeline and returns the violations it finds. Rules work on
 the hours of each duty (see `SHIFT_HOURS`), so the agreement's hour and calendar-day limits
-can be written the way the agreement states them.
+can be written the way the agreement states them. A timeline includes the ordinary weekdays
+the registrar works between rostered shifts, which the roster doesn't store.
 
 A contract is a tuple of rules with their parameters and clause numbers bound. Most
 differences between agreements are numbers, so a new contract reuses the same rules.
@@ -15,7 +16,19 @@ from datetime import date, datetime, time, timedelta
 from functools import partial
 from itertools import groupby, pairwise
 
-from radscheduler.roster.models import Leave, LeaveType, Registrar, Shift, ShiftType, Status, StatusType, Weekday
+from radscheduler.roster.canterbury import canterbury_holidays
+from radscheduler.roster.models import (
+    Leave,
+    LeaveType,
+    OrdinaryDay,
+    Registrar,
+    Shift,
+    ShiftType,
+    Status,
+    StatusType,
+    Weekday,
+)
+from radscheduler.roster.utils import daterange
 
 LONG_DAY_HOURS = 10
 
@@ -31,26 +44,33 @@ class Violation:
 
 @dataclass
 class Timeline:
-    """One registrar's shifts, leave and statuses, with shifts sorted by start."""
+    """One registrar's shifts, leave, statuses and ordinary days, with shifts sorted by start."""
 
     registrar: Registrar
     shifts: list[Shift]
     leaves: list[Leave] = field(default_factory=list)
     statuses: list[Status] = field(default_factory=list)
+    ordinary_days: list[OrdinaryDay] = field(default_factory=list)
 
     @property
-    def duties(self) -> list[Shift]:
+    def rostered(self) -> list[Shift]:
+        """Rostered shifts that are periods of duty."""
         return [shift for shift in self.shifts if shift.is_duty]
 
     @property
+    def duties(self) -> list[Shift | OrdinaryDay]:
+        """All periods of duty, rostered or ordinary, sorted by start."""
+        return sorted(self.rostered + self.ordinary_days, key=lambda duty: duty.start)
+
+    @property
     def long_days(self) -> list[Shift]:
-        return [shift for shift in self.duties if shift.hours > LONG_DAY_HOURS]
+        return [shift for shift in self.rostered if shift.hours > LONG_DAY_HOURS]
 
     @property
     def night_blocks(self) -> list[list[Shift]]:
         """Runs of night duties on consecutive dates."""
         blocks = []
-        for night in (shift for shift in self.duties if shift.type == ShiftType.NIGHT):
+        for night in (shift for shift in self.rostered if shift.type == ShiftType.NIGHT):
             if blocks and night.date - blocks[-1][-1].date == timedelta(days=1):
                 blocks[-1].append(night)
             else:
@@ -86,12 +106,37 @@ def fmt(day: date) -> str:
     return day.strftime("%a %-d %b")
 
 
+def days_on_duty(duty: Shift | OrdinaryDay) -> list[date]:
+    """Calendar days a duty touches; a night also counts the morning it finishes."""
+    last = (duty.end - timedelta(microseconds=1)).date()
+    return daterange(duty.date, last + timedelta(days=1))
+
+
+def busy_periods(duties, *, days: int, measure: Callable[[list], float], limit: float):
+    """
+    Slide a `days`-long window over `duties` (sorted by date) and find where `measure(window)` exceeds `limit`.
+    Overlapping windows are merged, so one busy stretch is reported once. Yields (duties, peak measure).
+    """
+    periods = []
+    for first in sorted({duty.date for duty in duties}):
+        window = [duty for duty in duties if first <= duty.date < first + timedelta(days=days)]
+        value = measure(window)
+        if value <= limit:
+            continue
+        if periods and first <= periods[-1][0][-1].date:
+            merged, peak = periods[-1]
+            periods[-1] = (merged + [duty for duty in window if duty not in merged], max(peak, value))
+        else:
+            periods.append((window, value))
+    yield from periods
+
+
 # Contract rules
 
 
 def one_duty_per_day(t: Timeline, *, clause: str) -> Iterable[Violation]:
     """Only one period of rostered duty a day. A night that ends on the day another starts is fine."""
-    for day, duties in groupby(t.duties, key=lambda shift: shift.date):
+    for day, duties in groupby(t.rostered, key=lambda shift: shift.date):
         duties = list(duties)
         if len(duties) > 1:
             names = " and ".join(ShiftType(shift.type).label.lower() for shift in duties)
@@ -100,17 +145,49 @@ def one_duty_per_day(t: Timeline, *, clause: str) -> Iterable[Violation]:
 
 def max_long_days(t: Timeline, *, limit=2, days=7, clause: str) -> Iterable[Violation]:
     """No more than `limit` long days (duties over 10 hours) in any `days` consecutive days."""
-    long_dates = sorted({shift.date for shift in t.long_days})
-    reported = set()
-    for first in long_dates:
-        window = {day for day in long_dates if first <= day < first + timedelta(days=days)}
-        if len(window) > limit and not window <= reported:
-            reported |= window
+    long_days = t.long_days
+    for period, peak in busy_periods(long_days, days=days, measure=lambda w: len({d.date for d in w}), limit=limit):
+        yield t.violation(
+            "max_long_days",
+            clause,
+            [shift.date for shift in period],
+            f"{peak} long days within {days} days between {fmt(period[0].date)} and {fmt(period[-1].date)}; "
+            f"the limit is {limit}.",
+        )
+
+
+def max_hours(t: Timeline, *, limit: int, days: int, clause: str) -> Iterable[Violation]:
+    """No more than `limit` hours on duty, ordinary days included, in any `days` consecutive days."""
+    for period, peak in busy_periods(t.duties, days=days, measure=lambda w: sum(d.hours for d in w), limit=limit):
+        yield t.violation(
+            "max_hours",
+            clause,
+            [duty.date for duty in period],
+            f"Up to {peak:g} hours on duty within {days} days between {fmt(period[0].date)} and "
+            f"{fmt(period[-1].date)}; the limit is {limit}.",
+        )
+
+
+def max_consecutive_days(t: Timeline, *, limit=12, clause: str) -> Iterable[Violation]:
+    """
+    No more than `limit` consecutive days on duty, ordinary days included.
+
+    Simplified: STONZ 17.3.1 asks for a 48-hour break after the run; this only checks the run's length.
+    """
+    worked = sorted({day for duty in t.duties for day in days_on_duty(duty)})
+    runs = []
+    for day in worked:
+        if runs and day - runs[-1][-1] == timedelta(days=1):
+            runs[-1].append(day)
+        else:
+            runs.append([day])
+    for run in runs:
+        if len(run) > limit:
             yield t.violation(
-                "max_long_days",
+                "max_consecutive_days",
                 clause,
-                window,
-                f"{len(window)} long days in {days} days from {fmt(first)}; the limit is {limit}.",
+                run,
+                f"On duty {len(run)} days in a row from {fmt(run[0])} to {fmt(run[-1])}; the limit is {limit}.",
             )
 
 
@@ -120,7 +197,7 @@ def every_second_weekend_free(t: Timeline, *, clause: str) -> Iterable[Violation
 
     Not modelled: STONZ 17.3.7, which allows two weekends in a row once every 5 to 6 weekends.
     """
-    worked = sorted({saturday for shift in t.duties if (saturday := weekend_of(shift))})
+    worked = sorted({saturday for shift in t.rostered if (saturday := weekend_of(shift))})
     for previous, saturday in pairwise(worked):
         if saturday - previous == timedelta(days=7):
             yield t.violation(
@@ -133,8 +210,7 @@ def every_second_weekend_free(t: Timeline, *, clause: str) -> Iterable[Violation
 
 def min_break_between_duties(t: Timeline, *, hours=8, clause: str) -> Iterable[Violation]:
     """At least `hours` off duty between two periods of duty. Two duties on one day are left to one_duty_per_day."""
-    duties = sorted(t.duties, key=lambda shift: shift.start)
-    for previous, shift in pairwise(duties):
+    for previous, shift in pairwise(t.duties):
         gap = max(shift.start - previous.end, timedelta(0))
         if gap < timedelta(hours=hours) and shift.date != previous.date:
             yield t.violation(
@@ -175,7 +251,7 @@ def no_weekend_next_to_leave(t: Timeline, *, clause: str) -> Iterable[Violation]
     """
     leave_dates = {leave.date for leave in t.leaves if leave.no_abutting_weekend and leave.type != LeaveType.LIEU}
     weekends = {}
-    for shift in t.duties:
+    for shift in t.rostered:
         if saturday := weekend_of(shift):
             weekends.setdefault(saturday, []).append(shift)
 
@@ -206,7 +282,7 @@ def lieu_day_notice(t: Timeline, *, notice=14, long_notice=28, clause: str) -> I
     for leave in t.leaves:
         if leave.type != LeaveType.LIEU or leave.created is None:
             continue
-        rostered = [shift for shift in t.duties if shift.date == leave.date]
+        rostered = [shift for shift in t.rostered if shift.date == leave.date]
         heavy = any(
             shift.hours > LONG_DAY_HOURS or shift.type == ShiftType.NIGHT or weekend_of(shift) for shift in rostered
         )
@@ -237,7 +313,7 @@ def not_on_leave(t: Timeline) -> Iterable[Violation]:
     for leave in t.leaves:
         day_start = datetime.combine(leave.date, time(0))
         day_end = day_start + timedelta(days=1)
-        clashes = [shift for shift in t.duties if shift.start < day_end and shift.end > day_start]
+        clashes = [shift for shift in t.rostered if shift.start < day_end and shift.end > day_start]
         if clashes:
             yield t.violation(
                 "not_on_leave",
@@ -251,7 +327,7 @@ def status_allows_duty(t: Timeline) -> Iterable[Violation]:
     """No duty that the registrar's status rules out, e.g. relievers, pre-exam, part-time days."""
     for status in t.statuses:
         clashes = [
-            shift.date for shift in t.duties if status.start <= shift.date <= status.end and status.not_oncall(shift)
+            shift.date for shift in t.rostered if status.start <= shift.date <= status.end and status.not_oncall(shift)
         ]
         if clashes:
             label = StatusType(status.type).label.lower()
@@ -291,8 +367,11 @@ def no_long_day_before_weekend_nights(t: Timeline, *, days=5) -> Iterable[Violat
 
 
 STONZ: tuple[Rule, ...] = (
+    partial(max_hours, limit=72, days=7, clause="STONZ 17.1.2"),
+    partial(max_hours, limit=140, days=14, clause="STONZ 17.1.4"),
     partial(one_duty_per_day, clause="STONZ 17.2.5"),
     partial(max_long_days, limit=2, days=7, clause="STONZ 17.2.2"),
+    partial(max_consecutive_days, limit=12, clause="STONZ 17.3.1"),
     partial(every_second_weekend_free, clause="STONZ 17.3.5"),
     partial(min_break_between_duties, hours=8, clause="STONZ 17.4.2"),
     partial(post_night_recovery, long_block=4, long_rest=2, short_rest=1, clause="STONZ 17.4.6"),
@@ -309,13 +388,50 @@ DEPARTMENT: tuple[Rule, ...] = (
 )
 
 
+def infer_ordinary_days(t: Timeline, start: date, end: date) -> list[OrdinaryDay]:
+    """
+    The weekdays from `start` to `end` the registrar works ordinary hours: employed, not a public holiday,
+    no rostered shift of any kind (an RDO or sleep day is a day off), not on leave, and not a part-time
+    non-working day.
+    """
+    rostered = {shift.date for shift in t.shifts}
+    on_leave = {leave.date for leave in t.leaves}
+    finish = t.registrar.finish or end
+
+    def part_time_off(day):
+        return any(
+            status.type == StatusType.PART_TIME
+            and not status.shift_types
+            and status.start <= day <= status.end
+            and (not status.weekdays or day.weekday() in status.weekdays)
+            for status in t.statuses
+        )
+
+    return [
+        OrdinaryDay(day)
+        for day in daterange(max(start, t.registrar.start), min(end, finish) + timedelta(days=1))
+        if day.weekday() < Weekday.SAT
+        and day not in canterbury_holidays
+        and day not in rostered
+        and day not in on_leave
+        and not part_time_off(day)
+    ]
+
+
 def check_roster(
     shifts: Iterable[Shift],
     leaves: Iterable[Leave] = (),
     statuses: Iterable[Status] = (),
     rules: Iterable[Rule] = STONZ + DEPARTMENT,
+    period: tuple[date, date] | None = None,
 ) -> list[Violation]:
-    """Check every registrar on the roster against `rules`. Unassigned shifts are ignored."""
+    """
+    Check every registrar on the roster against `rules`. Unassigned shifts are ignored.
+
+    Ordinary days are filled in from `period` (first and last day, inclusive), which defaults to the dates the
+    shifts cover. Pass shifts from a week or two either side of the period, so limits that look back or ahead
+    see them.
+    """
     timelines: dict[str, Timeline] = {}
     for shift in sorted(shifts, key=_start):
         if shift.registrar is not None:
@@ -326,6 +442,12 @@ def check_roster(
     for status in statuses:
         if status.registrar.username in timelines:
             timelines[status.registrar.username].statuses.append(status)
+
+    if timelines and period is None:
+        dates = [shift.date for timeline in timelines.values() for shift in timeline.shifts]
+        period = (min(dates), max(dates))
+    for timeline in timelines.values():
+        timeline.ordinary_days = infer_ordinary_days(timeline, *period)
 
     rules = list(rules)
     return [violation for timeline in timelines.values() for rule in rules for violation in rule(timeline)]

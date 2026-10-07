@@ -40,6 +40,7 @@ It also weights on-call load, so fairness can be measured rather than argued abo
 
 ## Operating Context
 
+- **Ordinary hours:** while on the roster, a registrar works 8am–5pm on weekdays unless on leave, on a public holiday, or rostered otherwise. These days aren't stored; the contract checks infer them. A weekday long day is the ordinary day continued to 10pm.
 - **Shift types:** Long day (8am–10pm), Night (10pm–8am), Swing (12pm–10pm), Help desk (8am–12pm), RDO, Sleep. Weekend variants of long days and nights carry different workload weights. Public holidays become stat days, using the Canterbury holiday calendar.
 - **Leave types:** Annual, Education, Conference, Lieu day, Sick, Parental, Bereavement. A leave can cover all day, AM or PM. It moves through registrar request, chief registrar approval, DoT approval, printed, entered into Microster, and can be cancelled.
 - **Paper forms:** the hospital still needs signed PDF leave forms (usual leave, and MEL/conference leave). Radscheduler fills them in from leave records.

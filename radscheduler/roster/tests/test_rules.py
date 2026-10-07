@@ -11,9 +11,10 @@ Each test names the rule and clause it covers. Dates are January 2023:
 """
 
 from datetime import date, datetime
+from functools import partial
 
 from radscheduler.roster.models import Leave, LeaveType, Registrar, Shift, ShiftType, Status, StatusType, Weekday
-from radscheduler.roster.rules import check_roster, weekend_of
+from radscheduler.roster.rules import Timeline, check_roster, infer_ordinary_days, max_hours, weekend_of
 
 ALICE = Registrar("alice", senior=False, start=date(2022, 1, 1))
 BOB = Registrar("bob", senior=False, start=date(2022, 1, 1))
@@ -35,12 +36,21 @@ def nights(*days, **kwargs):
     return shifts(ShiftType.NIGHT, *days, **kwargs)
 
 
+def sleeps(*days, **kwargs):
+    return shifts(ShiftType.SLEEP, *days, **kwargs)
+
+
+def rdos(*days, **kwargs):
+    return shifts(ShiftType.RDO, *days, **kwargs)
+
+
 def leave(day, leave_type=LeaveType.ANNUAL, **kwargs):
     return Leave(date=jan(day), type=leave_type, registrar=ALICE, **kwargs)
 
 
-def found(rule, roster, leaves=(), statuses=()):
-    return [v for v in check_roster(roster, leaves, statuses) if v.rule == rule]
+def found(rule, roster, leaves=(), statuses=(), period=None, clause=None):
+    violations = check_roster(roster, leaves, statuses, period=period)
+    return [v for v in violations if v.rule == rule and (clause is None or v.clause == clause)]
 
 
 def dates(violations):
@@ -62,6 +72,55 @@ def test_weekend_starts_after_friday_day_duty():
     assert weekend_of(longs(7)[0]) == jan(7)
     assert weekend_of(nights(8)[0]) == jan(7)
     assert weekend_of(longs(9)[0]) is None
+
+
+def test_ordinary_days_fill_weekdays_without_shifts_or_leave():
+    part_time = Status(start=jan(1), end=jan(31), type=StatusType.PART_TIME, registrar=ALICE, weekdays=[Weekday.WED])
+    leaver = Registrar("alice", senior=False, start=jan(1), finish=jan(9))
+    timeline = Timeline(leaver, longs(5), leaves=[leave(6)], statuses=[part_time])
+    # 2 and 3 Jan are public holidays, 4 Jan part-time, 5 Jan rostered, 6 Jan on leave, and she leaves after 9 Jan
+    [monday] = infer_ordinary_days(timeline, jan(1), jan(15))
+    assert monday.date == jan(9)
+    assert monday.hours == 9
+
+
+def test_weekday_long_day_includes_the_ordinary_day():
+    # Ordinary 8-5 then on until 10pm is one 14-hour duty, not an ordinary day plus a long day
+    roster = longs(11)
+    period = (jan(9), jan(13))
+    assert found("one_duty_per_day", roster, period=period) == []
+    assert found("min_break_between_duties", roster, period=period) == []
+    assert roster[0].hours == 14
+
+    # Four ordinary days and the long day: 4 x 9 + 14 = 50 hours
+    [violation] = check_roster(roster, period=period, rules=[partial(max_hours, limit=49, days=7, clause="test")])
+    assert "Up to 50 hours" in violation.message
+
+
+def test_max_hours_stonz_17_1_2():
+    period = (jan(2), jan(22))
+    # A week of ordinary days and a weekend of long days is 73 hours
+    [violation] = found("max_hours", longs(14, 15), period=period, clause="STONZ 17.1.2")
+    assert "Up to 73 hours" in violation.message
+
+    # An RDO on the Friday before and the Monday after brings every 7 days to 64 hours or less
+    assert found("max_hours", longs(14, 15) + rdos(13, 16), period=period, clause="STONZ 17.1.2") == []
+
+
+def test_max_hours_stonz_17_1_4():
+    # Ten ordinary days and four weekend long days are 146 hours in 14 days
+    [violation] = found("max_hours", longs(14, 15, 21, 22), period=(jan(9), jan(22)), clause="STONZ 17.1.4")
+    assert "the limit is 140" in violation.message
+
+
+def test_max_consecutive_days_stonz_17_3_1():
+    # Weekdays from 9 Jan with the weekend between are 12 days in a row
+    period = (jan(9), jan(22))
+    assert found("max_consecutive_days", longs(14, 15), period=period) == []
+
+    [violation] = found("max_consecutive_days", longs(14, 15, 21), period=period)
+    assert violation.clause == "STONZ 17.3.1"
+    assert "13 days in a row" in violation.message
 
 
 def test_one_duty_per_day_stonz_17_2_5():
@@ -117,17 +176,20 @@ def test_min_break_between_duties_stonz_17_4_2():
 
 def test_post_night_recovery_stonz_17_4_6():
     # Four nights end Fri 6: Friday, Saturday and Sunday must be free
-    weekday_nights = nights(2, 3, 4, 5)
+    weekday_nights = nights(2, 3, 4, 5) + sleeps(6)
     [violation] = found("post_night_recovery", weekday_nights + longs(7))
     assert violation.clause == "STONZ 17.4.6"
     assert dates([violation]) == [[7]]
     assert len(found("post_night_recovery", weekday_nights + longs(8))) == 1
     assert found("post_night_recovery", weekday_nights + longs(9)) == []
 
+    # Without a sleep day, Friday is an ordinary working day
+    assert dates(found("post_night_recovery", nights(2, 3, 4, 5), period=(jan(2), jan(8)))) == [[6]]
+
     # Three nights end Mon 9: Monday and Tuesday must be free
-    weekend_nights = nights(6, 7, 8)
-    assert len(found("post_night_recovery", weekend_nights + longs(10))) == 1
-    assert found("post_night_recovery", weekend_nights + longs(11)) == []
+    weekend_nights = nights(6, 7, 8) + sleeps(9)
+    assert dates(found("post_night_recovery", weekend_nights + longs(10))) == [[10]]
+    assert found("post_night_recovery", weekend_nights + rdos(10) + longs(11)) == []
 
 
 def test_no_weekend_next_to_leave_stonz_21_4():
@@ -211,8 +273,9 @@ def test_no_long_day_before_weekend_nights():
 
 
 def test_compliant_roster_has_no_violations():
-    roster = nights(2, 3, 4, 5) + shifts(ShiftType.SLEEP, 6) + longs(14, 15, 23)
-    roster += longs(2, 4, registrar=BOB) + nights(13, 14, 15, registrar=BOB)
+    roster = nights(2, 3, 4, 5) + sleeps(6) + rdos(13) + longs(14, 15) + rdos(16) + longs(23)
+    roster += longs(2, 4, registrar=BOB) + nights(13, 14, 15, registrar=BOB) + sleeps(16, registrar=BOB)
+    roster += rdos(17, registrar=BOB)
     assert check_roster(roster, [leave(18)]) == []
 
 

@@ -34,7 +34,8 @@ class ShiftType(models.TextChoices):
     SLEEP = "SLEEP", "Sleep"
 
 
-# Start time and length of each shift type that is a period of duty.
+# Start time and length of each shift type that is a period of duty. A rostered shift takes the place
+# of that day's ordinary hours, so a weekday long day is the ordinary 8am-5pm followed by 5pm-10pm.
 # RDO and SLEEP are days off, so they have no hours.
 SHIFT_HOURS = {
     ShiftType.SWING: (time(12), timedelta(hours=10)),
@@ -42,6 +43,10 @@ SHIFT_HOURS = {
     ShiftType.LONG: (time(8), timedelta(hours=14)),
     ShiftType.NIGHT: (time(22), timedelta(hours=10)),
 }
+
+# Registrars work ordinary hours on weekdays unless rostered for a shift or on leave.
+# Meal breaks taken in the hospital count as time on duty (STONZ 20.2).
+ORDINARY_HOURS = (time(8), timedelta(hours=9))
 
 
 class DetailedShiftType(models.TextChoices):
@@ -128,6 +133,29 @@ class Shift:
 
     def same_shift(self, shift):
         return self.date == shift.date and self.type == shift.type and self.series == shift.series
+
+
+@dataclass(frozen=True)
+class OrdinaryDay:
+    """A weekday of ordinary work. These aren't stored; the roster rules infer them."""
+
+    date: date
+    type = None
+    is_duty = True
+
+    @property
+    def start(self) -> datetime:
+        start_time, _ = ORDINARY_HOURS
+        return datetime.combine(self.date, start_time)
+
+    @property
+    def end(self) -> datetime:
+        _, length = ORDINARY_HOURS
+        return self.start + length
+
+    @property
+    def hours(self) -> float:
+        return (self.end - self.start) / timedelta(hours=1)
 
 
 @dataclass
