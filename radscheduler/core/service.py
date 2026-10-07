@@ -4,7 +4,8 @@ from datetime import date, timedelta
 from django.db.models import F, OuterRef, Q, Subquery
 from django.db.models.functions import Now
 
-from radscheduler.core.models import Leave, Registrar, Shift
+from radscheduler.core.models import Leave, Registrar, Settings, Shift
+from radscheduler.roster import canterbury_holidays
 from radscheduler.roster.models import DetailedShiftType
 from radscheduler.roster.utils import daterange
 
@@ -61,6 +62,43 @@ def get_events(someday: date, shift_types, leave_types):
     # Merge shifts and leaves into a single list grouped by registrar
     registrars, events = _merge_shifts_and_leaves(shifts, leaves, active_registrars)
     return registrars, dates, events
+
+
+def editor_roster(week: date) -> dict:
+    """
+    Everything the roster editor shows for the three weeks around `week`: the registrars on the roster
+    (active ones and anyone with a shift or leave in the window), their shifts and leave, public holidays
+    and the published date range.
+    """
+    start, end = calculate_3_week_range(week)
+    dates = daterange(start, end)
+    window = [dates[0], dates[-1]]
+    shifts = list(Shift.objects.filter(date__range=window).order_by("date", "pk"))
+    leaves = list(Leave.objects.filter(date__range=window).order_by("date", "pk"))
+    registrars, _ = _merge_shifts_and_leaves(shifts, leaves, get_active_registrars(start, end))
+    settings = Settings.objects.first()
+    return {
+        "week": week,
+        "prev": week - timedelta(weeks=1),
+        "next": week + timedelta(weeks=1),
+        "today": date.today(),
+        "dates": dates,
+        "registrars": list(registrars.values()),
+        "shifts": shifts,
+        "leaves": leaves,
+        "holidays": [{"date": day, "name": canterbury_holidays[day]} for day in dates if day in canterbury_holidays],
+        "published": settings and {"start": settings.publish_start_date, "end": settings.publish_end_date},
+    }
+
+
+def add_shift(day: date, shift_type: str, registrar: Registrar, extra_duty: bool = False) -> Shift:
+    return Shift.objects.create(
+        date=day,
+        type=shift_type,
+        registrar=registrar,
+        extra_duty=extra_duty,
+        stat_day=day in canterbury_holidays,
+    )
 
 
 def default_start_and_end(start, end):
