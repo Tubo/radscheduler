@@ -42,6 +42,7 @@ It also weights on-call load, so fairness can be measured rather than argued abo
 
 - **Ordinary hours:** while on the roster, a registrar works 8am–5pm on weekdays unless on leave, on a public holiday, or rostered otherwise. These days aren't stored; the contract checks infer them. A weekday long day is the ordinary day continued to 10pm; help desk is the morning, followed by ordinary work until 5pm; someone on nights doesn't work the day. Half-day leave takes the morning or the afternoon, and the registrar works the other half. A Friday afternoon or Monday morning off counts as leave next to the weekend; a swing day (12pm–10pm) has no morning work.
 - **Shift types:** Long day (8am–10pm), Night (10pm–8am), Swing (12pm–10pm), Help desk (8am–12pm), RDO, Sleep. Weekend variants of long days and nights carry different workload weights. Public holidays become stat days, using the Canterbury holiday calendar.
+- **Cover:** every weekday needs a swing day and a night; every weekend day needs a swing or a long day, and a night. The rule lives in `COVER` in `core/views/editor.py`.
 - **Leave types:** Annual, Education, Conference, Lieu day, Sick, Parental, Bereavement. A leave can cover all day, AM or PM. It moves through registrar request, chief registrar approval, DoT approval, printed, entered into Microster, and can be cancelled.
 - **Paper forms:** the hospital still needs signed PDF leave forms (usual leave, and MEL/conference leave). Radscheduler fills them in from leave records.
 - **Microster:** the hospital's official rostering system. Leave is copied into it manually, and Radscheduler tracks whether that has happened.
@@ -58,7 +59,7 @@ It also weights on-call load, so fairness can be measured rather than argued abo
   - Deployed on Fly.io.
   - Not a SPA: the baseline must work without JavaScript. The exception is the roster editor, a staff-only Elm app; staff can still edit shifts and leave in the Django admin without JavaScript.
 - **Roles:** registrar (signed in), and staff (`is_staff`) for roster and extra-duty editing. Accounts use django-allauth.
-- **Roster editor:** a dense grid of dates by registrars for three weeks, with shift and leave cells, a cover strip showing whether each day's long day and night are filled, unpublished days marked, a keyboard grid, and publishing in a dialog that previews what registrars will gain or lose.
+- **Roster editor:** a dense grid of dates by registrars for three weeks, with shift and leave cells, a cover strip showing whether each day's required shifts are filled, unpublished days marked, a keyboard grid, and publishing in a dialog that previews what registrars will gain or lose.
 - **Undecided:** how department-specific configuration (supervisor, holidays, shift definitions) will work once multiple departments are supported.
 
 ## Brand Commitments

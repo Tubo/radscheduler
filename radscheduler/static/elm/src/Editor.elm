@@ -68,7 +68,7 @@ type alias Flags =
     , editorUrl : String
     , shiftTypes : List Choice
     , leaveTypes : List Choice
-    , cover : List String
+    , cover : CoverRules
     , hiddenShiftTypes : List String
     , hiddenLeaveTypes : List String
     }
@@ -160,9 +160,25 @@ flagsDecoder =
         (Decode.field "editorUrl" Decode.string)
         (Decode.field "shiftTypes" (Decode.list choiceDecoder))
         (Decode.field "leaveTypes" (Decode.list choiceDecoder))
-        (Decode.field "cover" (Decode.list Decode.string))
+        (Decode.field "cover" coverRulesDecoder)
         (optionalList "hiddenShiftTypes")
         (optionalList "hiddenLeaveTypes")
+
+
+{-| What each day needs filled. Each requirement lists the shift types that meet it, e.g. a weekend day
+needs a swing or a long day, and a night.
+-}
+type alias CoverRules =
+    { weekday : List (List String)
+    , weekend : List (List String)
+    }
+
+
+coverRulesDecoder : Decoder CoverRules
+coverRulesDecoder =
+    Decode.map2 CoverRules
+        (Decode.field "weekday" (Decode.list (Decode.list Decode.string)))
+        (Decode.field "weekend" (Decode.list (Decode.list Decode.string)))
 
 
 optionalList : String -> Decoder (List String)
@@ -183,7 +199,7 @@ init value =
         Err err ->
             let
                 model =
-                    initialModel (Flags "" "" "" [] [] [] [] []) (Date.fromRataDie 1)
+                    initialModel (Flags "" "" "" [] [] (CoverRules [] []) [] []) (Date.fromRataDie 1)
             in
             ( { model | loading = False, failure = Just (Failure ("The editor couldn't start: " ++ err) Nothing Nothing) }
             , Cmd.none
@@ -960,28 +976,31 @@ isActiveLeave leave =
             True
 
 
+{-| How a day's cover requirement stands, naming the shift type that fills it.
+-}
 type Cover
-    = Covered
-    | Posted
+    = Covered String
+    | Posted String
     | Missing
 
 
-{-| Whether a shift the department needs every day is filled, posted but not given to anyone, or missing.
+{-| Whether one of the shift types that meet a requirement is filled, posted but not given to anyone, or missing.
 -}
-coverFor : T.RosterOut -> Date -> String -> Cover
-coverFor roster date shiftType =
+coverFor : T.RosterOut -> Date -> List String -> Cover
+coverFor roster date alternatives =
     let
         onDay =
-            List.filter (\s -> s.date == date && T.shiftTypeToString s.type_ == shiftType) roster.shifts
+            List.filter (\s -> s.date == date && List.member (T.shiftTypeToString s.type_) alternatives) roster.shifts
     in
-    if List.any (\s -> s.registrar /= Null) onDay then
-        Covered
+    case ( List.filter (\s -> s.registrar /= Null) onDay, onDay ) of
+        ( filled :: _, _ ) ->
+            Covered (T.shiftTypeToString filled.type_)
 
-    else if List.isEmpty onDay then
-        Missing
+        ( [], posted :: _ ) ->
+            Posted (T.shiftTypeToString posted.type_)
 
-    else
-        Posted
+        ( [], [] ) ->
+            Missing
 
 
 type alias Window =
@@ -1267,29 +1286,37 @@ viewCover : Model -> T.RosterOut -> Window -> Int -> Date -> Html Msg
 viewCover model roster window index date =
     td [ classList (( "re-cover-cell", True ) :: columnClasses window index date) ]
         (List.map
-            (\shiftType ->
+            (\alternatives ->
                 let
                     choice =
-                        choiceFor model.flags.shiftTypes shiftType
+                        choiceFor model.flags.shiftTypes
 
-                    ( state, icon, name ) =
-                        case coverFor roster date shiftType of
-                            Covered ->
-                                ( "ok", "bi-check-lg", "covered" )
+                    needed =
+                        String.join " or " (List.map (choice >> .label >> String.toLower) alternatives)
 
-                            Posted ->
-                                ( "open", "bi-circle", "posted, not yet given to anyone" )
+                    ( state, icon, ( label, name ) ) =
+                        case coverFor roster date alternatives of
+                            Covered shiftType ->
+                                ( "ok", "bi-check-lg", ( (choice shiftType).short, (choice shiftType).label ++ " covered" ) )
+
+                            Posted shiftType ->
+                                ( "open", "bi-circle", ( (choice shiftType).short, (choice shiftType).label ++ " posted, not yet given to anyone" ) )
 
                             Missing ->
-                                ( "gap", "bi-exclamation-triangle-fill", "missing" )
+                                ( "gap", "bi-exclamation-triangle-fill", ( String.join "/" (List.map (choice >> .short) alternatives), "No " ++ needed ) )
                 in
-                span [ class ("re-coverchip is-" ++ state), title (choice.label ++ " " ++ name) ]
+                span [ class ("re-coverchip is-" ++ state), title name ]
                     [ i [ class ("bi " ++ icon), attribute "aria-hidden" "true" ] []
-                    , text choice.short
-                    , span [ class "visually-hidden" ] [ text (" " ++ name) ]
+                    , span [ attribute "aria-hidden" "true" ] [ text label ]
+                    , span [ class "visually-hidden" ] [ text name ]
                     ]
             )
-            model.flags.cover
+            (if isWeekend date then
+                model.flags.cover.weekend
+
+             else
+                model.flags.cover.weekday
+            )
         )
 
 
@@ -1791,9 +1818,9 @@ viewKey model =
             [ li [] [ span [ class "re-swatch is-weekend" ] [], text "Weekend" ]
             , li [] [ span [ class "re-swatch is-holiday" ] [], text "Public holiday (stat day)" ]
             , li [] [ span [ class "re-swatch is-unpublished" ] [], text "Not published: registrars can't see it" ]
-            , li [] [ span [ class "re-coverchip is-ok" ] [ i [ class "bi bi-check-lg" ] [], text "Long" ], text "Cover: filled" ]
-            , li [] [ span [ class "re-coverchip is-open" ] [ i [ class "bi bi-circle" ] [], text "Long" ], text "Cover: posted, not given out" ]
-            , li [] [ span [ class "re-coverchip is-gap" ] [ i [ class "bi bi-exclamation-triangle-fill" ] [], text "Long" ], text "Cover: missing" ]
+            , li [] [ span [ class "re-coverchip is-ok" ] [ i [ class "bi bi-check-lg" ] [], text "Night" ], text "Cover: filled" ]
+            , li [] [ span [ class "re-coverchip is-open" ] [ i [ class "bi bi-circle" ] [], text "Night" ], text "Cover: posted, not given out" ]
+            , li [] [ span [ class "re-coverchip is-gap" ] [ i [ class "bi bi-exclamation-triangle-fill" ] [], text "Swing/Long" ], text "Cover: missing (either will do)" ]
             , li []
                 [ span [ class "re-count-approved" ] [ i [ class "bi bi-check-lg" ] [], text "2" ]
                 , span [ class "re-count-pending" ] [ i [ class "bi bi-hourglass-split" ] [], text "1" ]

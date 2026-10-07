@@ -71,8 +71,23 @@ def test_grid_shows_shifts_leave_and_cover(editor: Page, roster):
     expect(cell(editor, "2024-12-24", roster["will"])).to_contain_text("waiting for approval")
     expect(editor.locator("thead")).to_contain_text("16 Dec")
     expect(editor.locator("thead")).to_contain_text("Christmas Day")
-    # Only Mon 23 Dec has its long day; nobody is on nights
-    expect(editor.locator(".re-coverchip.is-ok")).to_have_count(1)
+
+
+def test_cover_follows_weekday_and_weekend_rules(editor: Page, roster):
+    Shift.objects.create(date=date(2024, 12, 24), type=ShiftType.SWING, registrar=roster["erika"])
+    Shift.objects.create(date=date(2024, 12, 28), type=ShiftType.LONG, registrar=roster["will"])
+    Shift.objects.create(date=date(2024, 12, 29), type=ShiftType.SWING)  # posted, not given to anyone
+    editor.reload()
+
+    # Columns start on Mon 16 Dec
+    cover = editor.locator(".re-cover td")
+    # A weekday needs a swing day: Mon 23 Dec's long day doesn't count
+    expect(cover.nth(7)).to_contain_text("No swing day")
+    expect(cover.nth(8)).to_contain_text("Swing day covered")
+    # A weekend day needs a swing or a long day
+    expect(cover.nth(12)).to_contain_text("Long day covered")
+    expect(cover.nth(13)).to_contain_text("Swing day posted, not yet given to anyone")
+    expect(cover.nth(12)).to_contain_text("No night")
 
 
 def test_add_change_and_delete_a_shift_from_the_cell_menu(editor: Page, roster):

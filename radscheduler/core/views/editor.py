@@ -82,6 +82,11 @@ def page(request, date_=None):
 # How the editor names things in its compact grid, and the key that adds or changes to each shift type.
 SHIFT_SHORT = {"SWING": "Swing", "HELP": "Help", "LONG": "Long", "RDO": "RDO", "NIGHT": "Night", "SLEEP": "Sleep"}
 SHIFT_KEYS = {"SWING": "s", "HELP": "h", "LONG": "l", "RDO": "r", "NIGHT": "n", "SLEEP": "z"}
+# The department's cover: what each day needs filled. Each requirement lists the shift types that meet it.
+COVER = {
+    "weekday": [["SWING"], ["NIGHT"]],
+    "weekend": [["SWING", "LONG"], ["NIGHT"]],
+}
 LEAVE_SHORT = {
     "ANNUAL": "Annual",
     "EDU": "Educ",
@@ -115,8 +120,7 @@ def next_page(request, date_=None):
             {"value": value, "label": label, "short": LEAVE_SHORT[value], "key": ""}
             for value, label in roster.LeaveType.choices
         ],
-        # The shifts the department needs filled every day; the editor shows each as covered or missing.
-        "cover": [shift_types.LONG, shift_types.NIGHT],
+        "cover": COVER,
     }
     return render(request, "editor/next.html", {"flags": flags})
 
