@@ -4,10 +4,36 @@ from datetime import date, timedelta
 from django.db.models import F, OuterRef, Q, Subquery
 from django.db.models.functions import Now
 
-from radscheduler.core.models import Leave, Registrar, Settings, Shift
-from radscheduler.roster import canterbury_holidays
-from radscheduler.roster.models import DetailedShiftType
+from radscheduler.core import domain_mapper
+from radscheduler.core.models import Leave, Registrar, Settings, Shift, Status
+from radscheduler.roster import canterbury_holidays, rules
+from radscheduler.roster.models import DetailedShiftType, ShiftType, Weekday
 from radscheduler.roster.utils import daterange
+
+# The department's cover: what each day needs filled. Each requirement lists the shift types that meet it.
+# A public holiday is staffed like a weekend.
+COVER = {
+    "weekday": [["SWING"], ["NIGHT"]],
+    "weekend": [["SWING", "LONG"], ["NIGHT"]],
+    "holiday": [["SWING", "LONG"], ["NIGHT"]],
+}
+
+# On-call load per shift, from the department's workload formula: a block of 4 weekday nights weighs 7,
+# a weekend of long days 6, a block of 3 weekend nights 5, and the total is divided by 10. Swing days
+# take a long day's weight, since both add the same evening to an ordinary day. Help desk, RDO and sleep
+# days carry no on-call load, and extra duties don't count.
+WORKLOAD_WEIGHTS = {
+    ("LONG", False): 1,
+    ("LONG", True): 6 / 2,
+    ("SWING", False): 1,
+    ("SWING", True): 6 / 2,
+    ("NIGHT", False): 7 / 4,
+    ("NIGHT", True): 5 / 3,
+}
+WORKLOAD_WEEKS = 26
+# How far either side of a checked range the contract checks look, so limits over 7 or 14 days see the
+# shifts just outside it.
+CHECK_MARGIN = timedelta(days=14)
 
 
 def calculate_3_week_range(someday: date):
@@ -67,14 +93,18 @@ def get_events(someday: date, shift_types, leave_types):
 def editor_roster(week: date) -> dict:
     """
     Everything the roster editor shows for the three weeks around `week`: the registrars on the roster
-    (active ones and anyone with a shift or leave in the window), their shifts and leave, public holidays
-    and the published date range.
+    (active ones and anyone with a shift or leave in the window), their shifts, leave and statuses, public
+    holidays, the published date range, and the checks: contract rule breaks and each registrar's workload.
     """
     start, end = calculate_3_week_range(week)
     dates = daterange(start, end)
     window = [dates[0], dates[-1]]
     shifts = list(Shift.objects.filter(date__range=window).order_by("date", "pk"))
-    leaves = list(Leave.objects.filter(date__range=window).order_by("date", "pk"))
+    leaves = list(
+        Leave.objects.filter(date__range=window)
+        .select_related("reg_decided_by", "dot_decided_by")
+        .order_by("date", "pk")
+    )
     registrars, _ = _merge_shifts_and_leaves(shifts, leaves, get_active_registrars(start, end))
     settings = Settings.objects.first()
     return {
@@ -86,26 +116,112 @@ def editor_roster(week: date) -> dict:
         "registrars": list(registrars.values()),
         "shifts": shifts,
         "leaves": leaves,
+        "statuses": list(
+            Status.objects.filter(start__lte=window[1], end__gte=window[0]).order_by("registrar_id", "start")
+        ),
         "holidays": [{"date": day, "name": canterbury_holidays[day]} for day in dates if day in canterbury_holidays],
         "published": settings and {"start": settings.publish_start_date, "end": settings.publish_end_date},
+        "checks": editor_checks(week),
     }
+
+
+def editor_checks(week: date) -> dict:
+    """The roster's rule breaks in the editor's three weeks around `week`, and everyone's workload up to its end."""
+    start, end = calculate_3_week_range(week)
+    last = end - timedelta(days=1)
+    return {"violations": roster_violations(start, last), "workload": workload(last)}
+
+
+def roster_violations(start: date, end: date) -> list[rules.Violation]:
+    """
+    Contract and department rule breaks that touch any day from `start` to `end`. Leave that is cancelled or
+    declined doesn't count; leave still waiting for approval does, so a clash shows before it is approved.
+    """
+    around = [start - CHECK_MARGIN, end + CHECK_MARGIN]
+    shifts = Shift.objects.filter(date__range=around, registrar__isnull=False).select_related("registrar__user")
+    leaves = (
+        Leave.objects.filter(date__range=around, cancelled=False)
+        .exclude(reg_approved=False)
+        .exclude(dot_approved=False)
+        .select_related("registrar__user")
+    )
+    statuses = Status.objects.filter(start__lte=around[1], end__gte=around[0]).select_related("registrar__user")
+    violations = rules.check_roster(
+        [domain_mapper.shift_from_db(shift) for shift in shifts],
+        [domain_mapper.leave_from_db(leave) for leave in leaves],
+        [domain_mapper.status_from_db(status) for status in statuses],
+        period=(start, end),
+    )
+    touching = [v for v in violations if any(start <= day <= end for day in v.dates)]
+    return sorted(touching, key=lambda v: (v.dates[0], v.registrar.username, v.rule))
+
+
+def shift_load(shift: Shift) -> float:
+    """A shift's weight in the workload formula; nights from Friday to Sunday are weekend nights."""
+    weekend_from = Weekday.FRI if shift.type == ShiftType.NIGHT else Weekday.SAT
+    return WORKLOAD_WEIGHTS.get((shift.type, shift.date.weekday() >= weekend_from), 0)
+
+
+def workload(end: date) -> list[dict]:
+    """Each registrar's on-call load over the `WORKLOAD_WEEKS` weeks up to `end`, for those with any."""
+    since = end - timedelta(weeks=WORKLOAD_WEEKS) + timedelta(days=1)
+    shifts = Shift.objects.filter(date__range=[since, end], registrar__isnull=False, extra_duty=False)
+    loads: dict[int, float] = defaultdict(float)
+    for shift in shifts.only("date", "type", "registrar_id"):
+        loads[shift.registrar_id] += shift_load(shift)
+    return [{"registrar": pk, "load": round(load / 10, 1)} for pk, load in sorted(loads.items())]
+
+
+def cover_rule(day: date) -> list[list[str]]:
+    if day in canterbury_holidays:
+        return COVER["holiday"]
+    return COVER["weekend" if day.weekday() >= Weekday.SAT else "weekday"]
+
+
+def cover_gaps(days: list[date]) -> list[dict]:
+    """The cover requirements nobody is rostered for on each of `days`: [{"date", "needs": [[types]]}]."""
+    if not days:
+        return []
+    rostered = defaultdict(set)
+    for shift in Shift.objects.filter(date__range=[min(days), max(days)], registrar__isnull=False):
+        rostered[shift.date].add(shift.type)
+    gaps = []
+    for day in days:
+        needs = [types for types in cover_rule(day) if not rostered[day] & set(types)]
+        if needs:
+            gaps.append({"date": day, "needs": needs})
+    return gaps
 
 
 def publish_preview(start: date, end: date) -> dict:
     """
     How many shifts and leave registrars would start or stop seeing if the published range became
-    start..end. Only assigned shifts and leave that isn't cancelled count.
+    start..end, and the state of the days they would start seeing: cover gaps, rule breaks and leave still
+    waiting for a decision. Only assigned shifts and leave that isn't cancelled count.
     """
     settings = Settings.objects.first()
     new = Q(date__range=[start, end])
     current = Q(date__range=[settings.publish_start_date, settings.publish_end_date]) if settings else Q(pk__in=[])
     shifts = Shift.objects.exclude(registrar=None)
     leaves = Leave.objects.exclude(cancelled=True)
+    shown = [
+        day
+        for day in daterange(start, end + timedelta(days=1))
+        if not (settings and settings.publish_start_date <= day <= settings.publish_end_date)
+    ]
+    violations = roster_violations(shown[0], shown[-1]) if shown else []
     return {
         "shifts_shown": shifts.filter(new & ~current).count(),
         "leave_shown": leaves.filter(new & ~current).count(),
         "shifts_hidden": shifts.filter(current & ~new).count(),
         "leave_hidden": leaves.filter(current & ~new).count(),
+        "gaps": cover_gaps(shown),
+        "violations": [v for v in violations if any(day in shown for day in v.dates)],
+        "leave_waiting": leaves.filter(new & ~current)
+        .exclude(reg_approved=False)
+        .exclude(dot_approved=False)
+        .exclude(reg_approved=True, dot_approved=True)
+        .count(),
     }
 
 

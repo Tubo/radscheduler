@@ -4,6 +4,7 @@ JSON API for the roster editor. Staff only; changes need the CSRF token.
 
 from datetime import date, datetime
 
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Field, Router, Schema, Status
@@ -11,7 +12,7 @@ from ninja.security import SessionAuth
 
 from radscheduler.core import service
 from radscheduler.core.models import Leave, Registrar, Shift
-from radscheduler.roster.models import LeaveType, ShiftType
+from radscheduler.roster.models import LeaveType, ShiftType, StatusType
 
 
 class StaffAuth(SessionAuth):
@@ -26,7 +27,44 @@ router = Router(auth=StaffAuth())
 class RegistrarOut(Schema):
     id: int
     username: str = Field(..., alias="user.username")
+    # The full name, or the username for an account without one.
+    name: str
     year: int | None
+
+    @staticmethod
+    def resolve_name(registrar):
+        return registrar.user.name or registrar.user.username
+
+
+class StatusOut(Schema):
+    id: int
+    registrar: int = Field(..., alias="registrar_id")
+    type: StatusType
+    start: date
+    end: date
+    # Empty means every weekday, or every shift type.
+    weekdays: list[int]
+    shift_types: list[ShiftType]
+    comment: str
+
+
+class ViolationOut(Schema):
+    rule: str
+    # The collective agreement's clause, or None for a department rule.
+    clause: str | None
+    registrar: int = Field(..., alias="registrar.id")
+    dates: list[date]
+    message: str
+
+
+class WorkloadOut(Schema):
+    registrar: int
+    load: float
+
+
+class ChecksOut(Schema):
+    violations: list[ViolationOut]
+    workload: list[WorkloadOut]
 
 
 class ShiftOut(Schema):
@@ -47,6 +85,13 @@ class LeaveOut(Schema):
     comment: str
     reg_approved: bool | None
     dot_approved: bool | None
+    # Who made each decision and when; None while waiting, or for decisions made before they were recorded.
+    reg_decided_by: str | None
+    reg_decided_at: datetime | None
+    dot_decided_by: str | None
+    dot_decided_at: datetime | None
+    printed: bool
+    microster: bool
     cancelled: bool
     created: datetime
     last_edited: datetime
@@ -59,6 +104,22 @@ class LeaveOut(Schema):
     @staticmethod
     def resolve_last_edited(leave):
         return timezone.localtime(leave.last_edited)
+
+    @staticmethod
+    def resolve_reg_decided_by(leave):
+        return leave.reg_decided_by and (leave.reg_decided_by.name or leave.reg_decided_by.username)
+
+    @staticmethod
+    def resolve_dot_decided_by(leave):
+        return leave.dot_decided_by and (leave.dot_decided_by.name or leave.dot_decided_by.username)
+
+    @staticmethod
+    def resolve_reg_decided_at(leave):
+        return leave.reg_decided_at and timezone.localtime(leave.reg_decided_at)
+
+    @staticmethod
+    def resolve_dot_decided_at(leave):
+        return leave.dot_decided_at and timezone.localtime(leave.dot_decided_at)
 
 
 class HolidayOut(Schema):
@@ -80,8 +141,16 @@ class RosterOut(Schema):
     registrars: list[RegistrarOut]
     shifts: list[ShiftOut]
     leaves: list[LeaveOut]
+    statuses: list[StatusOut]
     holidays: list[HolidayOut]
     published: PublishedRange | None
+    checks: ChecksOut
+
+
+class GapOut(Schema):
+    date: date
+    # Each requirement nobody is rostered for, as the shift types that would meet it.
+    needs: list[list[ShiftType]]
 
 
 class PreviewOut(Schema):
@@ -89,6 +158,10 @@ class PreviewOut(Schema):
     leave_shown: int
     shifts_hidden: int
     leave_hidden: int
+    # About the days registrars would start seeing.
+    gaps: list[GapOut]
+    violations: list[ViolationOut]
+    leave_waiting: int
 
 
 class ErrorOut(Schema):
@@ -110,12 +183,25 @@ class ShiftPatch(Schema):
 class LeavePatch(Schema):
     reg_approved: bool | None = None
     dot_approved: bool | None = None
+    microster: bool = None
     cancelled: bool = None
+
+
+class LeavesPatch(LeavePatch):
+    """The same change to several days of leave, e.g. approving a whole request."""
+
+    ids: list[int]
 
 
 @router.get("/roster", response=RosterOut)
 def get_roster(request, week: date):
     return service.editor_roster(week)
+
+
+@router.get("/roster/checks", response=ChecksOut)
+def get_checks(request, week: date):
+    """The rule breaks and workload alone, for refreshing them after a change."""
+    return service.editor_checks(week)
 
 
 @router.post("/shifts", response={201: ShiftOut})
@@ -142,13 +228,28 @@ def delete_shift(request, shift_id: int):
     return deleted
 
 
+def apply_leave_patch(leave: Leave, changes: dict, user) -> Leave:
+    for field, value in changes.items():
+        if field in ("reg_approved", "dot_approved"):
+            leave.decide(field.removesuffix("_approved"), value, user)
+        else:
+            setattr(leave, field, value)
+    leave.save()
+    return leave
+
+
 @router.patch("/leaves/{leave_id}", response=LeaveOut)
 def change_leave(request, leave_id: int, payload: LeavePatch):
     leave = get_object_or_404(Leave, pk=leave_id)
-    for field, value in payload.dict(exclude_unset=True).items():
-        setattr(leave, field, value)
-    leave.save()
-    return leave
+    return apply_leave_patch(leave, payload.dict(exclude_unset=True), request.user)
+
+
+@router.patch("/leaves", response=list[LeaveOut])
+def change_leaves(request, payload: LeavesPatch):
+    changes = payload.dict(exclude_unset=True, exclude={"ids"})
+    leaves = Leave.objects.filter(pk__in=payload.ids).order_by("date")
+    with transaction.atomic():
+        return [apply_leave_patch(leave, changes, request.user) for leave in leaves]
 
 
 @router.get("/published/preview", response=PreviewOut)

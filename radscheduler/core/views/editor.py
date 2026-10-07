@@ -17,7 +17,7 @@ from radscheduler.core.forms import (
     ShiftChangeForm,
 )
 from radscheduler.core.models import Leave, Settings, Shift
-from radscheduler.core.service import get_events
+from radscheduler.core.service import COVER, WORKLOAD_WEEKS, get_events
 from radscheduler.core.views.decorators import staff_required
 from radscheduler.roster import canterbury_holidays
 
@@ -82,10 +82,13 @@ def page(request, date_=None):
 # How the editor names things in its compact grid, and the key that adds or changes to each shift type.
 SHIFT_SHORT = {"SWING": "Swing", "HELP": "Help", "LONG": "Long", "RDO": "RDO", "NIGHT": "Night", "SLEEP": "Sleep"}
 SHIFT_KEYS = {"SWING": "s", "HELP": "h", "LONG": "l", "RDO": "r", "NIGHT": "n", "SLEEP": "z"}
-# The department's cover: what each day needs filled. Each requirement lists the shift types that meet it.
-COVER = {
-    "weekday": [["SWING"], ["NIGHT"]],
-    "weekend": [["SWING", "LONG"], ["NIGHT"]],
+STATUS_SHORT = {
+    "PRECALL": "Pre-call",
+    "RELIEVER": "Reliever",
+    "PART": "Part-time",
+    "PREEXAM": "Exam",
+    "BUDDY": "Buddy",
+    "NA": "Away",
 }
 LEAVE_SHORT = {
     "ANNUAL": "Annual",
@@ -120,7 +123,12 @@ def next_page(request, date_=None):
             {"value": value, "label": label, "short": LEAVE_SHORT[value], "key": ""}
             for value, label in roster.LeaveType.choices
         ],
+        "statusTypes": [
+            {"value": value, "label": label, "short": STATUS_SHORT[value], "key": ""}
+            for value, label in roster.StatusType.choices
+        ],
         "cover": COVER,
+        "workloadWeeks": WORKLOAD_WEEKS,
     }
     return render(request, "editor/next.html", {"flags": flags})
 

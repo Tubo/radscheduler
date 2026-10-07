@@ -4,6 +4,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import ExpressionWrapper, F, IntegerField, Value
 from django.db.models.functions import ExtractYear, Now
+from django.utils import timezone
 
 from radscheduler import roster
 from radscheduler.users.models import User
@@ -147,6 +148,11 @@ class Leave(models.Model):
 
     reg_approved = models.BooleanField(null=True, blank=True)
     dot_approved = models.BooleanField(null=True, blank=True)
+    # Who gave each decision and when; empty while it is waiting, and for decisions made before these were kept.
+    reg_decided_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    reg_decided_at = models.DateTimeField(null=True, blank=True)
+    dot_decided_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    dot_decided_at = models.DateTimeField(null=True, blank=True)
     printed = models.BooleanField(default=False)
     microster = models.BooleanField(default=False)
     cancelled = models.BooleanField(default=False)
@@ -162,6 +168,15 @@ class Leave(models.Model):
 
     def is_past(self):
         return self.date < date.today()
+
+    def decide(self, approver: str, decision: bool | None, user: User | None) -> None:
+        """
+        Record the chief registrar's ("reg") or the Director of Training's ("dot") decision, and who made it.
+        A decision of None puts the leave back to waiting.
+        """
+        setattr(self, f"{approver}_approved", decision)
+        setattr(self, f"{approver}_decided_by", user if decision is not None else None)
+        setattr(self, f"{approver}_decided_at", timezone.now() if decision is not None else None)
 
     def is_approved(self):
         return True if self.reg_approved and self.dot_approved else False

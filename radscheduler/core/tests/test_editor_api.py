@@ -2,8 +2,8 @@ from datetime import date
 
 import pytest
 
-from radscheduler.core.models import Leave, Settings, Shift
-from radscheduler.roster.models import LeaveType, ShiftType
+from radscheduler.core.models import Leave, Settings, Shift, Status
+from radscheduler.roster.models import LeaveType, ShiftType, StatusType
 
 pytestmark = pytest.mark.django_db
 
@@ -54,6 +54,7 @@ class TestRoster:
         roster = app.get("/api/editor/roster", {"week": "2024-12-25"}, user=staff).json
 
         assert {r["username"] for r in roster["registrars"]} == {r.user.username for r in juniors_db}
+        assert {r["name"] for r in roster["registrars"]} == {r.user.name for r in juniors_db}
         assert roster["shifts"] == [
             {"id": shift.pk, "date": "2024-12-23", "type": "LONG", "registrar": juniors_db[0].pk, "extra_duty": False}
         ]
@@ -62,6 +63,30 @@ class TestRoster:
         assert returned["registrar"] == juniors_db[1].pk
         assert (returned["type"], returned["portion"]) == ("ANNUAL", "ALL")
         assert (returned["reg_approved"], returned["dot_approved"], returned["cancelled"]) == (None, None, False)
+        assert (returned["reg_decided_by"], returned["printed"], returned["microster"]) == (None, False, False)
+
+    def test_statuses_in_the_window(self, app, staff, juniors_db):
+        exam = Status.objects.create(
+            registrar=juniors_db[0], type=StatusType.PRE_EXAM, start=date(2024, 12, 1), end=date(2024, 12, 20)
+        )
+        Status.objects.create(
+            registrar=juniors_db[1], type=StatusType.BUDDY, start=date(2025, 3, 1), end=date(2025, 3, 31)
+        )
+
+        roster = app.get("/api/editor/roster", {"week": "2024-12-25"}, user=staff).json
+
+        assert roster["statuses"] == [
+            {
+                "id": exam.pk,
+                "registrar": juniors_db[0].pk,
+                "type": "PREEXAM",
+                "start": "2024-12-01",
+                "end": "2024-12-20",
+                "weekdays": [],
+                "shift_types": [],
+                "comment": "",
+            }
+        ]
 
     def test_published_range(self, app, staff):
         assert app.get("/api/editor/roster", {"week": "2024-12-25"}, user=staff).json["published"] is None
@@ -124,6 +149,93 @@ class TestLeaves:
     def test_unknown_leave(self, app, staff):
         app.patch_json("/api/editor/leaves/999999", {"cancelled": True}, user=staff, status=404)
 
+    def test_records_who_decided_and_when(self, app, staff, leave):
+        url = f"/api/editor/leaves/{leave.pk}"
+
+        changed = app.patch_json(url, {"reg_approved": True}, user=staff).json
+        assert changed["reg_decided_by"] == (staff.name or staff.username)
+        assert changed["reg_decided_at"] is not None
+        assert changed["dot_decided_by"] is None
+
+        changed = app.patch_json(url, {"reg_approved": None}, user=staff).json
+        assert (changed["reg_decided_by"], changed["reg_decided_at"]) == (None, None)
+
+    def test_microster(self, app, staff, leave):
+        changed = app.patch_json(f"/api/editor/leaves/{leave.pk}", {"microster": True}, user=staff).json
+        assert changed["microster"] is True
+
+    def test_decide_several_days_at_once(self, app, staff, juniors_db):
+        days = [
+            Leave.objects.create(date=date(2024, 12, d), type=LeaveType.ANNUAL, registrar=juniors_db[0])
+            for d in (16, 17, 18)
+        ]
+        other = Leave.objects.create(date=date(2024, 12, 16), type=LeaveType.ANNUAL, registrar=juniors_db[1])
+
+        body = {"ids": [leave.pk for leave in days], "reg_approved": True}
+        changed = app.patch_json("/api/editor/leaves", body, user=staff).json
+
+        assert [leave["date"] for leave in changed] == ["2024-12-16", "2024-12-17", "2024-12-18"]
+        assert all(leave["reg_approved"] and leave["reg_decided_by"] for leave in changed)
+        other.refresh_from_db()
+        assert other.reg_approved is None
+
+
+class TestChecks:
+    def test_a_shift_on_leave(self, app, staff, juniors_db):
+        Leave.objects.create(date=date(2024, 12, 17), type=LeaveType.ANNUAL, registrar=juniors_db[0])
+        Shift.objects.create(date=date(2024, 12, 17), type=ShiftType.NIGHT, registrar=juniors_db[0])
+
+        checks = app.get("/api/editor/roster", {"week": "2024-12-25"}, user=staff).json["checks"]
+
+        assert {
+            "rule": "not_on_leave",
+            "clause": None,
+            "registrar": juniors_db[0].pk,
+            "dates": ["2024-12-17"],
+            "message": "Rostered on Tue 17 Dec while on leave (annual).",
+        } in checks["violations"]
+
+    def test_declined_leave_does_not_clash(self, app, staff, juniors_db):
+        Leave.objects.create(
+            date=date(2024, 12, 17), type=LeaveType.ANNUAL, registrar=juniors_db[0], reg_approved=False
+        )
+        Shift.objects.create(date=date(2024, 12, 17), type=ShiftType.NIGHT, registrar=juniors_db[0])
+
+        checks = app.get("/api/editor/roster/checks", {"week": "2024-12-25"}, user=staff).json
+
+        assert not [v for v in checks["violations"] if v["rule"] == "not_on_leave"]
+
+    def test_contract_clause(self, app, staff, juniors_db):
+        Shift.objects.create(date=date(2024, 12, 17), type=ShiftType.LONG, registrar=juniors_db[0])
+        Shift.objects.create(date=date(2024, 12, 17), type=ShiftType.NIGHT, registrar=juniors_db[0])
+
+        checks = app.get("/api/editor/roster/checks", {"week": "2024-12-25"}, user=staff).json
+
+        [clash] = [v for v in checks["violations"] if v["rule"] == "one_duty_per_day"]
+        assert (clash["clause"], clash["dates"]) == ("STONZ 17.2.5", ["2024-12-17"])
+
+    def test_breaks_outside_the_window_are_left_out(self, app, staff, juniors_db):
+        Shift.objects.create(date=date(2024, 11, 5), type=ShiftType.LONG, registrar=juniors_db[0])
+        Shift.objects.create(date=date(2024, 11, 5), type=ShiftType.NIGHT, registrar=juniors_db[0])
+
+        checks = app.get("/api/editor/roster/checks", {"week": "2024-12-25"}, user=staff).json
+
+        assert checks["violations"] == []
+
+    def test_workload_over_26_weeks(self, app, staff, juniors_db):
+        erika, will = juniors_db[0], juniors_db[1]
+        Shift.objects.create(date=date(2024, 12, 17), type=ShiftType.LONG, registrar=erika)  # Tue: 1
+        Shift.objects.create(date=date(2024, 12, 21), type=ShiftType.LONG, registrar=erika)  # Sat: 3
+        Shift.objects.create(date=date(2024, 12, 20), type=ShiftType.NIGHT, registrar=erika)  # Fri night: 5/3
+        Shift.objects.create(date=date(2024, 9, 3), type=ShiftType.NIGHT, registrar=erika)  # Tue night: 7/4
+        Shift.objects.create(date=date(2024, 12, 18), type=ShiftType.RDO, registrar=erika)  # no load
+        Shift.objects.create(date=date(2024, 12, 19), type=ShiftType.LONG, registrar=erika, extra_duty=True)
+        Shift.objects.create(date=date(2024, 5, 1), type=ShiftType.LONG, registrar=will)  # over 26 weeks ago
+
+        checks = app.get("/api/editor/roster/checks", {"week": "2024-12-25"}, user=staff).json
+
+        assert checks["workload"] == [{"registrar": erika.pk, "load": round((1 + 3 + 5 / 3 + 7 / 4) / 10, 1)}]
+
 
 class TestPublished:
     def test_set_and_change_the_published_range(self, app, staff):
@@ -167,9 +279,29 @@ class TestPublishPreview:
 
         preview = app.get("/api/editor/published/preview", {"start": "2025-01-15", "end": "2025-02-28"}, user=staff)
 
-        assert preview.json == {"shifts_shown": 2, "leave_shown": 1, "shifts_hidden": 1, "leave_hidden": 0}
+        counts = ("shifts_shown", "leave_shown", "shifts_hidden", "leave_hidden")
+        assert [preview.json[key] for key in counts] == [2, 1, 1, 0]
 
     def test_everything_is_new_when_nothing_is_published(self, app, staff, shift, leave):
         preview = app.get("/api/editor/published/preview", {"start": "2024-12-01", "end": "2024-12-31"}, user=staff)
 
-        assert preview.json == {"shifts_shown": 1, "leave_shown": 1, "shifts_hidden": 0, "leave_hidden": 0}
+        counts = ("shifts_shown", "leave_shown", "shifts_hidden", "leave_hidden")
+        assert [preview.json[key] for key in counts] == [1, 1, 0, 0]
+
+    def test_health_of_the_newly_published_days(self, app, staff, juniors_db):
+        Settings.objects.create(publish_start_date=date(2024, 12, 1), publish_end_date=date(2024, 12, 23))
+        for day in (24, 25, 26):
+            Shift.objects.create(date=date(2024, 12, day), type=ShiftType.NIGHT, registrar=juniors_db[day - 24])
+        Shift.objects.create(date=date(2024, 12, 24), type=ShiftType.SWING, registrar=juniors_db[3])
+        Shift.objects.create(date=date(2024, 12, 25), type=ShiftType.LONG, registrar=juniors_db[3])
+        Shift.objects.create(date=date(2024, 12, 26), type=ShiftType.LONG, registrar=juniors_db[3])
+        Leave.objects.create(date=date(2024, 12, 24), type=LeaveType.ANNUAL, registrar=juniors_db[4])
+        Leave.objects.create(date=date(2024, 12, 20), type=LeaveType.ANNUAL, registrar=juniors_db[4])
+
+        preview = app.get("/api/editor/published/preview", {"start": "2024-12-01", "end": "2024-12-27"}, user=staff)
+
+        # Christmas and Boxing Day are holidays, covered by a long day; the 27th has nobody.
+        assert preview.json["gaps"] == [{"date": "2024-12-27", "needs": [["SWING"], ["NIGHT"]]}]
+        rules = {(v["rule"], v["registrar"]) for v in preview.json["violations"]}
+        assert ("no_back_to_back_long_days", juniors_db[3].pk) in rules
+        assert preview.json["leave_waiting"] == 1

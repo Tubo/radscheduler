@@ -1,9 +1,10 @@
 module Radscheduler.Types exposing
-    ( ErrorOut, FullCalendarHolidaySchema, FullCalendarLeaveSchema, FullCalendarShiftSchema, HolidayOut, LeaveOut
-    , LeavePatch, PreviewOut, PublishedRange, RegistrarOut, RosterOut, ShiftIn
-    , ShiftOut, ShiftPatch
-    , LeaveType(..), ShiftType(..), leaveTypeFromString, leaveTypeToString, leaveTypeVariants, shiftTypeFromString
-    , shiftTypeToString, shiftTypeVariants
+    ( ChecksOut, ErrorOut, FullCalendarHolidaySchema, FullCalendarLeaveSchema, FullCalendarShiftSchema, GapOut
+    , HolidayOut, LeaveOut, LeavePatch, LeavesPatch, PreviewOut, PublishedRange
+    , RegistrarOut, RosterOut, ShiftIn, ShiftOut, ShiftPatch, StatusOut
+    , ViolationOut, WorkloadOut
+    , LeaveType(..), ShiftType(..), StatusType(..), leaveTypeFromString, leaveTypeToString, leaveTypeVariants
+    , shiftTypeFromString, shiftTypeToString, shiftTypeVariants, statusTypeFromString, statusTypeToString, statusTypeVariants
     )
 
 {-|
@@ -11,21 +12,26 @@ module Radscheduler.Types exposing
 
 ## Aliases
 
-@docs ErrorOut, FullCalendarHolidaySchema, FullCalendarLeaveSchema, FullCalendarShiftSchema, HolidayOut, LeaveOut
-@docs LeavePatch, PreviewOut, PublishedRange, RegistrarOut, RosterOut, ShiftIn
-@docs ShiftOut, ShiftPatch
+@docs ChecksOut, ErrorOut, FullCalendarHolidaySchema, FullCalendarLeaveSchema, FullCalendarShiftSchema, GapOut
+@docs HolidayOut, LeaveOut, LeavePatch, LeavesPatch, PreviewOut, PublishedRange
+@docs RegistrarOut, RosterOut, ShiftIn, ShiftOut, ShiftPatch, StatusOut
+@docs ViolationOut, WorkloadOut
 
 
 ## Enum
 
-@docs LeaveType, ShiftType, leaveTypeFromString, leaveTypeToString, leaveTypeVariants, shiftTypeFromString
-@docs shiftTypeToString, shiftTypeVariants
+@docs LeaveType, ShiftType, StatusType, leaveTypeFromString, leaveTypeToString, leaveTypeVariants
+@docs shiftTypeFromString, shiftTypeToString, shiftTypeVariants, statusTypeFromString, statusTypeToString, statusTypeVariants
 
 -}
 
 import Date
 import OpenApi.Common
 import Time
+
+
+type alias ChecksOut =
+    { violations : List ViolationOut, workload : List WorkloadOut }
 
 
 type alias ErrorOut =
@@ -59,6 +65,10 @@ type alias FullCalendarShiftSchema =
     }
 
 
+type alias GapOut =
+    { date : Date.Date, needs : List (List ShiftType) }
+
+
 type alias HolidayOut =
     { date : Date.Date, name : String }
 
@@ -69,10 +79,16 @@ type alias LeaveOut =
     , created : Time.Posix
     , date : Date.Date
     , dot_approved : OpenApi.Common.Nullable Bool
+    , dot_decided_at : OpenApi.Common.Nullable Time.Posix
+    , dot_decided_by : OpenApi.Common.Nullable String
     , id : Int
     , last_edited : Time.Posix
+    , microster : Bool
     , portion : String
+    , printed : Bool
     , reg_approved : OpenApi.Common.Nullable Bool
+    , reg_decided_at : OpenApi.Common.Nullable Time.Posix
+    , reg_decided_by : OpenApi.Common.Nullable String
     , registrar : Int
     , type_ : LeaveType
     }
@@ -81,15 +97,30 @@ type alias LeaveOut =
 type alias LeavePatch =
     { cancelled : Maybe Bool
     , dot_approved : Maybe (OpenApi.Common.Nullable Bool)
+    , microster : Maybe Bool
+    , reg_approved : Maybe (OpenApi.Common.Nullable Bool)
+    }
+
+
+{-| The same change to several days of leave, e.g. approving a whole request.
+-}
+type alias LeavesPatch =
+    { cancelled : Maybe Bool
+    , dot_approved : Maybe (OpenApi.Common.Nullable Bool)
+    , ids : List Int
+    , microster : Maybe Bool
     , reg_approved : Maybe (OpenApi.Common.Nullable Bool)
     }
 
 
 type alias PreviewOut =
-    { leave_hidden : Int
+    { gaps : List GapOut
+    , leave_hidden : Int
     , leave_shown : Int
+    , leave_waiting : Int
     , shifts_hidden : Int
     , shifts_shown : Int
+    , violations : List ViolationOut
     }
 
 
@@ -98,11 +129,16 @@ type alias PublishedRange =
 
 
 type alias RegistrarOut =
-    { id : Int, username : String, year : OpenApi.Common.Nullable Int }
+    { id : Int
+    , name : String
+    , username : String
+    , year : OpenApi.Common.Nullable Int
+    }
 
 
 type alias RosterOut =
-    { dates : List Date.Date
+    { checks : ChecksOut
+    , dates : List Date.Date
     , holidays : List HolidayOut
     , leaves : List LeaveOut
     , next : Date.Date
@@ -110,6 +146,7 @@ type alias RosterOut =
     , published : OpenApi.Common.Nullable PublishedRange
     , registrars : List RegistrarOut
     , shifts : List ShiftOut
+    , statuses : List StatusOut
     , today : Date.Date
     , week : Date.Date
     }
@@ -136,6 +173,31 @@ type alias ShiftPatch =
     { extra_duty : Maybe Bool, type_ : Maybe ShiftType }
 
 
+type alias StatusOut =
+    { comment : String
+    , end : Date.Date
+    , id : Int
+    , registrar : Int
+    , shift_types : List ShiftType
+    , start : Date.Date
+    , type_ : StatusType
+    , weekdays : List Int
+    }
+
+
+type alias ViolationOut =
+    { clause : OpenApi.Common.Nullable String
+    , dates : List Date.Date
+    , message : String
+    , registrar : Int
+    , rule : String
+    }
+
+
+type alias WorkloadOut =
+    { load : Float, registrar : Int }
+
+
 type LeaveType
     = LeaveType__ANNUAL
     | LeaveType__BE
@@ -153,6 +215,15 @@ type ShiftType
     | ShiftType__RDO
     | ShiftType__SLEEP
     | ShiftType__SWING
+
+
+type StatusType
+    = StatusType__BUDDY
+    | StatusType__NA
+    | StatusType__PART
+    | StatusType__PRECALL
+    | StatusType__PREEXAM
+    | StatusType__RELIEVER
 
 
 leaveTypeFromString : String -> Maybe LeaveType
@@ -275,4 +346,62 @@ shiftTypeVariants =
     , ShiftType__RDO
     , ShiftType__SLEEP
     , ShiftType__SWING
+    ]
+
+
+statusTypeFromString : String -> Maybe StatusType
+statusTypeFromString value =
+    case value of
+        "BUDDY" ->
+            Just StatusType__BUDDY
+
+        "NA" ->
+            Just StatusType__NA
+
+        "PART" ->
+            Just StatusType__PART
+
+        "PRECALL" ->
+            Just StatusType__PRECALL
+
+        "PREEXAM" ->
+            Just StatusType__PREEXAM
+
+        "RELIEVER" ->
+            Just StatusType__RELIEVER
+
+        _ ->
+            Nothing
+
+
+statusTypeToString : StatusType -> String
+statusTypeToString value =
+    case value of
+        StatusType__BUDDY ->
+            "BUDDY"
+
+        StatusType__NA ->
+            "NA"
+
+        StatusType__PART ->
+            "PART"
+
+        StatusType__PRECALL ->
+            "PRECALL"
+
+        StatusType__PREEXAM ->
+            "PREEXAM"
+
+        StatusType__RELIEVER ->
+            "RELIEVER"
+
+
+statusTypeVariants : List StatusType
+statusTypeVariants =
+    [ StatusType__BUDDY
+    , StatusType__NA
+    , StatusType__PART
+    , StatusType__PRECALL
+    , StatusType__PREEXAM
+    , StatusType__RELIEVER
     ]

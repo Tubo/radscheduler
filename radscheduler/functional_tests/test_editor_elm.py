@@ -44,8 +44,8 @@ def real_bundles(monkeypatch):
 
 @pytest.fixture
 def roster(db):
-    erika = Registrar.objects.create(user=UserFactory(username="erika"), start=date(2022, 1, 1))
-    will = Registrar.objects.create(user=UserFactory(username="will"), start=date(2022, 1, 1))
+    erika = Registrar.objects.create(user=UserFactory(username="erika", name="Erika Lee"), start=date(2022, 1, 1))
+    will = Registrar.objects.create(user=UserFactory(username="will", name="Will Tane"), start=date(2022, 1, 1))
     shift = Shift.objects.create(date=date(2024, 12, 23), type=ShiftType.LONG, registrar=erika)
     leave = Leave.objects.create(date=date(2024, 12, 24), type=LeaveType.ANNUAL, registrar=will)
     return {"erika": erika, "will": will, "shift": shift, "leave": leave}
@@ -74,33 +74,109 @@ def menu(page: Page):
 def test_grid_shows_shifts_leave_and_cover(editor: Page, roster):
     expect(cell(editor, "2024-12-23", roster["erika"])).to_contain_text("Long")
     expect(cell(editor, "2024-12-24", roster["will"])).to_contain_text("Annual")
-    expect(cell(editor, "2024-12-24", roster["will"])).to_contain_text("waiting for approval")
+    expect(cell(editor, "2024-12-24", roster["will"])).to_have_attribute(
+        "aria-label", "Will Tane, Tue 24 Dec: Annual leave (all day), waiting for approval"
+    )
+    expect(editor.get_by_role("rowheader", name=re.compile("Erika Lee"))).to_be_visible()
     expect(editor.locator("thead")).to_contain_text("16 Dec")
     expect(editor.locator("thead")).to_contain_text("Christmas Day")
 
 
-def test_cover_follows_weekday_and_weekend_rules(editor: Page, roster):
+def test_cover_shows_only_what_is_missing(editor: Page, roster):
     Shift.objects.create(date=date(2024, 12, 24), type=ShiftType.SWING, registrar=roster["erika"])
-    Shift.objects.create(date=date(2024, 12, 28), type=ShiftType.LONG, registrar=roster["will"])
+    Shift.objects.create(date=date(2024, 12, 24), type=ShiftType.NIGHT, registrar=roster["will"])
+    Shift.objects.create(date=date(2024, 12, 25), type=ShiftType.LONG, registrar=roster["will"])
     Shift.objects.create(date=date(2024, 12, 29), type=ShiftType.SWING)  # posted, not given to anyone
     editor.reload()
 
-    # Columns start on Mon 16 Dec
-    cover = editor.locator(".re-cover td")
+    def cover(day):
+        return editor.locator(f".re-cover td:nth-child({(date(2024, 12, day) - date(2024, 12, 16)).days + 3})")
+
     # A weekday needs a swing day: Mon 23 Dec's long day doesn't count
-    expect(cover.nth(7)).to_contain_text("No swing day")
-    expect(cover.nth(8)).to_contain_text("Swing day covered")
-    # A weekend day needs a swing or a long day
-    expect(cover.nth(12)).to_contain_text("Long day covered")
-    expect(cover.nth(13)).to_contain_text("Swing day posted, not yet given to anyone")
-    expect(cover.nth(12)).to_contain_text("No night")
+    expect(cover(23).get_by_role("button", name="Mon 23 Dec needs a swing day: choose who")).to_be_visible()
+    expect(cover(24)).to_contain_text("Covered: swing day, night")
+    expect(cover(24).get_by_role("button")).to_have_count(0)
+    # Christmas is a holiday, covered like a weekend: a long day will do, but it still needs a night
+    expect(cover(25).get_by_role("button", name=re.compile("needs a swing day or long day"))).to_have_count(0)
+    expect(cover(25).get_by_role("button", name="Wed 25 Dec needs a night: choose who")).to_be_visible()
+    expect(cover(29)).to_contain_text("Swing day posted, not yet given to anyone")
+
+
+def test_fill_a_cover_gap_from_the_least_loaded(editor: Page, roster):
+    erika, will = roster["erika"], roster["will"]
+    Shift.objects.create(date=date(2024, 11, 5), type=ShiftType.NIGHT, registrar=erika)
+    editor.reload()
+
+    editor.get_by_role("button", name="Thu 19 Dec needs a night: choose who").click()
+    candidates = menu(editor).locator(".re-candidates li")
+    expect(candidates.first).to_contain_text("Will Tane")  # no load yet; Erika has a night
+    menu(editor).get_by_role("button", name="Give Will Tane the night").first.click()
+
+    expect(cell(editor, "2024-12-19", will)).to_contain_text("Night")
+    expect(cell(editor, "2024-12-19", will)).to_be_focused()
+    assert Shift.objects.get(registrar=will, date=date(2024, 12, 19)).type == ShiftType.NIGHT
+
+
+def test_rule_breaks_show_with_their_clause(editor: Page, roster):
+    erika = roster["erika"]
+    day = cell(editor, "2024-12-23", erika)  # already a long day
+    cell(editor, "2024-12-24", erika).focus()
+    editor.keyboard.press("l")
+
+    nextday = cell(editor, "2024-12-24", erika)
+    expect(nextday).to_have_class(re.compile("has-problem"))
+    expect(day).to_have_class(re.compile("has-problem"))
+    expect(nextday).to_have_attribute("aria-label", re.compile("Breaks 1 rule"))
+
+    nextday.click()
+    expect(menu(editor)).to_contain_text("Department rule")
+    expect(menu(editor)).to_contain_text("Long days on Mon 23 Dec and Tue 24 Dec back to back.")
+    editor.keyboard.press("Escape")
+
+    editor.locator("#problems-button").click()
+    expect(menu(editor).get_by_role("button", name=re.compile("Long days on Mon 23 Dec"))).to_be_visible()
+
+
+def test_undo_an_add_and_a_delete(editor: Page, roster):
+    erika = roster["erika"]
+    day = cell(editor, "2024-12-27", erika)
+    day.focus()
+    editor.keyboard.press("n")
+    expect(editor.locator(".re-toast")).to_contain_text("Added a night for Erika Lee on Fri 27 Dec")
+    editor.keyboard.press("Control+z")
+    expect(day).not_to_contain_text("Night")
+    assert not Shift.objects.filter(registrar=erika, date=date(2024, 12, 27)).exists()
+
+    long_day = cell(editor, "2024-12-23", erika)
+    long_day.focus()
+    editor.keyboard.press("Delete")
+    editor.get_by_role("button", name="Delete shift").click()
+    expect(long_day).not_to_contain_text("Long")
+    editor.locator(".re-toast").get_by_role("button", name="Undo").click()
+    expect(long_day).to_contain_text("Long")
+    assert Shift.objects.get(registrar=erika, date=date(2024, 12, 23)).type == ShiftType.LONG
+
+
+def test_a_shift_on_leave_asks_first(editor: Page, roster):
+    will = roster["will"]
+    day = cell(editor, "2024-12-24", will)
+    day.focus()
+    editor.keyboard.press("n")
+    expect(menu(editor)).to_contain_text(
+        "Will Tane is on annual leave (all day), waiting for approval. Add a night anyway?"
+    )
+    assert not Shift.objects.filter(registrar=will, date=date(2024, 12, 24)).exists()
+
+    menu(editor).get_by_role("button", name="Add night anyway").click()
+    expect(day).to_contain_text("N")
+    assert Shift.objects.get(registrar=will, date=date(2024, 12, 24)).type == ShiftType.NIGHT
 
 
 def test_add_change_and_delete_a_shift_from_the_cell_menu(editor: Page, roster):
     will = roster["will"]
     day = cell(editor, "2024-12-27", will)
     day.click()
-    expect(menu(editor).get_by_role("heading", level=2)).to_have_text("will · Fri 27 Dec")
+    expect(menu(editor).get_by_role("heading", level=2)).to_have_text("Will Tane · Fri 27 Dec")
     menu(editor).get_by_role("button", name="Add Night").click()
     expect(day).to_contain_text("Night")
     added = Shift.objects.get(registrar=will, date=date(2024, 12, 27))
@@ -112,14 +188,14 @@ def test_add_change_and_delete_a_shift_from_the_cell_menu(editor: Page, roster):
     expect(day).to_contain_text("Swing")
 
     day.click()
-    menu(editor).get_by_role("button", name="Mark as extra duty").click()
-    expect(day).to_contain_text("extra duty")
+    menu(editor).get_by_role("button", name="Extra duty").click()
+    expect(day).to_have_attribute("aria-label", re.compile(r"Swing day \(extra duty\)"))
     added.refresh_from_db()
     assert (added.type, added.extra_duty) == (ShiftType.SWING, True)
 
     day.click()
     menu(editor).get_by_role("button", name="Delete…").click()
-    expect(menu(editor)).to_contain_text("Delete will's swing day on Fri 27 Dec?")
+    expect(menu(editor)).to_contain_text("Delete Will Tane's swing day on Fri 27 Dec?")
     menu(editor).get_by_role("button", name="Delete shift").click()
     expect(day).not_to_contain_text("Swing")
     assert not Shift.objects.filter(pk=added.pk).exists()
@@ -148,15 +224,31 @@ def test_keyboard_moves_and_assigns(editor: Page, roster):
 def test_approve_leave_and_escape_back_to_the_day(editor: Page, roster):
     day = cell(editor, "2024-12-24", roster["will"])
     day.click()
-    approvals = menu(editor).get_by_role("group", name="Chief registrar approval")
-    approvals.get_by_role("button", name="Approve").click()
-    expect(approvals.get_by_role("button", name="Approve")).to_have_attribute("aria-pressed", "true")
+    approvals = menu(editor).get_by_role("group", name="Chief registrar")
+    approvals.get_by_text("Approve").click()
+    expect(approvals.get_by_role("radio", name="Approve")).to_be_checked()
+    expect(approvals).to_contain_text("by ")
+    expect(menu(editor)).to_contain_text("Chief registrar approved · waiting on the Director of Training.")
     roster["leave"].refresh_from_db()
     assert roster["leave"].reg_approved is True
+    assert roster["leave"].reg_decided_by.username == "chief"
 
     editor.keyboard.press("Escape")
     expect(menu(editor)).to_have_count(0)
     expect(day).to_be_focused()
+
+
+def test_approve_a_whole_leave_request(editor: Page, roster):
+    will = roster["will"]
+    roster["leave"].delete()
+    days = [Leave.objects.create(date=date(2024, 12, d), type=LeaveType.ANNUAL, registrar=will) for d in (19, 20, 23)]
+    editor.reload()
+
+    cell(editor, "2024-12-20", will).click()
+    expect(menu(editor)).to_contain_text("Apply to the whole request: 3 days, Thu 19 – Mon 23 Dec")
+    menu(editor).get_by_role("group", name="Director of Training").get_by_text("Approve").click()
+    expect(cell(editor, "2024-12-23", will)).to_have_attribute("aria-label", re.compile("approved by one"))
+    assert all(Leave.objects.get(pk=leave.pk).dot_approved for leave in days)
 
 
 def test_filters_hide_shift_types(editor: Page, roster):
@@ -200,3 +292,74 @@ def test_publish_with_a_preview(editor: Page, roster):
     expect(editor.get_by_text("Published to Tue 31 Dec")).to_be_visible()
     settings = Settings.objects.get()
     assert (settings.publish_start_date, settings.publish_end_date) == (date(2024, 12, 1), date(2024, 12, 31))
+
+
+def test_select_a_block_and_set_it_in_one_go(editor: Page, roster):
+    erika = roster["erika"]
+    cell(editor, "2024-12-16", erika).focus()
+    editor.keyboard.press("Shift+ArrowRight")
+    editor.keyboard.press("Shift+ArrowRight")
+    editor.keyboard.press("Shift+ArrowRight")
+    expect(editor.locator(".re-selection")).to_contain_text("4 cells selected")
+    expect(cell(editor, "2024-12-18", erika)).to_have_attribute("aria-selected", "true")
+
+    editor.keyboard.press("n")
+    expect(editor.locator(".re-toast")).to_contain_text("Set 4 cells to night")
+    for day in ("16", "17", "18", "19"):
+        expect(cell(editor, f"2024-12-{day}", erika)).to_contain_text("Night")
+
+    editor.keyboard.press("Control+z")
+    for day in ("16", "17", "18", "19"):
+        expect(cell(editor, f"2024-12-{day}", erika)).not_to_contain_text("Night")
+    assert not Shift.objects.filter(registrar=erika, date__range=[date(2024, 12, 16), date(2024, 12, 19)]).exists()
+
+
+def test_copy_a_pattern_to_another_registrar(editor: Page, roster):
+    erika, will = roster["erika"], roster["will"]
+    Shift.objects.create(date=date(2024, 12, 16), type=ShiftType.NIGHT, registrar=erika)
+    Shift.objects.create(date=date(2024, 12, 17), type=ShiftType.NIGHT, registrar=erika)
+    Shift.objects.create(date=date(2024, 12, 18), type=ShiftType.RDO, registrar=erika)
+    editor.reload()
+
+    cell(editor, "2024-12-16", erika).focus()
+    editor.keyboard.press("Shift+End")
+    editor.keyboard.press("Control+c")
+    expect(editor.locator(".re-toast")).to_contain_text("Copied 21 days")
+
+    cell(editor, "2024-12-30", will).click(modifiers=["Shift"])  # moves the cursor without opening the menu
+    editor.keyboard.press("Escape")
+    cell(editor, "2024-12-30", will).focus()
+    editor.keyboard.press("Control+v")
+    expect(editor.locator(".re-toast")).to_contain_text("Pasted 3 shifts")
+    expect(cell(editor, "2024-12-31", will)).to_contain_text("Night")
+    expect(cell(editor, "2025-01-01", will)).to_contain_text("RDO")
+
+
+def test_delete_a_selected_block(editor: Page, roster):
+    erika = roster["erika"]
+    for day in (16, 17):
+        Shift.objects.create(date=date(2024, 12, day), type=ShiftType.NIGHT, registrar=erika)
+    editor.reload()
+
+    cell(editor, "2024-12-16", erika).focus()
+    editor.keyboard.press("Shift+ArrowRight")
+    editor.keyboard.press("Delete")
+    expect(menu(editor)).to_contain_text("Delete 2 shifts in the selected cells?")
+    menu(editor).get_by_role("button", name="Delete 2 shifts").click()
+    expect(cell(editor, "2024-12-17", erika)).not_to_contain_text("Night")
+    assert not Shift.objects.filter(registrar=erika).exclude(date=date(2024, 12, 23)).exists()
+
+
+def test_step_through_problems(editor: Page, roster):
+    erika = roster["erika"]
+    Shift.objects.create(date=date(2024, 12, 24), type=ShiftType.LONG, registrar=erika)
+    editor.reload()
+
+    # Problems go day by day, each day's cover gaps before the rows.
+    cell(editor, "2024-12-22", erika).focus()
+    editor.keyboard.press("]")
+    expect(editor.locator("#cover-2024-12-23")).to_be_focused()
+    editor.keyboard.press("]")
+    expect(cell(editor, "2024-12-23", erika)).to_be_focused()  # back-to-back long days, marked from the first
+    editor.keyboard.press("[")
+    expect(editor.locator("#cover-2024-12-23")).to_be_focused()

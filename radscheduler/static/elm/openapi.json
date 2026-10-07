@@ -1,6 +1,30 @@
 {
   "components": {
     "schemas": {
+      "ChecksOut": {
+        "properties": {
+          "violations": {
+            "items": {
+              "$ref": "#/components/schemas/ViolationOut"
+            },
+            "title": "Violations",
+            "type": "array"
+          },
+          "workload": {
+            "items": {
+              "$ref": "#/components/schemas/WorkloadOut"
+            },
+            "title": "Workload",
+            "type": "array"
+          }
+        },
+        "required": [
+          "violations",
+          "workload"
+        ],
+        "title": "ChecksOut",
+        "type": "object"
+      },
       "ErrorOut": {
         "properties": {
           "detail": {
@@ -127,6 +151,31 @@
         "title": "FullCalendarShiftSchema",
         "type": "object"
       },
+      "GapOut": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "needs": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/ShiftType"
+              },
+              "type": "array"
+            },
+            "title": "Needs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "date",
+          "needs"
+        ],
+        "title": "GapOut",
+        "type": "object"
+      },
       "HolidayOut": {
         "properties": {
           "date": {
@@ -177,6 +226,29 @@
             ],
             "title": "Dot Approved"
           },
+          "dot_decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dot Decided At"
+          },
+          "dot_decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dot Decided By"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -186,9 +258,17 @@
             "title": "Last Edited",
             "type": "string"
           },
+          "microster": {
+            "title": "Microster",
+            "type": "boolean"
+          },
           "portion": {
             "title": "Portion",
             "type": "string"
+          },
+          "printed": {
+            "title": "Printed",
+            "type": "boolean"
           },
           "reg_approved": {
             "anyOf": [
@@ -200,6 +280,29 @@
               }
             ],
             "title": "Reg Approved"
+          },
+          "reg_decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reg Decided At"
+          },
+          "reg_decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reg Decided By"
           },
           "registrar": {
             "title": "Registrar",
@@ -218,6 +321,12 @@
           "comment",
           "reg_approved",
           "dot_approved",
+          "reg_decided_by",
+          "reg_decided_at",
+          "dot_decided_by",
+          "dot_decided_at",
+          "printed",
+          "microster",
           "cancelled",
           "created",
           "last_edited"
@@ -241,6 +350,10 @@
               }
             ],
             "title": "Dot Approved"
+          },
+          "microster": {
+            "title": "Microster",
+            "type": "boolean"
           },
           "reg_approved": {
             "anyOf": [
@@ -270,14 +383,72 @@
         "title": "LeaveType",
         "type": "string"
       },
+      "LeavesPatch": {
+        "description": "The same change to several days of leave, e.g. approving a whole request.",
+        "properties": {
+          "cancelled": {
+            "title": "Cancelled",
+            "type": "boolean"
+          },
+          "dot_approved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dot Approved"
+          },
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Ids",
+            "type": "array"
+          },
+          "microster": {
+            "title": "Microster",
+            "type": "boolean"
+          },
+          "reg_approved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reg Approved"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "LeavesPatch",
+        "type": "object"
+      },
       "PreviewOut": {
         "properties": {
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/GapOut"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
           "leave_hidden": {
             "title": "Leave Hidden",
             "type": "integer"
           },
           "leave_shown": {
             "title": "Leave Shown",
+            "type": "integer"
+          },
+          "leave_waiting": {
+            "title": "Leave Waiting",
             "type": "integer"
           },
           "shifts_hidden": {
@@ -287,13 +458,23 @@
           "shifts_shown": {
             "title": "Shifts Shown",
             "type": "integer"
+          },
+          "violations": {
+            "items": {
+              "$ref": "#/components/schemas/ViolationOut"
+            },
+            "title": "Violations",
+            "type": "array"
           }
         },
         "required": [
           "shifts_shown",
           "leave_shown",
           "shifts_hidden",
-          "leave_hidden"
+          "leave_hidden",
+          "gaps",
+          "violations",
+          "leave_waiting"
         ],
         "title": "PreviewOut",
         "type": "object"
@@ -324,6 +505,10 @@
             "title": "Id",
             "type": "integer"
           },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
           "username": {
             "title": "Username",
             "type": "string"
@@ -343,6 +528,7 @@
         "required": [
           "id",
           "username",
+          "name",
           "year"
         ],
         "title": "RegistrarOut",
@@ -350,6 +536,9 @@
       },
       "RosterOut": {
         "properties": {
+          "checks": {
+            "$ref": "#/components/schemas/ChecksOut"
+          },
           "dates": {
             "items": {
               "format": "date",
@@ -406,6 +595,13 @@
             "title": "Shifts",
             "type": "array"
           },
+          "statuses": {
+            "items": {
+              "$ref": "#/components/schemas/StatusOut"
+            },
+            "title": "Statuses",
+            "type": "array"
+          },
           "today": {
             "format": "date",
             "title": "Today",
@@ -426,8 +622,10 @@
           "registrars",
           "shifts",
           "leaves",
+          "statuses",
           "holidays",
-          "published"
+          "published",
+          "checks"
         ],
         "title": "RosterOut",
         "type": "object"
@@ -528,6 +726,135 @@
         ],
         "title": "ShiftType",
         "type": "string"
+      },
+      "StatusOut": {
+        "properties": {
+          "comment": {
+            "title": "Comment",
+            "type": "string"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "registrar": {
+            "title": "Registrar",
+            "type": "integer"
+          },
+          "shift_types": {
+            "items": {
+              "$ref": "#/components/schemas/ShiftType"
+            },
+            "title": "Shift Types",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/StatusType"
+          },
+          "weekdays": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Weekdays",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "registrar",
+          "type",
+          "start",
+          "end",
+          "weekdays",
+          "shift_types",
+          "comment"
+        ],
+        "title": "StatusOut",
+        "type": "object"
+      },
+      "StatusType": {
+        "enum": [
+          "PRECALL",
+          "RELIEVER",
+          "PART",
+          "PREEXAM",
+          "BUDDY",
+          "NA"
+        ],
+        "title": "StatusType",
+        "type": "string"
+      },
+      "ViolationOut": {
+        "properties": {
+          "clause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clause"
+          },
+          "dates": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Dates",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "registrar": {
+            "title": "Registrar",
+            "type": "integer"
+          },
+          "rule": {
+            "title": "Rule",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule",
+          "clause",
+          "registrar",
+          "dates",
+          "message"
+        ],
+        "title": "ViolationOut",
+        "type": "object"
+      },
+      "WorkloadOut": {
+        "properties": {
+          "load": {
+            "title": "Load",
+            "type": "number"
+          },
+          "registrar": {
+            "title": "Registrar",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "registrar",
+          "load"
+        ],
+        "title": "WorkloadOut",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -675,6 +1002,44 @@
           }
         },
         "summary": "Shift Events"
+      }
+    },
+    "/api/editor/leaves": {
+      "patch": {
+        "operationId": "changeLeaves",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeavesPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LeaveOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Change Leaves"
       }
     },
     "/api/editor/leaves/{leave_id}": {
@@ -843,6 +1208,42 @@
           }
         ],
         "summary": "Get Roster"
+      }
+    },
+    "/api/editor/roster/checks": {
+      "get": {
+        "description": "The rule breaks and workload alone, for refreshing them after a change.",
+        "operationId": "getChecks",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "week",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Week",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecksOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Get Checks"
       }
     },
     "/api/editor/shifts": {

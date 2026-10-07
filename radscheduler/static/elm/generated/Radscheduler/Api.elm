@@ -1,6 +1,6 @@
 module Radscheduler.Api exposing
-    ( addShift, changeLeave, changeShift, deleteShift, getRoster, holidayEvents
-    , leaveEvents, previewPublished, setPublished, shiftEvents
+    ( addShift, changeLeave, changeLeaves, changeShift, deleteShift, getChecks
+    , getRoster, holidayEvents, leaveEvents, previewPublished, setPublished, shiftEvents
     )
 
 {-|
@@ -8,8 +8,8 @@ module Radscheduler.Api exposing
 
 ## Operations
 
-@docs addShift, changeLeave, changeShift, deleteShift, getRoster, holidayEvents
-@docs leaveEvents, previewPublished, setPublished, shiftEvents
+@docs addShift, changeLeave, changeLeaves, changeShift, deleteShift, getChecks
+@docs getRoster, holidayEvents, leaveEvents, previewPublished, setPublished, shiftEvents
 
 -}
 
@@ -86,6 +86,33 @@ changeLeave config =
         }
 
 
+{-| Change Leaves
+-}
+changeLeaves :
+    { authorization : { x_csrftoken : String }
+    , toMsg :
+        Result (OpenApi.Common.Error e String) (List Radscheduler.Types.LeaveOut)
+        -> msg
+    , body : Radscheduler.Types.LeavesPatch
+    }
+    -> Cmd msg
+changeLeaves config =
+    Http.request
+        { url = Url.Builder.absolute [ "api", "editor", "leaves" ] []
+        , method = "PATCH"
+        , headers =
+            [ Http.header "X-CSRFToken" config.authorization.x_csrftoken ]
+        , expect =
+            OpenApi.Common.expectJsonCustom
+                (Dict.fromList [])
+                (Json.Decode.list Radscheduler.Json.decodeLeaveOut)
+                config.toMsg
+        , body = Http.jsonBody (Radscheduler.Json.encodeLeavesPatch config.body)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
 {-| Change Shift
 -}
 changeShift :
@@ -148,6 +175,49 @@ deleteShift config =
             OpenApi.Common.expectJsonCustom
                 (Dict.fromList [])
                 Radscheduler.Json.decodeShiftOut
+                config.toMsg
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| Get Checks
+
+The rule breaks and workload alone, for refreshing them after a change.
+
+-}
+getChecks :
+    { authorization : { x_csrftoken : String }
+    , toMsg :
+        Result (OpenApi.Common.Error e String) Radscheduler.Types.ChecksOut
+        -> msg
+    , params : { week : Date.Date }
+    }
+    -> Cmd msg
+getChecks config =
+    Http.request
+        { url =
+            Url.Builder.absolute
+                [ "api", "editor", "roster", "checks" ]
+                (List.filterMap
+                    Basics.identity
+                    [ Just
+                        (Url.Builder.string
+                            "week"
+                            (OpenApi.Common.toParamStringStringDate
+                                config.params.week
+                            )
+                        )
+                    ]
+                )
+        , method = "GET"
+        , headers =
+            [ Http.header "X-CSRFToken" config.authorization.x_csrftoken ]
+        , expect =
+            OpenApi.Common.expectJsonCustom
+                (Dict.fromList [])
+                Radscheduler.Json.decodeChecksOut
                 config.toMsg
         , body = Http.emptyBody
         , timeout = Nothing

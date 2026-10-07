@@ -11,6 +11,7 @@ from django.db.models import functions as fn
 from django.db.models.query import QuerySet
 from django.http import FileResponse
 from django.http.request import HttpRequest
+from django.utils import timezone
 from rangefilter.filters import DateRangeFilterBuilder
 
 from radscheduler.core.models import Leave, Settings, Shift, Status
@@ -242,6 +243,14 @@ class LeaveAdmin(admin.ModelAdmin):
     )
     list_select_related = ("registrar", "registrar__user")
     actions = ["mark_reg_approved", "mark_dot_approved", "mark_printed", "print_selected"]
+    readonly_fields = ("reg_decided_by", "reg_decided_at", "dot_decided_by", "dot_decided_at")
+
+    def save_model(self, request, obj, form, change):
+        # Covers the change form and the editable columns in the list, so every decision records who made it.
+        for approver in ("reg", "dot"):
+            if f"{approver}_approved" in form.changed_data:
+                obj.decide(approver, getattr(obj, f"{approver}_approved"), request.user)
+        super().save_model(request, obj, form, change)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
         queryset = super().get_queryset(request)
@@ -309,11 +318,11 @@ class LeaveAdmin(admin.ModelAdmin):
 
     @admin.action(description="Mark selected leaves as registrar approved")
     def mark_reg_approved(self, request, queryset):
-        queryset.update(reg_approved=True)
+        queryset.update(reg_approved=True, reg_decided_by=request.user, reg_decided_at=timezone.now())
 
     @admin.action(description="Mark selected leaves as DOT approved")
     def mark_dot_approved(self, request, queryset):
-        queryset.update(dot_approved=True)
+        queryset.update(dot_approved=True, dot_decided_by=request.user, dot_decided_at=timezone.now())
 
     @admin.action(description="Mark selected leaves as printed")
     def mark_printed(self, request, queryset):
