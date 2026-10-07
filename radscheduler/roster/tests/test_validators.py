@@ -1,16 +1,13 @@
 from datetime import date
 
-from radscheduler.roster.assigner import AutoAssigner
-from radscheduler.roster.generator import generate_shifts
-from radscheduler.roster.models import Leave, LeaveType, Shift, ShiftType, Weekday
-from radscheduler.roster.rosters import SingleOnCallRoster
+from radscheduler.roster.models import Leave, LeaveType, Shift, ShiftType
 from radscheduler.roster.utils import generate_leaves
 from radscheduler.roster.validators import StonzMecaValidator
 
 
 def test_not_on_leave(juniors):
     leaves = generate_leaves(date(2023, 1, 2), date(2023, 1, 22), LeaveType.ANNUAL, juniors[0])
-    shifts = generate_shifts(SingleOnCallRoster, date(2023, 1, 2), date(2023, 1, 22))
+    shifts = [Shift(date=date(2023, 1, 2), type=ShiftType.LONG)]
     validator = StonzMecaValidator(shift=shifts[0], registrar=juniors[0], shifts=shifts, leaves=leaves)
     assert validator.validate_not_on_leave() is False
 
@@ -34,26 +31,27 @@ def test_not_on_leave(juniors):
     assert validator.validate_not_on_leave() is False
 
 
-def test_no_weekend_shift_abutting_leaves(juniors, seniors):
-    # TODO: simplify this test
-    # Add no_abutting_weekend test
-    leaves = generate_leaves(date(2023, 1, 2), date(2024, 1, 2), LeaveType.ANNUAL, juniors[0])
-    mon_leaves = list(filter(lambda leave: leave.date.weekday() == Weekday.MON, leaves))
-    fri_leaves = list(filter(lambda leave: leave.date.weekday() == Weekday.FRI, leaves))
+def test_no_weekend_shift_abutting_leaves(juniors):
+    def is_valid(shift, leave_date):
+        leave = Leave(date=leave_date, type=LeaveType.ANNUAL, registrar=juniors[0])
+        validator = StonzMecaValidator(shift=shift, registrar=juniors[0], shifts=[], leaves=[leave])
+        return validator.validate_no_weekend_abutting_leave()
 
-    # If taking leaves every Monday or Friday, then no weekend day or night shifts
-    for day, leaves in [("Mon", mon_leaves), ("Fri", fri_leaves)]:
-        shifts = generate_shifts(SingleOnCallRoster, date(2023, 1, 2), date(2023, 12, 31))
-        assigner = AutoAssigner(registrars=juniors + seniors, unfilled=shifts, leaves=leaves)
+    monday, friday = date(2023, 1, 9), date(2023, 1, 13)
 
-        result = assigner.fill_roster()
-        j1_shifts = list(filter(lambda s: s.registrar == juniors[0], result))
+    # Leave on Monday 9 Jan rules out the weekend before it, including Friday night
+    assert is_valid(Shift(date=date(2023, 1, 7), type=ShiftType.LONG), monday) is False
+    assert is_valid(Shift(date=date(2023, 1, 8), type=ShiftType.LONG), monday) is False
+    assert is_valid(Shift(date=date(2023, 1, 6), type=ShiftType.NIGHT), monday) is False
+    # Friday long day is not part of the weekend
+    assert is_valid(Shift(date=date(2023, 1, 6), type=ShiftType.LONG), monday) is True
 
-        weekend_shifts = list(filter(lambda s: (s.type == ShiftType.LONG) and s.is_weekend, j1_shifts))
-        assert list(weekend_shifts) == [], f"No weekend day shifts abutting {day} leave"
+    # Leave on Friday 13 Jan rules out the weekend after it
+    assert is_valid(Shift(date=date(2023, 1, 14), type=ShiftType.LONG), friday) is False
+    assert is_valid(Shift(date=date(2023, 1, 15), type=ShiftType.LONG), friday) is False
 
-        weekend_nights_assignments = list(filter(lambda s: (s.type == ShiftType.NIGHT) and s.is_weekend, j1_shifts))
-        assert weekend_nights_assignments == [], f"No weekend night shifts abutting {day} leave"
+    # A weekend not next to the leave is fine
+    assert is_valid(Shift(date=date(2023, 1, 21), type=ShiftType.LONG), monday) is True
 
 
 def test_no_gt_2_long_days_in_7(juniors):
@@ -82,7 +80,3 @@ def test_one_shift_per_day(juniors):
     for shift in shifts:
         validator = StonzMecaValidator(shift=shift, registrar=juniors[0], shifts=shifts)
         assert validator.validate_one_shift_per_day() is False
-
-
-def test_validate_roster():
-    pass

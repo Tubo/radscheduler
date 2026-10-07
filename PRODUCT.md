@@ -36,11 +36,11 @@ A spreadsheet can store a roster. It cannot tell you that a roster breaks the ST
 - no weekends next to leave
 - notice periods for lieu days
 
-It also balances on-call load by fatigue weighting, so fairness can be measured rather than argued about. Registrar status (pre-oncall, reliever, part time, pre-exam, buddy required, not available) and leave feed straight into who is eligible for a shift.
+It also weights on-call load, so fairness can be measured rather than argued about. Registrar status (pre-oncall, reliever, part time, pre-exam, buddy required, not available) and leave feed straight into who is eligible for a shift.
 
 ## Operating Context
 
-- **Shift types:** Long day (8am–10pm), Night (10pm–8am), Swing (12pm–10pm), Help desk (8am–12pm), RDO, Sleep. Weekend variants of long days and nights carry different fatigue weights. Public holidays become stat days, using the Canterbury holiday calendar.
+- **Shift types:** Long day (8am–10pm), Night (10pm–8am), Swing (12pm–10pm), Help desk (8am–12pm), RDO, Sleep. Weekend variants of long days and nights carry different workload weights. Public holidays become stat days, using the Canterbury holiday calendar.
 - **Leave types:** Annual, Education, Conference, Lieu day, Sick, Parental, Bereavement. A leave can cover all day, AM or PM. It moves through registrar request, chief registrar approval, DoT approval, printed, entered into Microster, and can be cancelled.
 - **Paper forms:** the hospital still needs signed PDF leave forms (usual leave, and MEL/conference leave). Radscheduler fills them in from leave records.
 - **Microster:** the hospital's official rostering system. Leave is copied into it manually, and Radscheduler tracks whether that has happened.
@@ -57,7 +57,7 @@ It also balances on-call load by fatigue weighting, so fairness can be measured 
   - Deployed on Fly.io.
   - Not a SPA: the baseline must work without JavaScript.
 - **Roles:** registrar (signed in), and staff (`is_staff`) for roster and extra-duty editing. Accounts use django-allauth.
-- **Roster editor:** a dense grid of dates by registrars, with shift and leave cells, a workload/fatigue breakdown, and settings shown in a modal layer.
+- **Roster editor:** a dense grid of dates by registrars, with shift and leave cells, a workload breakdown, and settings shown in a modal layer.
 - **Undecided:** how department-specific configuration (supervisor, holidays, shift definitions) will work once multiple departments are supported.
 
 ## Brand Commitments
@@ -76,7 +76,7 @@ It also balances on-call load by fatigue weighting, so fairness can be measured 
 
 1. **The roster is the source of truth.** What the app shows must match what the hospital will pay and staff. If data is unpublished, stale or pending, say so explicitly; never imply it is final.
 2. **The contract is enforced, not remembered.** Rule violations show up at the point of editing, with the clause behind them, rather than leaving people to recall the rules.
-3. **Fairness is visible.** Workload and fatigue are measurable and shown openly, so allocation decisions can be defended.
+3. **Fairness is visible.** Workload is measurable and shown openly, so allocation decisions can be defended.
 4. **Fit each role's moment.** Registrars get fast answers on a phone in under a minute. The chief registrar gets density and speed on a wide screen.
 5. **Generalise carefully.** Build for one department's reality without hardcoding it, because other departments are a likely next audience.
 

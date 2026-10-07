@@ -1,8 +1,6 @@
 from datetime import date, timedelta
 
-from pandas import DataFrame
-
-from radscheduler.roster.models import DetailedShiftType, Leave, LeaveType, Registrar, Shift, ShiftType, Weekday
+from radscheduler.roster.models import Leave, LeaveType, Registrar, Weekday
 
 
 def daterange(start_date, end_date):
@@ -19,83 +17,3 @@ def generate_leaves(start: date, end: date, type: LeaveType, registrar: Registra
         if day.weekday() not in [Weekday.SAT, Weekday.SUN]:
             result.append(Leave(date=day, type=type, registrar=registrar))
     return result
-
-
-def filter_shifts(shifts, date, shift_type) -> [Shift]:
-    return [shift for shift in shifts if (shift.date == date) and (shift.type == shift_type)]
-
-
-def find_registrar_from_shifts(shifts, date, shift_type, series=1) -> Registrar:
-    filtered = filter_shifts(shifts, date, shift_type)
-    result = [shift.registrar for shift in filtered if shift.series == series]
-    if len(result) == 1:
-        return result[0]
-    return None
-
-
-def sort_shifts_by_date(shifts: list[Shift]) -> list[Shift]:
-    """
-    Sort assignments by date from earliest to latest.
-    """
-    return sorted(shifts, key=lambda shift: shift.date)
-
-
-def filter_shifts_by_date(shifts: list[Shift], date: date) -> list[Shift]:
-    """
-    Filter shifts by date
-    """
-    return list(filter(lambda s: s.date == date, shifts))
-
-
-def filter_shifts_by_types(shifts: list[Shift], shift_types: list[ShiftType]) -> list[Shift]:
-    """
-    Filter shifts by type
-    """
-    return list(filter(lambda s: s.type in shift_types, shifts))
-
-
-def filter_shifts_by_date_range(shifts, start, end):
-    return list(filter(lambda s: start <= s.date <= end, shifts))
-
-
-def registrar_shift_distance(registrar, shifts):
-    dates = [
-        shift.date
-        for shift in shifts
-        if (shift.registrar == registrar) and (DetailedShiftType.from_shift(shift) == DetailedShiftType.LONG)
-    ]
-    return average_date_distance(dates)
-
-
-def average_date_distance(date_list):
-    # Sort the list of dates
-    sorted_dates = sorted(date_list)
-
-    # Calculate differences between consecutive dates
-    differences = [(sorted_dates[i] - sorted_dates[i - 1]).days for i in range(1, len(sorted_dates))]
-
-    # Calculate the average difference
-    avg_difference = sum(differences) / len(differences) if differences else 0
-
-    return avg_difference
-
-
-def shift_to_dict(shift):
-    return {
-        "date": shift.date,
-        "type": DetailedShiftType.from_shift(shift).label,
-        "username": shift.registrar.username if shift.registrar else None,
-    }
-
-
-def shifts_to_dataframe(shifts):
-    """
-    Convert a list of shifts to a dataframe.
-    """
-    shifts = [shift_to_dict(shift) for shift in shifts]
-    return DataFrame(shifts)
-
-
-def shift_breakdown(df: DataFrame):
-    pivot_table = df.pivot_table(index=["username"], columns=["type"], values="date", aggfunc="count")
-    return pivot_table

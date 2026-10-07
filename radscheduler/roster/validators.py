@@ -1,6 +1,6 @@
-from datetime import date, timedelta
+from datetime import timedelta
 
-from radscheduler.roster.models import DetailedShiftType, Shift, ShiftType, StatusType, Weekday
+from radscheduler.roster.models import DetailedShiftType, ShiftType, Weekday
 from radscheduler.roster.rosters import SingleOnCallRoster
 
 
@@ -185,56 +185,3 @@ class StonzMecaValidator:
         - within 12 months
         """
         return True
-
-
-def group_shifts_by_date(shifts: list[Shift]) -> dict[date, list[Shift]]:
-    """
-    Group shifts by date
-    """
-    results = {}
-    for shift in shifts:
-        if shift.date not in results:
-            results[shift.date] = []
-        results[shift.date].append(shift)
-    return results
-
-
-def validate_roster(shifts, leaves, statuses):
-    registrars = {shift.registrar.username for shift in shifts if shift.registrar is not None}
-
-    for registrar in registrars:
-        shifts = [shift for shift in filter(lambda s: s.registrar == registrar, shifts)]
-        leaves = list(filter(lambda leave: leave.registrar == registrar, leaves))
-        statuses = list(filter(lambda s: s.registrar == registrar, statuses))
-
-        groupby_date = group_shifts_by_date(shifts)
-        for _day, shifts in groupby_date.items():
-            if len(shifts) > 1:
-                assert False, f"{registrar} cannot work more than 1 shift per day: {shifts}"
-
-        working_days = [shift.date for shift in shifts if shift.type in [ShiftType.LONG, ShiftType.NIGHT]]
-        for i in range(len(working_days) - 7):
-            if len(working_days[i : i + 7]) >= 2:
-                assert False, f"{registrar} cannot work more than 2 shifts in 7 days"
-
-        for leave in leaves:
-            shifts = list(filter(lambda s: s.date == leave.date, shifts))
-            assert shifts == [], f"{registrar} cannot work {shifts} while on leave {leave}"
-
-        for leave in leaves:
-            if leave.date.weekday() == Weekday.MON:
-                shifts = list(
-                    filter(
-                        lambda a: date - timedelta(2) <= a.shift.date <= date - timedelta(1),
-                        shifts,
-                    )
-                )
-                assert shifts == [], f"{registrar} cannot work on weekends abutting leave"
-
-        for status in statuses:
-            if status.type == StatusType.BUDDY:
-                continue
-            shifts = filter(lambda shift: status.start <= shift.date <= status.end, shifts)
-            assert list(shifts) == [], f"{registrar} cannot work while on {status}"
-
-    return True

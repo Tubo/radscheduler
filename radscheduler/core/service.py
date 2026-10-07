@@ -1,18 +1,12 @@
 from collections import defaultdict
 from datetime import date, timedelta
 
-from django.db import IntegrityError
 from django.db.models import F, OuterRef, Q, Subquery
 from django.db.models.functions import Now
 
-from radscheduler.core import domain_mapper
-from radscheduler.core.models import Leave, Registrar, Shift, Status
-from radscheduler.roster import SingleOnCallRoster
-from radscheduler.roster.assigner import AutoAssigner
-from radscheduler.roster.generator import generate_shifts
+from radscheduler.core.models import Leave, Registrar, Shift
 from radscheduler.roster.models import DetailedShiftType
-from radscheduler.roster.utils import daterange, filter_shifts_by_date_range
-from radscheduler.roster.validators import validate_roster
+from radscheduler.roster.utils import daterange
 
 
 def calculate_3_week_range(someday: date):
@@ -111,38 +105,6 @@ def active_and_available_registrars(day):
     return registrars
 
 
-def fill_shifts(start: date, end: date):
-    registrars = Registrar.objects.exclude(finish__lte=start).select_related("user")
-    registrars = list(map(domain_mapper.registrar_from_db, registrars))
-
-    leaves = Leave.objects.filter(date__range=[start, end]).select_related("registrar", "registrar__user")
-    leaves = list(map(domain_mapper.leave_from_db, leaves))
-
-    statuses = (
-        Status.objects.filter(Q(end__gte=start) | Q(start__lte=end))
-        .annotate(username=F("registrar__user__username"))
-        .select_related("registrar", "registrar__user")
-    )
-    statuses = list(map(domain_mapper.status_from_db, statuses))
-
-    shifts_in_db = Shift.objects.filter(date__range=[start, end]).select_related("registrar", "registrar__user")
-    filled = list(map(domain_mapper.shift_from_db, shifts_in_db))
-    unfilled = generate_shifts(SingleOnCallRoster, start, end, filled)
-
-    assigner = AutoAssigner(
-        registrars=registrars,
-        unfilled=unfilled,
-        filled=filled,
-        leaves=leaves,
-        statuses=statuses,
-    )
-    result = assigner.fill_roster()
-    assert validate_roster(result, leaves, statuses)
-
-    result = filter_shifts_by_date_range(result, start, end)
-    return result
-
-
 def shifts_breakdown(shifts):
     result = {}
     for shift in shifts:
@@ -172,25 +134,3 @@ def shifts_breakdown(shifts):
         breakdown["WORKLOAD"] = round(workload, 1)
     result = {k: v for k, v in sorted(result.items(), key=lambda item: item[1]["WORKLOAD"], reverse=True)}
     return result
-
-
-def generate_buddy_shifts(start, end):
-    pass
-
-
-def save_assignments(assignments):
-    pass
-
-
-def assign_reg_to_shift(shift, registrar):
-    pass
-
-
-def swap_shifts(shift, registrar):
-    try:
-        shift.registrar = registrar
-        shift.save()
-    except IntegrityError:
-        conflict_shift = Shift.objects.get(  # noqa: F841 - swap_shifts is unfinished
-            date=shift.date, type=shift.type, registrar=registrar
-        )

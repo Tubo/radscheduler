@@ -23,14 +23,14 @@ Tests need Postgres. Run `pytest` inside `devenv shell` while `devenv up` is run
 ```bash
 pytest                                                    # whole suite
 pytest radscheduler/core/tests/test_views.py::TestLeaves::test_form
-pytest -k fatigue
+pytest -k validators
 pytest --create-db                                        # after migration changes (addopts has --reuse-db)
 ```
 
 - Settings: `config.settings.test` (set in `pyproject.toml`). Fixtures live in `radscheduler/conftest.py`. The `app` fixture is django-webtest with CSRF checks off.
 - Test settings use `FakeWebpackLoader`, so pages render **without JS bundles**. The Playwright tests in `radscheduler/functional_tests/` don't exercise Unpoly or Alpine either. To check real Unpoly behaviour, run `pnpm build` and override `WEBPACK_LOADER` to the real loader in a test.
 - Use `freezegun` for anything date-dependent.
-- Three tests are `xfail(strict=True)` because of known business-logic issues. Remove the marker once the logic is fixed.
+- One test is `xfail(strict=True)` because of a known business-logic issue (no `(date, registrar)` uniqueness on `Shift`). Remove the marker once the logic is fixed.
 - `.github/copilot-instructions.md` asks for tests first: a Playwright E2E test for new user flows, django-webtest for views and forms, then unit tests for service/domain logic.
 
 ## Lint, format, build
@@ -46,12 +46,12 @@ pytest --create-db                                        # after migration chan
 ### Layers
 
 - **Views** (`radscheduler/core/views/`): thin, function-based views only. They parse input, call services and render templates.
-- **Services** (`radscheduler/core/service.py`): ORM queries and straightforward business rules, such as building the editor's event grid, workload breakdowns and `fill_shifts`.
-- **Domain** (`radscheduler/roster/`): the scheduling engine, kept free of the ORM. It uses dataclasses (`roster/models.py`), which share names with the ORM models: `Registrar`, `Shift`, `Leave` and `Status`. Only use this layer for complex algorithms; simple rules belong in services.
-  - `generator.generate_shifts`: creates the unfilled shifts for a date range from a roster definition (`rosters.SingleOnCallRoster`, which also defines fatigue weights).
-  - `assigner.AutoAssigner`: fills shifts, choosing registrars by fatigue with a recency bias.
-  - `validators.StonzMecaValidator` / `validate_roster`: the contract rules.
-  - `canterbury_holidays`: the stat-day calendar.
+- **Services** (`radscheduler/core/service.py`): ORM queries and straightforward business rules, such as building the editor's event grid and workload breakdowns.
+- **Domain** (`radscheduler/roster/`): roster rules, kept free of the ORM. It uses dataclasses (`roster/models.py`), which share names with the ORM models: `Registrar`, `Shift`, `Leave` and `Status`. Only use this layer for complex algorithms; simple rules belong in services.
+  - `validators.StonzMecaValidator`: the contract rules, checked one shift at a time. Not yet wired into the editor.
+  - `rosters.SingleOnCallRoster.is_start_of_set`: where night, weekend and RDO blocks begin.
+  - `canterbury.canterbury_holidays`: the stat-day calendar.
+  - There is no automatic roster generation; the chief registrar builds rosters by hand in the editor.
 - **`core/domain_mapper.py`**: converts between ORM and domain objects using Django Ninja `ModelSchema` and `dacite`. Watch for the duplicate names when importing; the code uses `import ... as orm` and `as domain`.
 - **API**: Django Ninja (`core/api/`). It feeds FullCalendar on the registrar calendar.
 - **iCal feeds**: `core/ical.py`, cached for 15 minutes in `config/urls.py`.
