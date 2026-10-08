@@ -3,6 +3,13 @@
     "schemas": {
       "ChecksOut": {
         "properties": {
+          "variances": {
+            "items": {
+              "$ref": "#/components/schemas/ViolationOut"
+            },
+            "title": "Variances",
+            "type": "array"
+          },
           "violations": {
             "items": {
               "$ref": "#/components/schemas/ViolationOut"
@@ -20,6 +27,7 @@
         },
         "required": [
           "violations",
+          "variances",
           "workload"
         ],
         "title": "ChecksOut",
@@ -839,6 +847,17 @@
           "rule": {
             "title": "Rule",
             "type": "string"
+          },
+          "variance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variance"
           }
         },
         "required": [
@@ -846,7 +865,8 @@
           "clause",
           "registrar",
           "dates",
-          "message"
+          "message",
+          "variance"
         ],
         "title": "ViolationOut",
         "type": "object"

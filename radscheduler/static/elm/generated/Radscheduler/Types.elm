@@ -31,7 +31,10 @@ import Time
 
 
 type alias ChecksOut =
-    { violations : List ViolationOut, workload : List WorkloadOut }
+    { variances : List ViolationOut
+    , violations : List ViolationOut
+    , workload : List WorkloadOut
+    }
 
 
 type alias ErrorOut =
@@ -192,6 +195,7 @@ type alias ViolationOut =
     , message : String
     , registrar : Int
     , rule : String
+    , variance : OpenApi.Common.Nullable String
     }
 
 

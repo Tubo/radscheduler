@@ -8,6 +8,10 @@ the registrar works between rostered shifts, which the roster doesn't store.
 
 A contract is a tuple of rules with their parameters and clause numbers bound. Most
 differences between agreements are numbers, so a new contract reuses the same rules.
+
+A variance is the department's agreement, with the registrars and their union, to go past a
+contract limit under set conditions. A violation a variance covers is still reported, marked
+with the variance's reason, so the editor can show it apart from real breaks.
 """
 
 from collections.abc import Callable, Iterable, Mapping
@@ -19,6 +23,7 @@ from itertools import groupby, pairwise
 from radscheduler.roster.canterbury import canterbury_holidays
 from radscheduler.roster.models import (
     MIDDAY,
+    SHIFT_HOURS,
     Contract,
     Leave,
     LeaveType,
@@ -42,6 +47,7 @@ class Violation:
     registrar: Registrar = field(compare=False)
     dates: tuple[date, ...]
     message: str
+    variance: str | None = None  # why the department accepts it, when a variance covers it
 
 
 @dataclass
@@ -90,10 +96,12 @@ def weekend_of(shift: Shift) -> date | None:
     """
     The Saturday of the weekend a duty falls in, or None if it is a weekday duty.
 
-    A weekend starts when Friday's day duty finishes, so a Friday night is part of it (STONZ 21.4.2, RDA 16.5.2).
+    A weekend starts when Friday's day duty finishes, long days included, so a Friday night is part of it
+    (STONZ 21.4.2, RDA 16.5.2).
     """
     saturday = shift.date + timedelta(days=Weekday.SAT - shift.date.weekday())
-    weekend_start = datetime.combine(saturday - timedelta(days=1), time(22))
+    long_day_start, long_day_length = SHIFT_HOURS[ShiftType.LONG]
+    weekend_start = datetime.combine(saturday - timedelta(days=1), long_day_start) + long_day_length
     weekend_end = datetime.combine(saturday + timedelta(days=2), time(0))
     if shift.start < weekend_end and shift.end > weekend_start:
         return saturday
@@ -425,6 +433,58 @@ DEPARTMENT: tuple[Rule, ...] = (
 )
 
 
+# Department variances
+
+
+@dataclass(frozen=True)
+class Variance:
+    """
+    An agreed exception to one contract rule. It covers the rule `rule` bound with the parameters in `where`
+    (so it can single out the 7-day hours limit from the 14-day one), for violations `applies` accepts.
+    """
+
+    rule: Callable[..., Iterable[Violation]]
+    where: Mapping[str, object]
+    applies: Callable[[Timeline, Violation], bool]
+    reason: str
+
+    def covers(self, rule: Rule) -> bool:
+        return (
+            isinstance(rule, partial)
+            and rule.func is self.rule
+            and all(rule.keywords.get(key) == value for key, value in self.where.items())
+        )
+
+
+def weekend_then_rdos(t: Timeline, violation: Violation, *, limit: float, rdos: int) -> bool:
+    """
+    The extra hours come from working a weekend: no 7 days in the violation go over `limit` hours, and each
+    weekend worked in it is followed by `rdos` RDOs in the week after. RDOs moved into the weekend's own week
+    still count; RDOs put off to a later week don't.
+    """
+    days = set(violation.dates)
+    if any(sum(d.hours for d in t.duties if first <= d.date < first + timedelta(days=7)) > limit for first in days):
+        return False
+    weekends = sorted({saturday for shift in t.rostered if shift.date in days and (saturday := weekend_of(shift))})
+    if not weekends:
+        return False
+    monday = weekends[0] - timedelta(days=Weekday.SAT)
+    sunday_after = weekends[-1] + timedelta(days=8)
+    given = [shift for shift in t.shifts if shift.type == ShiftType.RDO and monday <= shift.date <= sunday_after]
+    return len(given) >= rdos * len(weekends)
+
+
+WEEKEND_RDOS = (
+    "The department, registrars and union agreed to work a full week next to a weekend and take both RDOs "
+    "in the following week, instead of one RDO in each week."
+)
+
+# A week of 9-hour ordinary days and a weekend of 15-hour long days is 75 hours.
+DEPARTMENT_VARIANCES: tuple[Variance, ...] = (
+    Variance(max_hours, {"days": 7}, partial(weekend_then_rdos, limit=75, rdos=2), WEEKEND_RDOS),
+)
+
+
 def infer_ordinary_days(t: Timeline, start: date, end: date) -> list[OrdinaryDay]:
     """
     The weekdays from `start` to `end` the registrar works ordinary hours: employed, not a public holiday,
@@ -475,10 +535,11 @@ def check_roster(
     statuses: Iterable[Status] = (),
     rules: Iterable[Rule] | None = None,
     period: tuple[date, date] | None = None,
+    variances: Iterable[Variance] = DEPARTMENT_VARIANCES,
 ) -> list[Violation]:
     """
     Check every registrar on the roster against their contract's rules and the department's, or against
-    `rules` when given. Unassigned shifts are ignored.
+    `rules` when given. Unassigned shifts are ignored. Violations a variance covers are marked with its reason.
 
     Ordinary days are filled in from `period` (first and last day, inclusive), which defaults to the dates the
     shifts cover. Pass shifts from a week or two either side of the period, so limits that look back or ahead
@@ -503,8 +564,16 @@ def check_roster(
 
     if rules is not None:
         rules = list(rules)
+    variances = list(variances)
+
+    def vary(timeline: Timeline, rule: Rule, violation: Violation) -> Violation:
+        for variance in variances:
+            if variance.covers(rule) and variance.applies(timeline, violation):
+                return replace(violation, variance=variance.reason)
+        return violation
+
     return [
-        violation
+        vary(timeline, rule, violation)
         for timeline in timelines.values()
         for rule in (rules if rules is not None else CONTRACTS[timeline.registrar.contract] + DEPARTMENT)
         for violation in rule(timeline)

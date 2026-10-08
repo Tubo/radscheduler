@@ -40,7 +40,8 @@ import Time
 encodeChecksOut : Radscheduler.Types.ChecksOut -> Json.Encode.Value
 encodeChecksOut rec =
     Json.Encode.object
-        [ ( "violations", Json.Encode.list encodeViolationOut rec.violations )
+        [ ( "variances", Json.Encode.list encodeViolationOut rec.variances )
+        , ( "violations", Json.Encode.list encodeViolationOut rec.violations )
         , ( "workload", Json.Encode.list encodeWorkloadOut rec.workload )
         ]
 
@@ -457,6 +458,14 @@ encodeViolationOut rec =
         , ( "message", Json.Encode.string rec.message )
         , ( "registrar", Json.Encode.int rec.registrar )
         , ( "rule", Json.Encode.string rec.rule )
+        , ( "variance"
+          , case rec.variance of
+                OpenApi.Common.Null ->
+                    Json.Encode.null
+
+                OpenApi.Common.Present value ->
+                    Json.Encode.string value
+          )
         ]
 
 
@@ -471,9 +480,17 @@ encodeWorkloadOut rec =
 decodeChecksOut : Json.Decode.Decoder Radscheduler.Types.ChecksOut
 decodeChecksOut =
     Json.Decode.succeed
-        (\violations workload ->
-            { violations = violations, workload = workload }
+        (\variances violations workload ->
+            { variances = variances
+            , violations = violations
+            , workload = workload
+            }
         )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "variances"
+                (Json.Decode.list decodeViolationOut)
+            )
         |> OpenApi.Common.jsonDecodeAndMap
             (Json.Decode.field
                 "violations"
@@ -1087,12 +1104,13 @@ decodeStatusType =
 decodeViolationOut : Json.Decode.Decoder Radscheduler.Types.ViolationOut
 decodeViolationOut =
     Json.Decode.succeed
-        (\clause dates message registrar rule ->
+        (\clause dates message registrar rule variance ->
             { clause = clause
             , dates = dates
             , message = message
             , registrar = registrar
             , rule = rule
+            , variance = variance
             }
         )
         |> OpenApi.Common.jsonDecodeAndMap
@@ -1117,6 +1135,17 @@ decodeViolationOut =
             (Json.Decode.field "registrar" Json.Decode.int)
         |> OpenApi.Common.jsonDecodeAndMap
             (Json.Decode.field "rule" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "variance"
+                (Json.Decode.oneOf
+                    [ Json.Decode.map
+                        OpenApi.Common.Present
+                        Json.Decode.string
+                    , Json.Decode.null OpenApi.Common.Null
+                    ]
+                )
+            )
 
 
 decodeWorkloadOut : Json.Decode.Decoder Radscheduler.Types.WorkloadOut

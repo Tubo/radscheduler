@@ -2460,10 +2460,12 @@ isPublished window date =
             False
 
 
-{-| The checks, indexed for drawing the grid: rule breaks by cell, statuses by registrar, load by registrar.
+{-| The checks, indexed for drawing the grid: rule breaks and agreed variances by cell, statuses by registrar,
+load by registrar.
 -}
 type alias Checks =
     { violations : Dict Cell (List T.ViolationOut)
+    , variances : Dict Cell (List T.ViolationOut)
     , statuses : Dict Int (List T.StatusOut)
     , load : Dict Int Float
     , maxLoad : Float
@@ -2505,10 +2507,11 @@ checksOf roster =
         add key item =
             Dict.update key (\items -> Just (Maybe.withDefault [] items ++ [ item ]))
 
-        violations =
-            List.foldl (\v acc -> List.foldl (\c inner -> add c v inner) acc (markedCells roster v)) Dict.empty roster.checks.violations
+        byCell =
+            List.foldl (\v acc -> List.foldl (\c inner -> add c v inner) acc (markedCells roster v)) Dict.empty
     in
-    { violations = violations
+    { violations = byCell roster.checks.violations
+    , variances = byCell roster.checks.variances
     , statuses = List.foldl (\s -> add s.registrar s) Dict.empty roster.statuses
     , load = Dict.fromList (List.map (\w -> ( w.registrar, w.load )) roster.checks.workload)
     , maxLoad = List.foldl (.load >> Basics.max) 0 roster.checks.workload
@@ -3630,6 +3633,9 @@ viewCellMenu model roster (( registrar, d ) as cell) confirm =
         violations =
             Dict.get cell checks.violations |> Maybe.withDefault []
 
+        variances =
+            Dict.get cell checks.variances |> Maybe.withDefault []
+
         statuses =
             statusesOn checks registrar date
     in
@@ -3650,6 +3656,7 @@ viewCellMenu model roster (( registrar, d ) as cell) confirm =
                     ]
                 ]
            )
+        ++ List.map viewVariance variances
         ++ List.map (\s -> p [ class "re-note" ] [ i [ class "bi bi-person-badge me-1", attribute "aria-hidden" "true" ] [], text (statusSentence model s) ]) statuses
         ++ (if not (isPublished window date) then
                 [ p [ class "re-note" ] [ i [ class "bi bi-eye-slash me-1", attribute "aria-hidden" "true" ] [], text "Not published yet: registrars can't see this day." ] ]
@@ -3667,6 +3674,23 @@ viewViolation violation =
     li []
         [ span [ class "re-clause" ] [ text (nullable violation.clause |> Maybe.withDefault "Department rule") ]
         , text violation.message
+        ]
+
+
+{-| A contract limit the department has agreed to go past: not a problem, but said so it isn't a surprise.
+-}
+viewVariance : T.ViolationOut -> Html Msg
+viewVariance violation =
+    p [ class "re-note" ]
+        [ i [ class "bi bi-check2-circle me-1", attribute "aria-hidden" "true" ] []
+        , text
+            ("Agreed variance from "
+                ++ (nullable violation.clause |> Maybe.withDefault "a department rule")
+                ++ ". "
+                ++ violation.message
+                ++ " "
+                ++ (nullable violation.variance |> Maybe.withDefault "")
+            )
         ]
 
 

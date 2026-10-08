@@ -42,13 +42,14 @@ class ShiftType(models.TextChoices):
 
 
 # Start time and length of each shift type that is a period of duty. A rostered shift takes the place
-# of that day's ordinary hours, so a weekday long day is the ordinary 8am-5pm followed by 5pm-10pm.
+# of that day's ordinary hours, so a weekday long day is the ordinary 8am-5pm followed by on call until 11pm;
+# a weekend long day is on call from 8am to 11pm.
 # The exception is help desk: a morning, after which the registrar carries on with ordinary work.
 # RDO and SLEEP are days off, so they have no hours.
 SHIFT_HOURS = {
     ShiftType.SWING: (time(12), timedelta(hours=10)),
     ShiftType.HELP: (time(8), timedelta(hours=4)),
-    ShiftType.LONG: (time(8), timedelta(hours=14)),
+    ShiftType.LONG: (time(8), timedelta(hours=15)),
     ShiftType.NIGHT: (time(22), timedelta(hours=10)),
 }
 
@@ -59,8 +60,8 @@ ORDINARY_START, MIDDAY, ORDINARY_END = time(8), time(12), time(17)
 
 
 class DetailedShiftType(models.TextChoices):
-    LONG = "LONG", "Long day"  # from 8am to 10pm
-    WEEKEND = "WEEKEND", "Weekend long day"  # from 8am to 10pm
+    LONG = "LONG", "Long day"  # from 8am to 11pm
+    WEEKEND = "WEEKEND", "Weekend long day"  # from 8am to 11pm
     NIGHT = "NIGHT", "Night"  # from 10pm to 8am
     WEEKEND_NIGHT = "WEEKEND_NIGHT", "Weekend night"  # from 10pm to 8am
     RDO = "RDO", "RDO"

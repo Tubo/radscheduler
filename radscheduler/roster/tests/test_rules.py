@@ -25,7 +25,16 @@ from radscheduler.roster.models import (
     StatusType,
     Weekday,
 )
-from radscheduler.roster.rules import RDA, STONZ, Timeline, check_roster, infer_ordinary_days, max_hours, weekend_of
+from radscheduler.roster.rules import (
+    DEPARTMENT_VARIANCES,
+    RDA,
+    STONZ,
+    Timeline,
+    check_roster,
+    infer_ordinary_days,
+    max_hours,
+    weekend_of,
+)
 
 ALICE = Registrar("alice", senior=False, start=date(2022, 1, 1))
 BOB = Registrar("bob", senior=False, start=date(2022, 1, 1))
@@ -78,11 +87,12 @@ def test_shift_hours():
     assert night.start == datetime(2023, 1, 2, 22)
     assert night.end == datetime(2023, 1, 3, 8)
     assert night.hours == 10
-    assert Shift(date=jan(2), type=ShiftType.LONG).hours == 14
+    assert Shift(date=jan(2), type=ShiftType.LONG).hours == 15
     assert not Shift(date=jan(2), type=ShiftType.RDO).is_duty
 
 
 def test_weekend_starts_after_friday_day_duty():
+    # A Friday long day runs to 11pm, after a night starts, but is still Friday's day duty
     assert weekend_of(longs(6)[0]) is None
     assert weekend_of(nights(6)[0]) == jan(7)
     assert weekend_of(longs(7)[0]) == jan(7)
@@ -124,26 +134,57 @@ def test_half_day_leave_shortens_the_ordinary_day():
 
 
 def test_weekday_long_day_includes_the_ordinary_day():
-    # Ordinary 8-5 then on until 10pm is one 14-hour duty, not an ordinary day plus a long day
+    # Ordinary 8-5 then on call until 11pm is one 15-hour duty, not an ordinary day plus a long day
     roster = longs(11)
     period = (jan(9), jan(13))
     assert found("one_duty_per_day", roster, period=period) == []
     assert found("min_break_between_duties", roster, period=period) == []
-    assert roster[0].hours == 14
+    assert roster[0].hours == 15
 
-    # Four ordinary days and the long day: 4 x 9 + 14 = 50 hours
-    [violation] = check_roster(roster, period=period, rules=[partial(max_hours, limit=49, days=7, clause="test")])
-    assert "Up to 50 hours" in violation.message
+    # Four ordinary days and the long day: 4 x 9 + 15 = 51 hours
+    [violation] = check_roster(roster, period=period, rules=[partial(max_hours, limit=50, days=7, clause="test")])
+    assert "Up to 51 hours" in violation.message
 
 
 def test_max_hours_stonz_17_1_2():
     period = (jan(2), jan(22))
-    # A week of ordinary days and a weekend of long days is 73 hours
+    # A week of ordinary days and a weekend of long days is 75 hours
     [violation] = found("max_hours", longs(14, 15), period=period, clause="STONZ 17.1.2")
-    assert "Up to 73 hours" in violation.message
+    assert "Up to 75 hours" in violation.message
+    assert violation.variance is None
 
-    # An RDO on the Friday before and the Monday after brings every 7 days to 64 hours or less
+    # An RDO on the Friday before and the Monday after brings every 7 days to 66 hours or less
     assert found("max_hours", longs(14, 15) + rdos(13, 16), period=period, clause="STONZ 17.1.2") == []
+
+
+def test_weekend_rdos_variance():
+    period = (jan(2), jan(29))
+    weekend = longs(14, 15)
+
+    # Both RDOs in the week after the weekend: the 75 hours are agreed
+    [violation] = found("max_hours", weekend + rdos(19, 20), period=period, clause="STONZ 17.1.2")
+    assert "Up to 75 hours" in violation.message
+    assert "both RDOs in the following week" in violation.variance
+
+    # Moved into the weekend's own week still counts; RDA registrars are covered too
+    [violation] = found("max_hours", weekend + rdos(9, 19), period=period, clause="STONZ 17.1.2")
+    assert violation.variance
+    [violation] = found("max_hours", retag(weekend + rdos(19, 20), RAY), period=period, clause="RDA 13.4.1")
+    assert violation.variance
+
+    # Not when an RDO is missing or put off to a later week, or the week holds more than the weekend
+    for roster in (
+        weekend + rdos(19),
+        weekend + rdos(19, 26),
+        weekend + rdos(19, 20) + shifts(ShiftType.SWING, 11),
+    ):
+        [violation] = found("max_hours", roster, period=period, clause="STONZ 17.1.2")
+        assert violation.variance is None
+
+    # Only the 7-day limit is varied, not the 14-day one that RDA gives the same clause number
+    [variance] = DEPARTMENT_VARIANCES
+    assert variance.covers(STONZ[0]) and variance.covers(RDA[0])
+    assert not variance.covers(STONZ[1]) and not variance.covers(RDA[1])
 
 
 def test_max_hours_stonz_17_1_4():
@@ -209,7 +250,7 @@ def test_min_break_between_duties_stonz_17_4_2():
     # Two duties on one day are reported by one_duty_per_day only
     assert found("min_break_between_duties", longs(4) + shifts(ShiftType.SWING, 4)) == []
 
-    # A long day ends at 10pm, so 10 hours off before the next one
+    # A long day ends at 11pm, so 9 hours off before the next one
     assert found("min_break_between_duties", longs(2) + shifts(ShiftType.LONG, 3)) == []
 
 

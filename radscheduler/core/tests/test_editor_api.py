@@ -193,6 +193,7 @@ class TestChecks:
             "registrar": juniors_db[0].pk,
             "dates": ["2024-12-17"],
             "message": "Rostered on Tue 17 Dec while on leave (annual).",
+            "variance": None,
         } in checks["violations"]
 
     def test_declined_leave_does_not_clash(self, app, staff, juniors_db):
@@ -213,6 +214,21 @@ class TestChecks:
 
         [clash] = [v for v in checks["violations"] if v["rule"] == "one_duty_per_day"]
         assert (clash["clause"], clash["dates"]) == ("STONZ 17.2.5", ["2024-12-17"])
+
+    def test_an_agreed_variance_is_kept_apart(self, app, staff, juniors_db):
+        # A weekend of long days after a full week, with both RDOs the week after
+        for day, shift_type in ((14, ShiftType.LONG), (15, ShiftType.LONG), (19, ShiftType.RDO), (20, ShiftType.RDO)):
+            Shift.objects.create(date=date(2024, 12, day), type=shift_type, registrar=juniors_db[0])
+
+        checks = app.get("/api/editor/roster/checks", {"week": "2024-12-11"}, user=staff).json
+
+        assert checks["violations"] == []
+        [variance] = checks["variances"]
+        assert (variance["clause"], variance["variance"] is not None) == ("STONZ 17.1.2", True)
+
+        Settings.objects.create(publish_start_date=date(2024, 11, 1), publish_end_date=date(2024, 11, 30))
+        preview = app.get("/api/editor/published/preview", {"start": "2024-11-01", "end": "2024-12-31"}, user=staff)
+        assert preview.json["violations"] == []
 
     def test_breaks_outside_the_window_are_left_out(self, app, staff, juniors_db):
         Shift.objects.create(date=date(2024, 11, 5), type=ShiftType.LONG, registrar=juniors_db[0])

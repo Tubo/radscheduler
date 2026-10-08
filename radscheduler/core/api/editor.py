@@ -55,6 +55,8 @@ class ViolationOut(Schema):
     registrar: int = Field(..., alias="registrar.id")
     dates: list[date]
     message: str
+    # Why the department accepts this break, for one an agreed variance covers.
+    variance: str | None
 
 
 class WorkloadOut(Schema):
@@ -64,6 +66,8 @@ class WorkloadOut(Schema):
 
 class ChecksOut(Schema):
     violations: list[ViolationOut]
+    # Breaks of the contract that a department variance covers, shown apart from the rest.
+    variances: list[ViolationOut]
     workload: list[WorkloadOut]
 
 

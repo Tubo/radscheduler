@@ -126,10 +126,18 @@ def editor_roster(week: date) -> dict:
 
 
 def editor_checks(week: date) -> dict:
-    """The roster's rule breaks in the editor's three weeks around `week`, and everyone's workload up to its end."""
+    """
+    The roster's rule breaks in the editor's three weeks around `week`, apart from those a department variance
+    covers, and everyone's workload up to its end.
+    """
     start, end = calculate_3_week_range(week)
     last = end - timedelta(days=1)
-    return {"violations": roster_violations(start, last), "workload": workload(last)}
+    violations = roster_violations(start, last)
+    return {
+        "violations": [v for v in violations if not v.variance],
+        "variances": [v for v in violations if v.variance],
+        "workload": workload(last),
+    }
 
 
 def roster_violations(start: date, end: date) -> list[rules.Violation]:
@@ -219,9 +227,9 @@ def publish_preview(start: date, end: date) -> dict:
     """
     How many shifts and leave registrars would start or stop seeing if the published range became
     start..end, and the state of the days they would start seeing: cover gaps, rule breaks and leave still
-    waiting for a decision. Only assigned shifts and leave that isn't cancelled count. Gaps and rule breaks are
-    checked for the first `PREVIEW_CHECK_DAYS` of those days; `checked_to` names the last one checked when the
-    rest weren't.
+    waiting for a decision. Only assigned shifts and leave that isn't cancelled count, and rule breaks a
+    department variance covers don't. Gaps and rule breaks are checked for the first `PREVIEW_CHECK_DAYS` of
+    those days; `checked_to` names the last one checked when the rest weren't.
     """
     settings = Settings.objects.first()
     new = Q(date__range=[start, end])
@@ -237,7 +245,7 @@ def publish_preview(start: date, end: date) -> dict:
         "shifts_hidden": shifts.filter(current & ~new).count(),
         "leave_hidden": leaves.filter(current & ~new).count(),
         "gaps": cover_gaps(shown),
-        "violations": [v for v in violations if checked.intersection(v.dates)],
+        "violations": [v for v in violations if not v.variance and checked.intersection(v.dates)],
         "leave_waiting": leaves.filter(new & ~current)
         .exclude(reg_approved=False)
         .exclude(dot_approved=False)
