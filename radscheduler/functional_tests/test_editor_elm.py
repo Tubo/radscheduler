@@ -202,7 +202,7 @@ def test_add_change_and_delete_a_shift_from_the_cell_menu(editor: Page, roster):
     expect(day).to_contain_text("Swing")
 
     day.click()
-    menu(editor).get_by_role("button", name="Extra duty").click()
+    menu(editor).get_by_role("switch", name="Extra duty").click()
     expect(day).to_have_attribute("aria-label", re.compile(r"Swing day \(extra duty\)"))
     added.refresh_from_db()
     assert (added.type, added.extra_duty) == (ShiftType.SWING, True)
@@ -290,7 +290,7 @@ def test_week_navigation_and_back_button(editor: Page):
 def test_publish_with_a_preview(editor: Page, roster):
     editor.get_by_role("button", name="Publish…").click()
     dialog = editor.get_by_role("dialog", name="Publish the roster")
-    expect(dialog.get_by_label("From")).to_be_focused()
+    expect(dialog.get_by_role("heading", name="Publish the roster")).to_be_focused()
 
     dialog.get_by_label("From").fill("2024-12-31")
     dialog.get_by_label("To").fill("2024-12-01")
@@ -382,3 +382,21 @@ def test_step_through_problems(editor: Page, roster):
     expect(cell(editor, "2024-12-23", erika)).to_be_focused()  # back-to-back long days, marked from the first
     editor.keyboard.press("[")
     expect(editor.locator("#cover-2024-12-23")).to_be_focused()
+
+
+def test_drag_to_scroll(editor: Page, roster):
+    scroller = editor.locator(".re-scroll")
+    start = cell(editor, "2024-12-20", roster["erika"]).bounding_box()
+    x, y = start["x"] + start["width"] / 2, start["y"] + start["height"] / 2
+
+    editor.mouse.move(x, y)
+    editor.mouse.down()
+    editor.mouse.move(x - 150, y, steps=5)
+    editor.mouse.move(x - 300, y, steps=5)
+    editor.mouse.up()
+
+    assert scroller.evaluate("el => el.scrollLeft") == pytest.approx(300, abs=2)
+    expect(menu(editor)).to_have_count(0)  # the drag's click doesn't open the day
+
+    cell(editor, "2024-12-23", roster["erika"]).click()  # a plain click still does
+    expect(menu(editor)).to_be_visible()

@@ -1,5 +1,5 @@
-// The Elm roster editor. Bootstrap (from the vendors bundle) supplies buttons, forms and the modal; this
-// file owns the grid, its colour system and the popover layer. Every text colour pair below meets WCAG AA,
+// The Elm roster editor. Bootstrap (from the vendors bundle) supplies the reset, form checks and utilities;
+// this file owns the grid, its colour system, the editor's buttons and the popover layer. Every text colour pair below meets WCAG AA,
 // and every mark that carries meaning on its own (markers, edges, outlines) meets 3:1 against its ground.
 
 .roster-editor {
@@ -81,6 +81,243 @@
     outline: 2px solid var(--re-accent);
     outline-offset: 1px;
   }
+
+  // Switches and checkboxes take the editor's blue, not Bootstrap's.
+  .form-check-input:checked {
+    border-color: var(--re-accent);
+    background-color: var(--re-accent);
+  }
+
+  .form-check-input:focus {
+    border-color: var(--re-accent-soft);
+    box-shadow: none;
+  }
+}
+
+// Buttons. One size everywhere, four roles, all on the editor's own colours:
+// primary (the one action a surface exists for), neutral, danger (solid when it confirms, outline when it
+// asks), and quiet (a text action that reveals more). Type tiles build on neutral.
+
+.re-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--re-line-strong);
+  border-radius: 0.375rem;
+  background: #fff;
+  color: var(--re-ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out;
+
+  &:hover {
+    border-color: var(--re-muted);
+    background: var(--re-panel);
+  }
+
+  &:active {
+    background: var(--re-line);
+  }
+
+  &:disabled {
+    border-color: var(--re-line);
+    background: #fff;
+    color: var(--re-muted);
+    cursor: default;
+  }
+
+  .bi {
+    font-size: 0.875em;
+  }
+}
+
+.re-btn--primary {
+  border-color: var(--re-accent);
+  background: var(--re-accent);
+  color: #fff;
+
+  &:hover {
+    border-color: #0a4bab;
+    background: #0a4bab;
+  }
+
+  &:active {
+    background: #083d8c;
+  }
+}
+
+.re-btn--danger {
+  border-color: var(--re-bad);
+  background: var(--re-bad);
+  color: #fff;
+
+  &:hover {
+    border-color: #8f1c13;
+    background: #8f1c13;
+  }
+
+  &:active {
+    background: #741610;
+  }
+}
+
+.re-btn--danger-quiet {
+  border-color: var(--re-bad-line);
+  color: var(--re-bad);
+
+  &:hover {
+    border-color: var(--re-bad);
+    background: var(--re-bad-bg);
+  }
+}
+
+.re-btn--quiet {
+  min-height: 0;
+  padding: 0.125rem 0;
+  border-color: transparent;
+  background: none;
+  color: var(--re-accent);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+
+  &:hover {
+    border-color: transparent;
+    background: none;
+    color: #0a4bab;
+  }
+
+  &:active {
+    background: none;
+  }
+}
+
+.re-input {
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--re-line-strong);
+  border-radius: 0.375rem;
+  background: #fff;
+  color: var(--re-ink);
+  font-size: 0.875rem;
+  line-height: 1.25;
+
+  &:hover {
+    border-color: var(--re-muted);
+  }
+}
+
+// Buttons and a field joined into one control, as in the week picker.
+.re-joined {
+  display: inline-flex;
+
+  > * {
+    border-radius: 0;
+  }
+
+  > * + * {
+    margin-left: -1px;
+  }
+
+  > :first-child {
+    border-radius: 0.375rem 0 0 0.375rem;
+  }
+
+  > :last-child {
+    border-radius: 0 0.375rem 0.375rem 0;
+  }
+
+  > :focus-visible {
+    z-index: 1;
+  }
+}
+
+// A decision as a row of joined radio buttons. The chosen one is filled with its state's colour and keeps
+// its icon, so it never rests on colour alone; "Waiting" stays neutral because nothing has been decided.
+.re-seg {
+  display: inline-flex;
+}
+
+.re-seg-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--re-line-strong);
+  background: #fff;
+  color: var(--re-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  user-select: none;
+
+  & + .btn-check + & {
+    margin-left: -1px;
+  }
+
+  .re-seg > .btn-check:first-child + & {
+    border-radius: 0.375rem 0 0 0.375rem;
+  }
+
+  &:last-child {
+    border-radius: 0 0.375rem 0.375rem 0;
+  }
+
+  .bi {
+    font-size: 0.875em;
+  }
+
+  &:hover {
+    background: var(--re-panel);
+    color: var(--re-ink);
+  }
+
+  .btn-check:checked + & {
+    position: relative;
+    z-index: 1;
+    font-weight: 600;
+  }
+
+  .btn-check:checked + &.is-approve {
+    border-color: var(--re-ok);
+    background: var(--re-ok);
+    color: #fff;
+  }
+
+  .btn-check:checked + &.is-wait {
+    border-color: var(--re-muted);
+    background: var(--re-off-bg);
+    color: var(--re-ink);
+  }
+
+  .btn-check:checked + &.is-decline {
+    border-color: var(--re-bad);
+    background: var(--re-bad);
+    color: #fff;
+  }
+
+  .btn-check:focus-visible + & {
+    z-index: 2;
+    outline: 2px solid var(--re-accent);
+    outline-offset: 1px;
+  }
+
+  .btn-check:disabled + & {
+    cursor: default;
+    opacity: 0.6;
+  }
 }
 
 // Toolbar
@@ -113,7 +350,7 @@
 }
 
 .re-week-input {
-  max-width: 9.5rem;
+  width: 9.5rem;
 }
 
 .re-window,
@@ -147,22 +384,16 @@
 }
 
 .re-problems-button {
-  border: 1px solid var(--re-line-strong);
   color: var(--re-ok);
 
-  &:hover {
-    background: var(--re-panel);
-    color: var(--re-ok);
-  }
-
   &.has-problems {
-    border-color: var(--re-bad);
+    border-color: var(--re-bad-line);
     color: var(--re-bad);
     font-weight: 600;
 
     &:hover {
+      border-color: var(--re-bad);
       background: var(--re-bad-bg);
-      color: var(--re-bad);
     }
   }
 }
@@ -190,6 +421,17 @@
     opacity: 0.55;
     pointer-events: none;
   }
+
+  // Being dragged to scroll (see editor_elm.js).
+  &.is-panning {
+    cursor: grabbing;
+    user-select: none;
+
+    .re-cell,
+    .re-needs {
+      cursor: grabbing;
+    }
+  }
 }
 
 .re-empty {
@@ -209,7 +451,7 @@
     width: var(--re-col);
     min-width: var(--re-col);
     max-width: var(--re-col);
-    padding: 2px 3px;
+    padding: 2px;
     border-right: 1px solid var(--re-line);
     border-bottom: 1px solid var(--re-line);
   }
@@ -574,17 +816,22 @@ tfoot .re-corner {
   }
 }
 
-// One line of chips, so a busy day never makes its row taller.
+// A day holding more than one thing stacks them, one to a line, and its row grows to fit, so every chip
+// keeps its full name. Rows without a busy day stay one chip tall.
 .re-cellbox {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 2px;
   min-width: 0;
-  overflow: hidden;
 
   .re-chip {
-    flex: 0 1 auto;
     min-width: 0;
     margin: 1px 0 0;
+  }
+
+  .re-chip + .re-chip {
+    margin-top: 0;
   }
 }
 
@@ -616,7 +863,7 @@ tfoot .re-corner {
 
 .re-flag {
   position: absolute;
-  top: 2px;
+  top: 4px;
   right: 2px;
   color: var(--re-bad);
   font-size: 0.6875rem;
@@ -630,7 +877,7 @@ tfoot .re-corner {
   max-width: 100%;
   vertical-align: top;
   margin: 1px 1px 0 0;
-  padding: 3px 5px;
+  padding: 3px 4px;
   overflow: hidden;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -641,8 +888,15 @@ tfoot .re-corner {
   text-overflow: ellipsis;
 
   .bi {
-    margin-right: 3px;
+    margin-right: 2px;
   }
+}
+
+// Morning or afternoon leaves room for the leave type by setting the half smaller.
+.re-portion {
+  margin-right: 1px;
+  font-size: 0.5625rem;
+  font-weight: 700;
 }
 
 .re-shift,
@@ -675,25 +929,25 @@ tfoot .re-corner {
   }
 }
 
-.re-chip.is-compact {
-  padding: 3px 4px;
-
-  .bi {
-    margin-right: 1px;
-  }
-}
-
-.re-extra {
-  margin-left: 3px;
-  font-size: 0.6875rem;
-
-  .bi {
-    margin-right: 0;
-  }
+// An extra duty has a folded corner: a shape, so it reads without colour, and it costs the label no width.
+.re-shift.is-extra {
+  padding-right: 9px;
+  background-image: linear-gradient(
+    225deg,
+    #fff 0 5px,
+    rgba(255, 255, 255, 0.55) 5px 6px,
+    transparent 6px
+  );
 }
 
 .re-leave {
+  padding-inline: 3px;
   border-color: var(--re-line-strong);
+
+  .bi {
+    font-size: 0.6875rem;
+  }
+
   background-color: #fff;
   color: var(--re-ink);
 
@@ -734,6 +988,11 @@ tfoot .re-corner {
   position: fixed;
   inset: 0;
   z-index: 1040;
+
+  // Publishing changes what registrars see, so its dialog dims the page as well.
+  &.is-dim {
+    background: rgba(31, 41, 51, 0.32);
+  }
 }
 
 .re-popover {
@@ -749,6 +1008,14 @@ tfoot .re-corner {
     0 8px 20px rgba(15, 23, 42, 0.14),
     0 1px 3px rgba(15, 23, 42, 0.08);
   animation: re-pop 120ms ease-out;
+
+  &.is-centred {
+    top: 3.5rem;
+    left: 50%;
+    max-height: calc(100dvh - 7rem);
+    transform: translateX(-50%);
+    animation: none;
+  }
 }
 
 @keyframes re-pop {
@@ -793,9 +1060,13 @@ tfoot .re-corner {
   display: flex;
   flex: none;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   border-top: 1px solid var(--re-line);
+
+  > :first-child {
+    margin: 0 auto 0 0;
+  }
 }
 
 .re-section {
@@ -863,12 +1134,33 @@ tfoot .re-corner {
   }
 }
 
+// Every question before an action: a tinted band across the menu, the action first, then the way out.
 .re-confirm {
   margin: 0.5rem -0.75rem 0;
   padding: 0.625rem 0.75rem;
   background: var(--re-wait-bg);
   color: #5c3a00;
   font-size: 0.8125rem;
+
+  p {
+    margin: 0 0 0.5rem;
+  }
+
+  .re-section > & {
+    margin-bottom: -0.625rem;
+  }
+}
+
+.re-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+
+  .re-push {
+    margin-left: auto;
+  }
 }
 
 .re-clause {
@@ -960,19 +1252,12 @@ tfoot .re-corner {
 }
 
 .re-typebtn {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: 1px solid var(--re-line);
+  justify-content: flex-start;
+  font-weight: 400;
   text-align: left;
 
   kbd {
     margin-left: auto;
-  }
-
-  &:hover {
-    border-color: var(--re-line-strong);
-    background: var(--re-panel);
   }
 
   &.is-ruled-out {
@@ -997,8 +1282,8 @@ tfoot .re-corner {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 0 0.5rem;
-  margin: 0.375rem 0 0;
+  gap: 0.125rem 0.5rem;
+  margin: 0.5rem 0 0;
   padding: 0;
   border: 0;
 
@@ -1013,8 +1298,25 @@ tfoot .re-corner {
 .re-decided {
   grid-column: 1 / -1;
   color: var(--re-muted);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   text-align: right;
+}
+
+// A settled leave's paperwork folds away under its summary when the day also holds a shift.
+.re-leave-admin > summary {
+  width: fit-content;
+  color: var(--re-accent);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover {
+    color: #0a4bab;
+  }
+}
+
+.re-leave-admin[open] > summary {
+  margin-bottom: 0.25rem;
 }
 
 .re-request {
@@ -1027,10 +1329,14 @@ tfoot .re-corner {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  margin-top: 0.625rem;
   padding-top: 0.5rem;
   border-top: 1px dashed var(--re-line);
   font-size: 0.8125rem;
+
+  .form-check {
+    min-height: 0;
+  }
 }
 
 .re-step {
@@ -1108,6 +1414,33 @@ tfoot .re-corner {
   font-size: 0.875rem;
 }
 
+.re-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+
+  label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  .re-input {
+    width: 100%;
+  }
+}
+
+// The date a field holds, in the editor's own words, whatever order the browser shows it in.
+.re-fielddate {
+  display: block;
+  min-height: 1.2em;
+  margin-top: 0.25rem;
+  color: var(--re-muted);
+  font-size: 0.75rem;
+}
+
 .re-health {
   margin-top: 0.75rem;
   padding: 0.625rem 0.75rem;
@@ -1150,4 +1483,54 @@ tfoot .re-corner {
 
 .re-toast-text {
   flex: 1;
+}
+
+.re-btn--on-dark {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: transparent;
+  color: #fff;
+
+  &:hover,
+  &:active {
+    border-color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+  }
+}
+
+.re-btn-count {
+  padding: 0 0.3125rem;
+  border-radius: 0.25rem;
+  background: var(--re-off-bg);
+  color: var(--re-off-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.re-popover.is-centred .re-popover-body {
+  padding-bottom: 0.75rem;
+}
+
+// A sample of a busy day in the key: its chips stacked as in the grid.
+.re-keycell.is-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: auto;
+  height: auto;
+  padding: 2px 3px;
+  background: #fff;
+
+  .re-chip {
+    margin: 0;
+  }
+}
+
+// Switches and checkboxes in a popover match its buttons, not the page's body text.
+.re-popover-body .form-check {
+  font-size: 0.875rem;
+}
+
+.re-popover-body .re-steps .form-check {
+  font-size: inherit;
 }

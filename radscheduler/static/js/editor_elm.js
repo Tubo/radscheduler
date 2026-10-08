@@ -45,6 +45,72 @@ app.ports.saveFilters.subscribe((filters) => {
   }
 });
 
+// Dragging with the mouse scrolls the roster, like a map. A press only becomes a drag once it has moved a
+// few pixels, so clicks still open a day and Shift-click still selects; the click that ends a drag is dropped.
+const DRAG_THRESHOLD = 5;
+let pan = null;
+
+document.addEventListener('pointerdown', (event) => {
+  const scroller = event.target.closest?.('.re-scroll');
+  if (
+    !scroller ||
+    event.pointerType !== 'mouse' ||
+    event.button !== 0 ||
+    event.shiftKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey ||
+    event.target.closest('input, select, textarea')
+  ) {
+    return;
+  }
+  pan = {
+    scroller,
+    pointerId: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    left: scroller.scrollLeft,
+    top: scroller.scrollTop,
+    dragging: false,
+  };
+});
+
+document.addEventListener('pointermove', (event) => {
+  if (!pan || event.pointerId !== pan.pointerId) return;
+  const dx = event.clientX - pan.x;
+  const dy = event.clientY - pan.y;
+  if (!pan.dragging) {
+    if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+    pan.dragging = true;
+    pan.scroller.classList.add('is-panning');
+    pan.scroller.setPointerCapture?.(event.pointerId);
+    window.getSelection()?.removeAllRanges();
+  }
+  pan.scroller.scrollLeft = pan.left - dx;
+  pan.scroller.scrollTop = pan.top - dy;
+});
+
+function endPan(event) {
+  if (!pan || event.pointerId !== pan.pointerId) return;
+  if (pan.dragging) {
+    pan.scroller.classList.remove('is-panning');
+    // Swallow the click this release fires, before Elm sees it. A release outside the window fires no
+    // click, so the listener goes once this event has run its course rather than catching a later one.
+    const swallow = (click) => {
+      click.stopPropagation();
+      click.preventDefault();
+    };
+    window.addEventListener('click', swallow, { capture: true, once: true });
+    setTimeout(
+      () => window.removeEventListener('click', swallow, { capture: true }),
+      0,
+    );
+  }
+  pan = null;
+}
+document.addEventListener('pointerup', endPan);
+document.addEventListener('pointercancel', endPan);
+
 // Week navigation changes the URL so it can be bookmarked and the back button works.
 app.ports.pushUrl.subscribe((url) => history.pushState({}, '', url));
 window.addEventListener('popstate', () =>

@@ -102,6 +102,7 @@ type alias Model =
     , checking : Bool
     , focusAfterLoad : Bool
     , wholeRequest : Bool
+    , openLeaves : Set Int
     , selectFrom : Maybe Cell
     , clipboard : Maybe Clip
     , batches : Dict Int Batch
@@ -207,6 +208,7 @@ type Confirm
 -}
 type alias Anchor =
     { left : Float
+    , right : Float
     , top : Float
     , bottom : Float
     , viewportWidth : Float
@@ -397,6 +399,7 @@ initialModel flags week =
     , checking = False
     , focusAfterLoad = False
     , wholeRequest = True
+    , openLeaves = Set.empty
     , selectFrom = Nothing
     , clipboard = Nothing
     , batches = Dict.empty
@@ -570,6 +573,7 @@ type Msg
     | AskDelete Cell Int
     | AddAnother Cell
     | SetWholeRequest Bool
+    | ToggleLeaveAdmin Int Bool
     | GoToCell Cell
     | GoToCover Date
     | UndoLast
@@ -788,6 +792,7 @@ updateModel msg model =
             let
                 anchor =
                     { left = element.element.x - element.viewport.x
+                    , right = element.element.x - element.viewport.x + element.element.width
                     , top = element.element.y - element.viewport.y
                     , bottom = element.element.y - element.viewport.y + element.element.height
                     , viewportWidth = element.viewport.width
@@ -936,6 +941,18 @@ updateModel msg model =
                 _ ->
                     ( model, openCell cell AddingAnother )
 
+        ToggleLeaveAdmin leaveId open ->
+            ( { model
+                | openLeaves =
+                    if open then
+                        Set.insert leaveId model.openLeaves
+
+                    else
+                        Set.remove leaveId model.openLeaves
+              }
+            , Cmd.none
+            )
+
         SetWholeRequest whole ->
             ( { model | wholeRequest = whole }, Cmd.none )
 
@@ -951,7 +968,7 @@ updateModel msg model =
             ( { model | popover = Nothing, publish = Nothing }
             , Process.sleep 30
                 |> Task.andThen (\_ -> Dom.focus (coverId date))
-                |> Task.andThen (\_ -> Dom.getElement (coverId date))
+                |> Task.andThen (\_ -> Dom.getElement (coverDayId date))
                 |> Task.attempt (GotAnchor (ForCover date))
             )
 
@@ -995,7 +1012,7 @@ updateModel msg model =
                     | publish = Just { start = Date.toIsoString start, end = Date.toIsoString end, preview = Nothing, saving = False }
                     , popover = Nothing
                 }
-                |> withCmd (focusSoon "publish-start")
+                |> withCmd (focusSoon "publish-title")
 
         SetPublishStart start ->
             updateDraft (\d -> { d | start = start }) model
@@ -2585,21 +2602,21 @@ viewToolbar model =
         , case model.roster of
             Just roster ->
                 div [ class "re-nav" ]
-                    [ div [ class "input-group input-group-sm flex-nowrap w-auto" ]
-                        [ button [ type_ "button", class "btn btn-outline-secondary", attribute "aria-label" "Previous week", title "Previous week (Page Up)", onClick (GoToWeek roster.prev) ]
+                    [ div [ class "re-joined" ]
+                        [ button [ type_ "button", class "re-btn", attribute "aria-label" "Previous week", title "Previous week (Page Up)", onClick (GoToWeek roster.prev) ]
                             [ i [ class "bi bi-chevron-left", attribute "aria-hidden" "true" ] [] ]
                         , input
                             [ type_ "date"
-                            , class "form-control re-week-input"
+                            , class "re-input re-week-input"
                             , value (Date.toIsoString model.week)
                             , attribute "aria-label" "Go to the week of"
                             , on "change" (Decode.map PickWeek targetValue)
                             ]
                             []
-                        , button [ type_ "button", class "btn btn-outline-secondary", attribute "aria-label" "Next week", title "Next week (Page Down)", onClick (GoToWeek roster.next) ]
+                        , button [ type_ "button", class "re-btn", attribute "aria-label" "Next week", title "Next week (Page Down)", onClick (GoToWeek roster.next) ]
                             [ i [ class "bi bi-chevron-right", attribute "aria-hidden" "true" ] [] ]
                         ]
-                    , button [ type_ "button", class "btn btn-sm btn-outline-secondary", onClick (GoToWeek roster.today) ] [ text "Today" ]
+                    , button [ type_ "button", class "re-btn", onClick (GoToWeek roster.today) ] [ text "Today" ]
                     , span [ class "re-window" ] [ text (windowLabel roster.dates) ]
                     , viewSelectionNote model roster
                     ]
@@ -2615,7 +2632,8 @@ viewToolbar model =
             , if hiddenCount > 0 then
                 span [ class "re-hidden-note" ]
                     [ text (hiddenSummary model)
-                    , button [ type_ "button", class "btn btn-link btn-sm p-0 align-baseline", onClick ShowAllTypes ] [ text "Show all" ]
+                    , text " "
+                    , button [ type_ "button", class "re-btn re-btn--quiet", onClick ShowAllTypes ] [ text "Show all" ]
                     ]
 
               else
@@ -2629,15 +2647,15 @@ viewToolbar model =
             , button
                 [ type_ "button"
                 , id "filters-button"
-                , class "btn btn-sm btn-outline-secondary"
+                , class "re-btn"
                 , attribute "aria-haspopup" "dialog"
                 , attribute "aria-expanded" (boolString (isFilters model.popover))
                 , onClick (Open ForFilters "filters-button")
                 ]
-                [ i [ class "bi bi-funnel me-1", attribute "aria-hidden" "true" ] []
+                [ i [ class "bi bi-funnel", attribute "aria-hidden" "true" ] []
                 , text "Filter"
                 , if hiddenCount > 0 then
-                    span [ class "badge text-bg-secondary ms-1" ] [ text (String.fromInt hiddenCount ++ " off") ]
+                    span [ class "re-btn-count" ] [ text (String.fromInt hiddenCount ++ " off") ]
 
                   else
                     text ""
@@ -2645,16 +2663,16 @@ viewToolbar model =
             , button
                 [ type_ "button"
                 , id "key-button"
-                , class "btn btn-sm btn-outline-secondary"
+                , class "re-btn"
                 , attribute "aria-haspopup" "dialog"
                 , attribute "aria-expanded" (boolString (isKey model.popover))
                 , title "Key and keyboard (?)"
                 , onClick (Open ForKey "key-button")
                 ]
-                [ i [ class "bi bi-info-circle me-1", attribute "aria-hidden" "true" ] [], text "Key" ]
+                [ i [ class "bi bi-info-circle", attribute "aria-hidden" "true" ] [], text "Key" ]
             , viewPublishedStatus model.roster
-            , button [ type_ "button", id "publish-button", class "btn btn-sm btn-primary", onClick OpenPublish ]
-                [ i [ class "bi bi-send me-1", attribute "aria-hidden" "true" ] [], text "Publish…" ]
+            , button [ type_ "button", id "publish-button", class "re-btn re-btn--primary", onClick OpenPublish ]
+                [ i [ class "bi bi-send", attribute "aria-hidden" "true" ] [], text "Publish…" ]
             ]
         ]
 
@@ -2691,7 +2709,7 @@ viewProblemsButton model roster =
     button
         [ type_ "button"
         , id "problems-button"
-        , classList [ ( "btn btn-sm re-problems-button", True ), ( "has-problems", count > 0 ) ]
+        , classList [ ( "re-btn re-problems-button", True ), ( "has-problems", count > 0 ) ]
         , attribute "aria-haspopup" "dialog"
         , attribute "aria-expanded" (boolString (isProblems model.popover))
         , onClick (Open ForProblems "problems-button")
@@ -2699,10 +2717,10 @@ viewProblemsButton model roster =
         [ i
             [ class
                 (if count > 0 then
-                    "bi bi-exclamation-diamond-fill me-1"
+                    "bi bi-exclamation-diamond-fill"
 
                  else
-                    "bi bi-check2-circle me-1"
+                    "bi bi-check2-circle"
                 )
             , attribute "aria-hidden" "true"
             ]
@@ -2715,7 +2733,7 @@ viewProblemsButton model roster =
                 plural count "problem" "problems"
             )
         , if model.checking then
-            span [ class "spinner-border spinner-border-sm ms-1 re-checking", attribute "aria-hidden" "true", title "Checking the rules…" ] []
+            span [ class "spinner-border spinner-border-sm re-checking", attribute "aria-hidden" "true", title "Checking the rules…" ] []
 
           else
             text ""
@@ -2726,7 +2744,8 @@ viewPublishedStatus : Maybe T.RosterOut -> Html Msg
 viewPublishedStatus roster =
     case roster |> Maybe.map (.published >> nullable) of
         Just (Just range) ->
-            span [ class "re-published" ] [ text ("Published to " ++ dayDate range.end) ]
+            span [ class "re-published", title ("Registrars can see " ++ fullDate range.start ++ " to " ++ fullDate range.end) ]
+                [ text ("Published to " ++ fullDate range.end) ]
 
         Just Nothing ->
             span [ class "re-published is-none" ] [ text "Nothing published" ]
@@ -3049,7 +3068,7 @@ viewCover context index dayData =
                 )
                 states
     in
-    td [ classList (( "re-cover-cell", True ) :: columnClasses window index date) ]
+    td [ id (coverDayId date), classList (( "re-cover-cell", True ) :: columnClasses window index date) ]
         (List.indexedMap
             (\n ( alternatives, _ ) ->
                 button
@@ -3065,7 +3084,7 @@ viewCover context index dayData =
                     , attribute "aria-haspopup" "dialog"
                     , attribute "aria-label" (dayDate date ++ " needs " ++ needsLabel context alternatives ++ ": choose who")
                     , title ("Needs " ++ needsLabel context alternatives)
-                    , onClick (Open (ForCover date) (coverId date))
+                    , onClick (Open (ForCover date) (coverDayId date))
                     ]
                     [ i [ class "bi bi-plus-lg", attribute "aria-hidden" "true" ] []
                     , text (String.join "/" (List.map (choice >> .short) alternatives))
@@ -3277,18 +3296,14 @@ viewCell context data index date state =
         , on "click" (Decode.map (CellClick cell) (Decode.field "shiftKey" Decode.bool))
         ]
         [ div [ class "re-cellbox" ]
-            (let
-                compact =
-                    List.length visibleShifts + List.length visibleLeaves > 1
-             in
-             List.map (viewShiftChip context compact) visibleShifts
-                ++ List.map (viewLeaveChip context compact) visibleLeaves
+            (List.map (viewShiftChip context) visibleShifts
+                ++ List.map (viewLeaveChip context) visibleLeaves
             )
         , if List.isEmpty violations then
             text ""
 
           else
-            span [ class "re-flag", title (String.join "\n" (List.map .message violations)) ]
+            span [ class "re-flag", title (String.join "\n" (List.map (\v -> (nullable v.clause |> Maybe.withDefault "Department rule") ++ ": " ++ v.message) violations)) ]
                 [ i [ class "bi bi-exclamation-diamond-fill", attribute "aria-hidden" "true" ] [] ]
         , if List.isEmpty visibleShifts && List.isEmpty visibleLeaves then
             span [ class "re-add", attribute "aria-hidden" "true" ] [ text "+" ]
@@ -3304,15 +3319,8 @@ cellLabel : { a | flags : Flags } -> T.RegistrarOut -> Date -> List T.ShiftOut -
 cellLabel model registrar date shifts leaves violations offDuty =
     let
         contents =
-            List.map (\s -> (shiftChoice model s.type_).label ++ extraLabel s) shifts
+            List.map (\s -> (shiftChoice model s.type_).label ++ extraSuffix s) shifts
                 ++ List.map (\l -> (leaveChoice model l.type_).label ++ " leave" ++ portionLabel l ++ ", " ++ leaveStateName (leaveState l)) leaves
-
-        extraLabel s =
-            if s.extra_duty then
-                " (extra duty)"
-
-            else
-                ""
     in
     registrar.name
         ++ ", "
@@ -3339,33 +3347,34 @@ cellLabel model registrar date shifts leaves violations offDuty =
            )
 
 
-{-| In a cell holding more than one thing, a shift shows as its key letter and leave as its state icon,
-so both fit; the title and the cell's label still name them in full.
+{-| A shift chip names its type; an extra duty has a folded corner. A busy day stacks its chips, so none
+has to shrink to a letter.
 -}
-viewShiftChip : { a | flags : Flags } -> Bool -> T.ShiftOut -> Html Msg
-viewShiftChip model compact shift =
+viewShiftChip : { a | flags : Flags } -> T.ShiftOut -> Html Msg
+viewShiftChip model shift =
     let
         choice =
             shiftChoice model shift.type_
     in
-    span [ classList [ ( "re-chip re-shift " ++ shiftClass shift.type_, True ), ( "is-compact", compact ) ], title choice.label, attribute "aria-hidden" "true" ]
-        [ text
-            (if compact && choice.key /= "" then
-                String.toUpper choice.key
-
-             else
-                choice.short
-            )
-        , if shift.extra_duty then
-            span [ class "re-extra" ] [ i [ class "bi bi-coin" ] [] ]
-
-          else
-            text ""
+    span
+        [ classList [ ( "re-chip re-shift " ++ shiftClass shift.type_, True ), ( "is-extra", shift.extra_duty ) ]
+        , title (choice.label ++ extraSuffix shift)
+        , attribute "aria-hidden" "true"
         ]
+        [ text choice.short ]
 
 
-viewLeaveChip : { a | flags : Flags } -> Bool -> T.LeaveOut -> Html Msg
-viewLeaveChip model compact leave =
+extraSuffix : T.ShiftOut -> String
+extraSuffix shift =
+    if shift.extra_duty then
+        " (extra duty)"
+
+    else
+        ""
+
+
+viewLeaveChip : { a | flags : Flags } -> T.LeaveOut -> Html Msg
+viewLeaveChip model leave =
     let
         choice =
             leaveChoice model leave.type_
@@ -3373,14 +3382,22 @@ viewLeaveChip model compact leave =
         state =
             leaveState leave
     in
-    span [ classList [ ( "re-chip re-leave is-" ++ leaveStateClass state, True ), ( "is-compact", compact ) ], title (choice.label ++ " leave" ++ portionLabel leave ++ ", " ++ leaveStateName state), attribute "aria-hidden" "true" ]
-        [ i [ class ("bi " ++ leaveIcon state) ] []
-        , if compact then
-            text (String.trim (portionPrefix leave))
+    span [ class ("re-chip re-leave is-" ++ leaveStateClass state), title (choice.label ++ " leave" ++ portionLabel leave ++ ", " ++ leaveStateName state), attribute "aria-hidden" "true" ]
+        (leaveChipContent choice state leave)
 
-          else
-            text (portionPrefix leave ++ choice.short)
-        ]
+
+{-| The state icon, the half ("PM") set small, and the type, so a half day fits a column without losing its type.
+-}
+leaveChipContent : Choice -> LeaveState -> T.LeaveOut -> List (Html Msg)
+leaveChipContent choice state leave =
+    [ i [ class ("bi " ++ leaveIcon state) ] []
+    , if leave.portion == "ALL" then
+        text ""
+
+      else
+        span [ class "re-portion" ] [ text leave.portion ]
+    , text choice.short
+    ]
 
 
 viewLeaveCount : Window -> Int -> DayData -> Html Msg
@@ -3422,45 +3439,68 @@ viewPopover : Model -> Html Msg
 viewPopover model =
     case ( model.popover, model.roster ) of
         ( Just (CellMenu cell anchor confirm), Just roster ) ->
-            popoverShell anchor 360 (describeCellLong model roster cell) [ preventDefaultOn "keydown" (cellMenuKeys model confirm) ] (viewCellMenu model roster cell confirm)
+            popoverShell (Below anchor) menuWidth (describeCellLong model roster cell) [ preventDefaultOn "keydown" (cellMenuKeys model roster cell confirm) ] WithClose (viewCellMenu model roster cell confirm)
 
         ( Just (CoverMenu date anchor), Just roster ) ->
-            popoverShell anchor 380 ("Cover for " ++ dayDate date ++ holidaySuffix roster date) [] (viewCoverMenu model roster date)
+            popoverShell (Beside anchor) menuWidth ("Cover for " ++ dayDate date ++ holidaySuffix roster date) [] WithClose (viewCoverMenu model roster date)
 
         ( Just (ManyMenu anchor question changes), _ ) ->
-            popoverShell anchor
-                320
+            popoverShell (Below anchor)
+                menuWidth
                 "Delete shifts"
                 []
-                [ p [ class "mt-2 mb-2" ] [ text question ]
-                , div [ class "d-flex gap-2 mb-2" ]
-                    [ button [ type_ "button", id "confirm-action", class "btn btn-sm btn-danger", onClick (SaveMany ("Deleted " ++ plural (List.length changes) "shift" "shifts") changes) ]
-                        [ text ("Delete " ++ plural (List.length changes) "shift" "shifts") ]
-                    , button [ type_ "button", class "btn btn-sm btn-outline-secondary", onClick ClosePopover ] [ text "Keep them" ]
+                WithoutClose
+                [ div [ class "re-confirm mb-2" ]
+                    [ p [] [ text question ]
+                    , div [ class "re-actions" ]
+                        [ button [ type_ "button", id "confirm-action", class "re-btn re-btn--danger", onClick (SaveMany ("Deleted " ++ plural (List.length changes) "shift" "shifts") changes) ]
+                            [ text ("Delete " ++ plural (List.length changes) "shift" "shifts") ]
+                        , button [ type_ "button", id "popover-last", class "re-btn", onClick ClosePopover ] [ text "Keep them" ]
+                        ]
                     ]
                 ]
 
         ( Just (ProblemsMenu anchor), Just roster ) ->
-            popoverShell anchor 420 "Problems in these three weeks" [] (viewProblems model roster)
+            popoverShell (Below anchor) listWidth "Problems in these three weeks" [] WithClose (viewProblems model roster)
 
         ( Just (FiltersMenu anchor), _ ) ->
-            popoverShell anchor 300 "Show in the grid" [] (viewFilters model)
+            popoverShell (Below anchor) menuWidth "Show in the grid" [] WithClose (viewFilters model)
 
         ( Just (KeyMenu anchor), _ ) ->
-            popoverShell anchor 380 "Key" [] (viewKey model)
+            popoverShell (Below anchor) listWidth "Key" [] WithClose (viewKey model)
 
         _ ->
             text ""
 
 
-{-| A shift's key works in the cell's menu just as in the grid.
+{-| Two widths: menus of actions, and lists to read.
 -}
-cellMenuKeys : Model -> Confirm -> Decoder ( Msg, Bool )
-cellMenuKeys model confirm =
+menuWidth : Float
+menuWidth =
+    360
+
+
+listWidth : Float
+listWidth =
+    420
+
+
+{-| A shift's key works in the cell's menu just as in the grid, wherever the menu shows the keys: adding to
+an empty day, or changing a day's one shift.
+-}
+cellMenuKeys : Model -> T.RosterOut -> Cell -> Confirm -> Decoder ( Msg, Bool )
+cellMenuKeys model roster cell confirm =
+    let
+        shiftCount =
+            List.length (cellShifts roster cell)
+
+        keysWork =
+            (confirm == NoConfirm && shiftCount <= 1) || (confirm == AddingAnother && shiftCount == 0)
+    in
     Decode.map2 Tuple.pair (Decode.field "key" Decode.string) inTextField
         |> Decode.andThen
             (\( key, typing ) ->
-                if not typing && (confirm == NoConfirm || confirm == AddingAnother) && List.any (\c -> c.key /= "" && c.key == String.toLower key) model.flags.shiftTypes then
+                if not typing && keysWork && List.any (\c -> c.key /= "" && c.key == String.toLower key) model.flags.shiftTypes then
                     Decode.succeed ( GridKey { key = key, shift = False, command = False, alt = False, target = "popover" }, True )
 
                 else
@@ -3468,25 +3508,61 @@ cellMenuKeys model confirm =
             )
 
 
-{-| A popover in a fixed layer, opening below its anchor, or above it when the anchor is low on screen.
-Its body scrolls between a fixed heading and footer. Focus starts on the heading and stays inside: the
-sentinels at either end send it back round.
+{-| Where a popover opens: below its anchor (above when the anchor is low on screen), or beside it, so a
+cover menu leaves its own day and the days before it in view.
 -}
-popoverShell : Anchor -> Float -> String -> List (Attribute Msg) -> List (Html Msg) -> Html Msg
-popoverShell anchor width heading extra content =
+type Placement
+    = Below Anchor
+    | Beside Anchor
+
+
+{-| Whether the footer has a Close button. A popover that asks a question has its own way out instead, with
+the id `popover-last` so focus wraps round to it.
+-}
+type CloseButton
+    = WithClose
+    | WithoutClose
+
+
+{-| A popover in a fixed layer. Its body scrolls between a fixed heading and footer. Focus starts on the
+heading and stays inside: the sentinels at either end send it back round.
+-}
+popoverShell : Placement -> Float -> String -> List (Attribute Msg) -> CloseButton -> List (Html Msg) -> Html Msg
+popoverShell placement width heading extra closeButton content =
     let
-        left =
-            clamp 8 (anchor.viewportWidth - width - 8) anchor.left
+        position =
+            case placement of
+                Below anchor ->
+                    let
+                        below =
+                            (anchor.top + anchor.bottom) / 2 < anchor.viewportHeight / 2
+                    in
+                    style "left" (px (clamp 8 (anchor.viewportWidth - width - 8) anchor.left))
+                        :: (if below then
+                                [ style "top" (px (anchor.bottom + 4)), style "max-height" (px (anchor.viewportHeight - anchor.bottom - 16)) ]
 
-        below =
-            (anchor.top + anchor.bottom) / 2 < anchor.viewportHeight / 2
+                            else
+                                [ style "bottom" (px (anchor.viewportHeight - anchor.top + 4)), style "max-height" (px (anchor.top - 16)) ]
+                           )
 
-        vertical =
-            if below then
-                [ style "top" (px (anchor.bottom + 4)), style "max-height" (px (anchor.viewportHeight - anchor.bottom - 16)) ]
+                Beside anchor ->
+                    let
+                        left =
+                            if anchor.right + 4 + width <= anchor.viewportWidth - 8 then
+                                anchor.right + 4
 
-            else
-                [ style "bottom" (px (anchor.viewportHeight - anchor.top + 4)), style "max-height" (px (anchor.top - 16)) ]
+                            else
+                                Basics.max 8 (anchor.left - width - 4)
+                    in
+                    [ style "left" (px left), style "top" (px anchor.top), style "max-height" (px (anchor.viewportHeight - anchor.top - 16)) ]
+
+        viewportWidth =
+            case placement of
+                Below anchor ->
+                    anchor.viewportWidth
+
+                Beside anchor ->
+                    anchor.viewportWidth
     in
     div []
         [ div [ class "re-backdrop", onClick ClosePopover ] []
@@ -3495,10 +3571,9 @@ popoverShell anchor width heading extra content =
              , attribute "role" "dialog"
              , attribute "aria-modal" "true"
              , attribute "aria-labelledby" "popover-title"
-             , style "left" (px left)
-             , style "width" (px (Basics.min width (anchor.viewportWidth - 16)))
+             , style "width" (px (Basics.min width (viewportWidth - 16)))
              ]
-                ++ vertical
+                ++ position
                 ++ extra
             )
             [ span [ tabindex 0, onFocus (FocusId "popover-last") ] []
@@ -3506,12 +3581,22 @@ popoverShell anchor width heading extra content =
                 [ h2 [ id "popover-title", class "re-popover-title", tabindex -1 ] [ text heading ] ]
             , div [ class "re-popover-body" ] content
             , div [ class "re-popover-foot" ]
-                [ span [ class "re-meta m-0" ] [ kbd [] [ text "Esc" ], text " closes" ]
-                , button [ type_ "button", id "popover-last", class "btn btn-sm btn-outline-secondary", onClick ClosePopover ] [ text "Close" ]
+                [ escHint
+                , case closeButton of
+                    WithClose ->
+                        button [ type_ "button", id "popover-last", class "re-btn", onClick ClosePopover ] [ text "Close" ]
+
+                    WithoutClose ->
+                        text ""
                 ]
             , span [ tabindex 0, onFocus (FocusId "popover-title") ] []
             ]
         ]
+
+
+escHint : Html Msg
+escHint =
+    span [ class "re-meta" ] [ kbd [] [ text "Esc" ], text " closes" ]
 
 
 describeCellLong : Model -> T.RosterOut -> Cell -> String
@@ -3572,9 +3657,9 @@ viewCellMenu model roster (( registrar, d ) as cell) confirm =
             else
                 []
            )
-        ++ List.map (viewLeaveSection model roster cell) leaves
-        ++ List.map (viewShiftSection model cell statuses confirm) shifts
+        ++ List.map (viewShiftSection model cell statuses confirm (List.length shifts == 1)) shifts
         ++ [ viewAddSection model cell statuses shifts (List.any isActiveLeave leaves) confirm ]
+        ++ List.map (viewLeaveSection model roster cell (not (List.isEmpty shifts))) leaves
 
 
 viewViolation : T.ViolationOut -> Html Msg
@@ -3614,47 +3699,55 @@ viewConfirmOnLeave model roster cell change =
                 _ ->
                     ( "", "Save anyway" )
     in
-    section [ class "re-section re-confirm" ]
-        [ p [ class "mb-2" ] [ strong [] [ text onLeave ], text (" " ++ question) ]
-        , div [ class "d-flex gap-2" ]
-            [ button [ type_ "button", id "confirm-action", class "btn btn-sm btn-primary", onClick (Save Fresh change) ] [ text action ]
-            , button [ type_ "button", class "btn btn-sm btn-outline-secondary", onClick (Open (ForCell cell NoConfirm) (cellId cell)) ] [ text "Cancel" ]
+    div [ class "re-confirm" ]
+        [ p [] [ strong [] [ text onLeave ], text (" " ++ question) ]
+        , div [ class "re-actions" ]
+            [ button [ type_ "button", id "confirm-action", class "re-btn re-btn--primary", onClick (Save Fresh change) ] [ text action ]
+            , button [ type_ "button", class "re-btn", onClick (Open (ForCell cell NoConfirm) (cellId cell)) ] [ text "Cancel" ]
             ]
         ]
 
 
-viewShiftSection : Model -> Cell -> List T.StatusOut -> Confirm -> T.ShiftOut -> Html Msg
-viewShiftSection model cell statuses confirm shift =
+{-| A shift and what can be done to it. With `alone`, it's the day's only shift, so the keys in the menu
+change it and its tiles show them.
+-}
+viewShiftSection : Model -> Cell -> List T.StatusOut -> Confirm -> Bool -> T.ShiftOut -> Html Msg
+viewShiftSection model cell statuses confirm alone shift =
+    let
+        typeLabel =
+            (shiftChoice model shift.type_).label
+
+        switchId =
+            "extra-" ++ String.fromInt shift.id
+    in
     section [ class "re-section" ]
         (h3 [ class "re-section-title" ]
-            [ span [ class ("re-chip re-shift " ++ shiftClass shift.type_), attribute "aria-hidden" "true" ] [ text (shiftChoice model shift.type_).short ]
-            , text
-                ((shiftChoice model shift.type_).label
-                    ++ (if shift.extra_duty then
-                            " (extra duty)"
-
-                        else
-                            ""
-                       )
-                )
+            [ viewShiftChip model shift
+            , text (typeLabel ++ extraSuffix shift)
             ]
             :: (if confirm == ConfirmDelete shift.id then
-                    [ p [ class "mb-2" ]
-                        [ text ("Delete " ++ possessive (registrarName model (Tuple.first cell)) ++ " " ++ shiftLabel model shift.type_ ++ " on " ++ dayDate shift.date ++ "? You can undo it.") ]
-                    , div [ class "d-flex gap-2" ]
-                        [ button [ type_ "button", id "confirm-action", class "btn btn-sm btn-danger", onClick (Save Fresh (DeleteShift cell shift)) ] [ text "Delete shift" ]
-                        , button [ type_ "button", class "btn btn-sm btn-outline-secondary", onClick (Open (ForCell cell NoConfirm) (cellId cell)) ] [ text "Keep it" ]
+                    [ div [ class "re-confirm" ]
+                        [ p [] [ text ("Delete " ++ possessive (registrarName model (Tuple.first cell)) ++ " " ++ shiftLabel model shift.type_ ++ " on " ++ dayDate shift.date ++ "? You can undo it.") ]
+                        , div [ class "re-actions" ]
+                            [ button [ type_ "button", id "confirm-action", class "re-btn re-btn--danger", onClick (Save Fresh (DeleteShift cell shift)) ] [ text "Delete shift" ]
+                            , button [ type_ "button", class "re-btn", onClick (Open (ForCell cell NoConfirm) (cellId cell)) ] [ text "Keep it" ]
+                            ]
                         ]
                     ]
 
                 else
-                    [ div [ class "re-label", id ("change-" ++ String.fromInt shift.id) ] [ text "Change to" ]
-                    , div [ class "re-typegrid", attribute "role" "group", attribute "aria-labelledby" ("change-" ++ String.fromInt shift.id) ]
+                    [ div [ class "re-label mb-1", id ("change-" ++ String.fromInt shift.id) ] [ text "Change to" ]
+                    , div
+                        [ class "re-typegrid"
+                        , attribute "role" "group"
+                        , attribute "aria-label" ("Change the " ++ lowerLabel typeLabel ++ " to")
+                        ]
                         (shiftChoices model
                             |> List.filter (\( shiftType, _ ) -> shiftType /= shift.type_)
                             |> List.map
                                 (\( shiftType, choice ) ->
                                     typeButton statuses
+                                        alone
                                         shiftType
                                         choice
                                         [ attribute "aria-label" ("Change to " ++ choice.label)
@@ -3662,44 +3755,51 @@ viewShiftSection model cell statuses confirm shift =
                                         ]
                                 )
                         )
-                    , div [ class "d-flex gap-2 mt-2" ]
-                        [ button
-                            [ type_ "button"
-                            , class "btn btn-sm btn-outline-secondary"
-                            , attribute "aria-pressed" (boolString shift.extra_duty)
-                            , onClick (Save Fresh (ChangeShift cell shift { type_ = Nothing, extra_duty = Just (not shift.extra_duty) }))
+                    , div [ class "re-actions" ]
+                        [ div [ class "form-check form-switch m-0" ]
+                            [ input
+                                [ type_ "checkbox"
+                                , class "form-check-input"
+                                , attribute "role" "switch"
+                                , id switchId
+                                , checked shift.extra_duty
+                                , onCheck (\v -> Save Fresh (ChangeShift cell shift { type_ = Nothing, extra_duty = Just v }))
+                                ]
+                                []
+                            , label [ class "form-check-label", for switchId ] [ text "Extra duty" ]
                             ]
-                            [ i [ class "bi bi-coin me-1", attribute "aria-hidden" "true" ] []
-                            , text "Extra duty"
-                            ]
-                        , button [ type_ "button", class "btn btn-sm btn-outline-danger ms-auto", onClick (AskDelete cell shift.id) ]
-                            [ i [ class "bi bi-trash3 me-1", attribute "aria-hidden" "true" ] [], text "Delete…" ]
+                        , button [ type_ "button", class "re-btn re-btn--danger-quiet re-push", onClick (AskDelete cell shift.id) ] [ text "Delete…" ]
                         ]
                     ]
                )
         )
 
 
-{-| A shift type to pick, marked when one of the registrar's statuses rules it out that day.
+{-| A shift type to pick, marked when one of the registrar's statuses rules it out that day. `showKey` shows
+the type's key, for menus where pressing it does what the tile does.
 -}
-typeButton : List T.StatusOut -> T.ShiftType -> Choice -> List (Attribute Msg) -> Html Msg
-typeButton statuses shiftType choice attributes =
+typeButton : List T.StatusOut -> Bool -> T.ShiftType -> Choice -> List (Attribute Msg) -> Html Msg
+typeButton statuses showKey shiftType choice attributes =
     let
         ruledOut =
             List.any (rulesOut (Just shiftType)) statuses
     in
-    button ([ type_ "button", classList [ ( "btn btn-sm re-typebtn", True ), ( "is-ruled-out", ruledOut ) ] ] ++ attributes)
+    button ([ type_ "button", classList [ ( "re-btn re-typebtn", True ), ( "is-ruled-out", ruledOut ) ] ] ++ attributes)
         [ span [ class ("re-swatch " ++ shiftClass shiftType), attribute "aria-hidden" "true" ] []
         , text choice.label
         , if ruledOut then
             span [ class "re-ruledout", title "Their status rules this out" ]
-                [ i [ class "bi bi-slash-circle", attribute "aria-hidden" "true" ] []
+                [ i [ class "bi bi-person-slash", attribute "aria-hidden" "true" ] []
                 , span [ class "visually-hidden" ] [ text " (their status rules this out)" ]
                 ]
 
           else
             text ""
-        , kbd [ attribute "aria-hidden" "true" ] [ text (String.toUpper choice.key) ]
+        , if showKey then
+            kbd [ attribute "aria-hidden" "true" ] [ text (String.toUpper choice.key) ]
+
+          else
+            text ""
         ]
 
 
@@ -3711,6 +3811,7 @@ viewAddSection model cell statuses shifts onLeave confirm =
                 (List.indexedMap
                     (\index ( shiftType, choice ) ->
                         typeButton statuses
+                            (List.isEmpty shifts)
                             shiftType
                             choice
                             ([ attribute "aria-label" ("Add " ++ choice.label), onClick (Request (AddShift cell shiftType False Nothing)) ]
@@ -3730,7 +3831,7 @@ viewAddSection model cell statuses shifts onLeave confirm =
 
     else if List.isEmpty shifts then
         section [ class "re-section" ]
-            [ button [ type_ "button", class "btn btn-sm btn-link px-0", onClick (AddAnother cell) ] [ text "Add a shift on this day of leave…" ] ]
+            [ button [ type_ "button", class "re-btn re-btn--quiet", onClick (AddAnother cell) ] [ text "Add a shift on this day of leave…" ] ]
 
     else if confirm == AddingAnother then
         section [ class "re-section" ]
@@ -3741,11 +3842,14 @@ viewAddSection model cell statuses shifts onLeave confirm =
 
     else
         section [ class "re-section" ]
-            [ button [ type_ "button", class "btn btn-sm btn-link px-0", onClick (AddAnother cell) ] [ text "Add another shift…" ] ]
+            [ button [ type_ "button", class "re-btn re-btn--quiet", onClick (AddAnother cell) ] [ text "Add another shift…" ] ]
 
 
-viewLeaveSection : Model -> T.RosterOut -> Cell -> T.LeaveOut -> Html Msg
-viewLeaveSection model roster cell leave =
+{-| A day of leave: its state, then the approvals, form and Microster. Once it's settled (approved, declined
+or cancelled) on a day that also holds a shift, that paperwork folds under a summary so the shift comes first.
+-}
+viewLeaveSection : Model -> T.RosterOut -> Cell -> Bool -> T.LeaveOut -> Html Msg
+viewLeaveSection model roster cell withShifts leave =
     let
         choice =
             leaveChoice model leave.type_
@@ -3768,88 +3872,114 @@ viewLeaveSection model roster cell leave =
 
         change leaveChange =
             Save Fresh (ChangeLeaves cell targets leaveChange)
-    in
-    section [ class "re-section" ]
-        [ h3 [ class "re-section-title" ]
-            [ span [ class ("re-chip re-leave is-" ++ leaveStateClass state), attribute "aria-hidden" "true" ]
-                [ i [ class ("bi " ++ leaveIcon state) ] [], text (portionPrefix leave ++ choice.short) ]
-            , text (choice.label ++ " leave" ++ portionLabel leave)
-            ]
-        , p [ class "re-status" ] [ text (leaveStateSentence leave) ]
-        , if String.isEmpty leave.comment then
-            text ""
 
-          else
-            p [ class "re-comment" ] [ text ("“" ++ leave.comment ++ "”") ]
-        , if days > 1 then
-            div [ class "form-check re-request" ]
-                [ input
-                    [ type_ "checkbox"
-                    , class "form-check-input"
-                    , id ("whole-" ++ String.fromInt leave.id)
-                    , checked model.wholeRequest
-                    , onCheck SetWholeRequest
+        settled =
+            case state of
+                Pending ->
+                    False
+
+                PartlyApproved ->
+                    False
+
+                _ ->
+                    True
+
+        admin =
+            [ if days > 1 then
+                div [ class "form-check re-request" ]
+                    [ input
+                        [ type_ "checkbox"
+                        , class "form-check-input"
+                        , id ("whole-" ++ String.fromInt leave.id)
+                        , checked model.wholeRequest
+                        , onCheck SetWholeRequest
+                        ]
+                        []
+                    , label [ class "form-check-label", for ("whole-" ++ String.fromInt leave.id) ]
+                        [ text ("Apply to the whole request: " ++ plural days "day" "days" ++ ", " ++ requestSpan request) ]
                     ]
-                    []
-                , label [ class "form-check-label", for ("whole-" ++ String.fromInt leave.id) ]
-                    [ text ("Apply to the whole request: " ++ plural days "day" "days" ++ ", " ++ requestSpan request) ]
-                ]
 
-          else
-            text ""
-        , approvalGroup model leave "reg" "Chief registrar" (nullable leave.reg_approved) (decidedBy model leave.reg_decided_by leave.reg_decided_at) (\v -> change { noLeaveChange | reg = Just v })
-        , approvalGroup model leave "dot" "Director of Training" (nullable leave.dot_approved) (decidedBy model leave.dot_decided_by leave.dot_decided_at) (\v -> change { noLeaveChange | dot = Just v })
-        , div [ class "re-steps" ]
-            [ span [ classList [ ( "re-step", True ), ( "is-done", leave.printed ) ] ]
-                [ i
-                    [ class
+              else
+                text ""
+            , approvalGroup model leave "reg" "Chief registrar" (nullable leave.reg_approved) (decidedBy model leave.reg_decided_by leave.reg_decided_at) (\v -> change { noLeaveChange | reg = Just v })
+            , approvalGroup model leave "dot" "Director of Training" (nullable leave.dot_approved) (decidedBy model leave.dot_decided_by leave.dot_decided_at) (\v -> change { noLeaveChange | dot = Just v })
+            , div [ class "re-steps" ]
+                [ span [ classList [ ( "re-step", True ), ( "is-done", leave.printed ) ] ]
+                    [ i
+                        [ class
+                            (if leave.printed then
+                                "bi bi-printer-fill me-1"
+
+                             else
+                                "bi bi-printer me-1"
+                            )
+                        , attribute "aria-hidden" "true"
+                        ]
+                        []
+                    , text
                         (if leave.printed then
-                            "bi bi-printer-fill me-1"
+                            "Form printed"
 
                          else
-                            "bi bi-printer me-1"
+                            "Form not printed"
                         )
-                    , attribute "aria-hidden" "true"
                     ]
-                    []
-                , text
-                    (if leave.printed then
-                        "Form printed"
-
-                     else
-                        "Form not printed"
-                    )
-                ]
-            , div [ class "form-check form-switch m-0" ]
-                [ input
-                    [ type_ "checkbox"
-                    , class "form-check-input"
-                    , attribute "role" "switch"
-                    , id ("microster-" ++ String.fromInt leave.id)
-                    , checked leave.microster
-                    , onCheck (\v -> change { noLeaveChange | microster = Just v })
+                , div [ class "form-check form-switch m-0" ]
+                    [ input
+                        [ type_ "checkbox"
+                        , class "form-check-input"
+                        , attribute "role" "switch"
+                        , id ("microster-" ++ String.fromInt leave.id)
+                        , checked leave.microster
+                        , onCheck (\v -> change { noLeaveChange | microster = Just v })
+                        ]
+                        []
+                    , label [ class "form-check-label", for ("microster-" ++ String.fromInt leave.id) ] [ text "In Microster" ]
                     ]
-                    []
-                , label [ class "form-check-label", for ("microster-" ++ String.fromInt leave.id) ] [ text "In Microster" ]
                 ]
-            ]
-        , div [ class "mt-2" ]
-            [ button
-                [ type_ "button"
-                , class "btn btn-sm btn-outline-secondary"
-                , onClick (change { noLeaveChange | cancelled = Just (not leave.cancelled) })
-                ]
-                [ text
-                    (if leave.cancelled then
-                        "Restore leave"
+            , div [ class "re-actions" ]
+                [ button
+                    [ type_ "button"
+                    , class "re-btn"
+                    , onClick (change { noLeaveChange | cancelled = Just (not leave.cancelled) })
+                    ]
+                    [ text
+                        (if leave.cancelled then
+                            "Restore leave"
 
-                     else
-                        "Mark as cancelled"
-                    )
+                         else
+                            "Mark as cancelled"
+                        )
+                    ]
                 ]
+            , p [ class "re-meta" ] [ text ("Requested " ++ dateTime model.zone leave.created ++ " · updated " ++ dateTime model.zone leave.last_edited) ]
             ]
-        , p [ class "re-meta" ] [ text ("Requested " ++ dateTime model.zone leave.created ++ " · updated " ++ dateTime model.zone leave.last_edited) ]
-        ]
+    in
+    section [ class "re-section" ]
+        ([ h3 [ class "re-section-title" ]
+            [ span [ class ("re-chip re-leave is-" ++ leaveStateClass state), attribute "aria-hidden" "true" ] (leaveChipContent choice state leave)
+            , text (choice.label ++ " leave" ++ portionLabel leave)
+            ]
+         , p [ class "re-status" ] [ text (leaveStateSentence leave) ]
+         , if String.isEmpty leave.comment then
+            text ""
+
+           else
+            p [ class "re-comment" ] [ text ("“" ++ leave.comment ++ "”") ]
+         ]
+            ++ (if withShifts && settled then
+                    [ details
+                        [ class "re-leave-admin"
+                        , property "open" (Encode.bool (Set.member leave.id model.openLeaves))
+                        , on "toggle" (Decode.map (ToggleLeaveAdmin leave.id) (Decode.at [ "target", "open" ] Decode.bool))
+                        ]
+                        (summary [] [ text "Approvals, form and Microster" ] :: admin)
+                    ]
+
+                else
+                    admin
+               )
+        )
 
 
 {-| "Mon 19 – Wed 21 Oct"
@@ -3896,7 +4026,7 @@ approvalGroup _ leave approver who current decided toMsg =
         groupName =
             approver ++ "-" ++ String.fromInt leave.id
 
-        option value optionLabel variant =
+        option value optionLabel variant icon =
             let
                 optionId =
                     groupName ++ "-" ++ String.toLower optionLabel
@@ -3911,19 +4041,20 @@ approvalGroup _ leave approver who current decided toMsg =
                 , onCheck (\_ -> toMsg value)
                 ]
                 []
-            , label [ class ("btn btn-sm btn-outline-" ++ variant), for optionId ] [ text optionLabel ]
+            , label [ class ("re-seg-option is-" ++ variant), for optionId ]
+                [ i [ class ("bi " ++ icon), attribute "aria-hidden" "true" ] [], text optionLabel ]
             ]
     in
     fieldset [ class "re-approval" ]
         [ legend [ class "re-label" ] [ text who ]
-        , div [ class "btn-group btn-group-sm" ]
-            (option (Just True) "Approve" "success" ++ option Nothing "Waiting" "secondary" ++ option (Just False) "Decline" "danger")
+        , div [ class "re-seg" ]
+            (option (Just True) "Approve" "approve" "bi-check-lg" ++ option Nothing "Waiting" "wait" "bi-hourglass-split" ++ option (Just False) "Decline" "decline" "bi-x-lg")
         , case ( current, decided ) of
             ( Just _, Just line ) ->
                 span [ class "re-decided" ] [ text line ]
 
             ( Just _, Nothing ) ->
-                span [ class "re-decided" ] [ text "decided before decisions were recorded" ]
+                span [ class "re-decided" ] [ text "who decided and when wasn't recorded" ]
 
             ( Nothing, _ ) ->
                 text ""
@@ -4027,7 +4158,7 @@ viewCoverMenu model roster date =
                                                             in
                                                             button
                                                                 [ type_ "button"
-                                                                , classList [ ( "btn btn-sm re-typebtn", True ), ( "is-ruled-out", List.any (rulesOut (Just shiftType)) statuses ) ]
+                                                                , classList [ ( "re-btn re-typebtn", True ), ( "is-ruled-out", List.any (rulesOut (Just shiftType)) statuses ) ]
                                                                 , attribute "aria-label" ("Give " ++ registrar.name ++ " the " ++ shiftLabel model shiftType)
                                                                 , onClick (AssignCover (AddShift ( registrar.id, day date ) shiftType False Nothing))
                                                                 ]
@@ -4159,7 +4290,7 @@ viewFilters : Model -> List (Html Msg)
 viewFilters model =
     [ viewFilterGroup "Shifts" "shift-type" model.flags.shiftTypes model.hiddenShiftTypes ToggleShiftType
     , viewFilterGroup "Leave" "leave-type" model.flags.leaveTypes model.hiddenLeaveTypes ToggleLeaveType
-    , button [ type_ "button", class "btn btn-sm btn-link px-0", onClick ShowAllTypes ] [ text "Show everything" ]
+    , div [ class "re-section" ] [ button [ type_ "button", class "re-btn re-btn--quiet", onClick ShowAllTypes ] [ text "Show everything" ] ]
     ]
 
 
@@ -4204,7 +4335,11 @@ viewKey model =
                 )
                 (shiftChoices model)
             )
-        , p [ class "re-meta" ] [ i [ class "bi bi-coin me-1", attribute "aria-hidden" "true" ] [], text "marks an extra duty, which doesn't count towards load." ]
+        , ul [ class "re-keylist mt-1" ]
+            [ li [] [ span [ class "re-chip re-shift is-long is-extra" ] [ text "Long" ], text "Extra duty (folded corner): doesn't count towards load" ]
+            , li [] [ span [ class "re-keycell is-stack" ] [ span [ class "re-chip re-shift is-rdo" ] [ text "RDO" ], span [ class "re-chip re-leave is-approved" ] [ i [ class "bi bi-check-lg" ] [], text "Annual" ] ], text "A day holding more than one thing lists each on its own line" ]
+            , li [] [ span [ class "re-ruledout" ] [ i [ class "bi bi-person-slash", attribute "aria-hidden" "true" ] [] ], text "In a day's menu: their status rules this shift out" ]
+            ]
         ]
     , section [ class "re-section" ]
         [ h3 [ class "re-section-title" ] [ text "Leave" ]
@@ -4218,6 +4353,7 @@ viewKey model =
                         ]
                 )
                 [ Pending, PartlyApproved, Approved, Declined, Cancelled ]
+                ++ [ li [] [ span [ class "re-chip re-leave is-approved" ] [ i [ class "bi bi-check-lg", attribute "aria-hidden" "true" ] [], span [ class "re-portion" ] [ text "PM" ], text "Annual" ], text "Half a day: the morning (AM) or afternoon (PM)" ] ]
             )
         ]
     , section [ class "re-section" ]
@@ -4247,6 +4383,7 @@ viewKey model =
             [ li [] [ kbd [] [ text "← ↑ → ↓" ], text "Move between days and registrars" ]
             , li [] [ kbd [] [ text "Home End" ], text "First or last day of the row" ]
             , li [] [ kbd [] [ text "PgUp PgDn" ], text "A week back or on" ]
+            , li [] [ kbd [] [ text "Drag" ], text "Scroll the roster with the mouse" ]
             , li [] [ kbd [] [ text "Enter Space" ], text "Open the day" ]
             , li [] [ kbd [] [ text (String.join " " (List.map (\( _, c ) -> String.toUpper c.key) (shiftChoices model))) ], text "Add that shift, or change the one there (also in the day's menu)" ]
             , li [] [ kbd [] [ text "Delete" ], text "Delete the day's shift (asks first)" ]
@@ -4280,55 +4417,61 @@ viewPublish model =
                     draft.preview |> Maybe.map (\p -> p.shifts_hidden + p.leave_hidden > 0) |> Maybe.withDefault False
 
                 field fieldId labelText current toMsg =
-                    div [ class "col" ]
-                        [ label [ class "form-label", for fieldId ] [ text labelText ]
-                        , input [ type_ "date", class "form-control", id fieldId, value current, onInput toMsg ] []
+                    div []
+                        [ label [ for fieldId ] [ text labelText ]
+                        , input [ type_ "date", class "re-input", id fieldId, value current, onInput toMsg, attribute "aria-describedby" (fieldId ++ "-date") ] []
+                        , span [ class "re-fielddate", id (fieldId ++ "-date") ]
+                            [ text (Date.fromIsoString current |> Result.map fullDate |> Result.withDefault "") ]
                         ]
             in
             div []
-                [ div [ class "modal d-block re-publish", attribute "role" "dialog", attribute "aria-modal" "true", attribute "aria-labelledby" "publish-title" ]
-                    [ div [ class "modal-dialog modal-dialog-scrollable" ]
-                        [ Html.form [ class "modal-content", onSubmit SavePublish ]
-                            [ span [ tabindex 0, onFocus (FocusId "publish-submit") ] []
-                            , div [ class "modal-header" ]
-                                [ h2 [ class "modal-title fs-5", id "publish-title" ] [ text "Publish the roster" ] ]
-                            , div [ class "modal-body" ]
-                                [ p [ class "text-body-secondary" ] [ text "Registrars see shifts and leave between these dates in the calendar and their phone calendar feeds. The dashed line on the roster shows where this range ends." ]
-                                , div [ class "row g-3" ]
-                                    [ field "publish-start" "From" draft.start SetPublishStart
-                                    , field "publish-end" "To" draft.end SetPublishEnd
-                                    ]
-                                , if not valid then
-                                    p [ class "re-note is-error mt-3 mb-0", attribute "role" "alert" ] [ text (draftProblem draft |> Maybe.withDefault "") ]
+                [ div [ class "re-backdrop is-dim", onClick ClosePublish ] []
+                , Html.form
+                    [ class "re-popover is-centred"
+                    , attribute "role" "dialog"
+                    , attribute "aria-modal" "true"
+                    , attribute "aria-labelledby" "publish-title"
+                    , style "width" (px listWidth)
+                    , onSubmit SavePublish
+                    ]
+                    [ span [ tabindex 0, onFocus (FocusId "publish-submit") ] []
+                    , div [ class "re-popover-head" ]
+                        [ h2 [ id "publish-title", class "re-popover-title", tabindex -1 ] [ text "Publish the roster" ] ]
+                    , div [ class "re-popover-body" ]
+                        [ p [ class "re-status mt-2" ] [ text "Registrars see shifts and leave between these dates in the calendar and their phone calendar feeds. The dashed line on the roster shows where this range ends." ]
+                        , div [ class "re-fields" ]
+                            [ field "publish-start" "From" draft.start SetPublishStart
+                            , field "publish-end" "To" draft.end SetPublishEnd
+                            ]
+                        , if not valid then
+                            p [ class "re-note is-error", attribute "role" "alert" ] [ text (draftProblem draft |> Maybe.withDefault "") ]
 
-                                  else if not changes then
-                                    p [ class "re-meta mt-3 mb-0" ] [ text "This is the range that's published now." ]
+                          else if not changes then
+                            p [ class "re-meta mb-3" ] [ text "This is the range that's published now." ]
 
-                                  else
-                                    viewPreview model draft
-                                ]
-                            , div [ class "modal-footer" ]
-                                [ button [ type_ "button", id "publish-cancel", class "btn btn-outline-secondary", onClick ClosePublish ] [ text "Cancel" ]
-                                , button
-                                    [ type_ "submit"
-                                    , id "publish-submit"
-                                    , classList [ ( "btn", True ), ( "btn-primary", not hiding ), ( "btn-danger", hiding ) ]
-                                    , disabled (not valid || not changes || draft.saving)
-                                    ]
-                                    [ text
-                                        (if valid && not changes then
-                                            "No change"
+                          else
+                            viewPreview model draft
+                        ]
+                    , div [ class "re-popover-foot" ]
+                        [ escHint
+                        , button [ type_ "button", id "publish-cancel", class "re-btn", onClick ClosePublish ] [ text "Cancel" ]
+                        , button
+                            [ type_ "submit"
+                            , id "publish-submit"
+                            , classList [ ( "re-btn", True ), ( "re-btn--primary", not hiding ), ( "re-btn--danger", hiding ) ]
+                            , disabled (not valid || not changes || draft.saving)
+                            ]
+                            [ text
+                                (if valid && not changes then
+                                    "No change"
 
-                                         else
-                                            publishLabel draft
-                                        )
-                                    ]
-                                ]
-                            , span [ tabindex 0, onFocus (FocusId "publish-start") ] []
+                                 else
+                                    publishLabel draft
+                                )
                             ]
                         ]
+                    , span [ tabindex 0, onFocus (FocusId "publish-title") ] []
                     ]
-                , div [ class "modal-backdrop show re-publish-backdrop" ] []
                 ]
 
         Nothing ->
@@ -4506,7 +4649,7 @@ viewFailure failure =
                 , span [ class "re-toast-text" ] [ text f.message ]
                 , case f.retry of
                     Just retry ->
-                        button [ type_ "button", class "btn btn-sm btn-light", onClick (Retry retry) ] [ text "Try again" ]
+                        button [ type_ "button", class "re-btn re-btn--on-dark", onClick (Retry retry) ] [ text "Try again" ]
 
                     Nothing ->
                         text ""
@@ -4526,8 +4669,8 @@ viewToast toast =
             div [ class "re-toast" ]
                 [ span [ class "re-toast-text" ] [ text t.message ]
                 , if t.undoable then
-                    button [ type_ "button", class "btn btn-sm btn-light", onClick UndoLast ]
-                        [ i [ class "bi bi-arrow-counterclockwise me-1", attribute "aria-hidden" "true" ] [], text "Undo" ]
+                    button [ type_ "button", class "re-btn re-btn--on-dark", onClick UndoLast ]
+                        [ i [ class "bi bi-arrow-counterclockwise", attribute "aria-hidden" "true" ] [], text "Undo" ]
 
                   else
                     text ""
@@ -4667,17 +4810,6 @@ leaveStateSentence leave =
                 "Waiting on the chief registrar and the Director of Training."
 
 
-{-| "PM " for a half day. It leads the chip so a narrow column cuts the leave type, not the half.
--}
-portionPrefix : T.LeaveOut -> String
-portionPrefix leave =
-    if leave.portion == "ALL" then
-        ""
-
-    else
-        leave.portion ++ " "
-
-
 portionLabel : T.LeaveOut -> String
 portionLabel leave =
     case leave.portion of
@@ -4703,6 +4835,13 @@ cellId ( registrar, d ) =
 coverId : Date -> String
 coverId date =
     "cover-" ++ Date.toIsoString date
+
+
+{-| The cover strip's cell for a day, which the day's cover menu opens beside.
+-}
+coverDayId : Date -> String
+coverDayId date =
+    "coverday-" ++ Date.toIsoString date
 
 
 isCellOpen : Cell -> Maybe Popover -> Bool
