@@ -87,7 +87,7 @@ def menu(page: Page):
 
 def test_grid_shows_shifts_leave_and_cover(editor: Page, roster):
     expect(cell(editor, "2024-12-23", roster["erika"])).to_contain_text("Long")
-    expect(cell(editor, "2024-12-24", roster["will"])).to_contain_text("Annual")
+    expect(cell(editor, "2024-12-24", roster["will"])).to_contain_text("AL")
     expect(cell(editor, "2024-12-24", roster["will"])).to_have_attribute(
         "aria-label", "Will Tane, Tue 24 Dec: Annual leave (all day), waiting for approval"
     )

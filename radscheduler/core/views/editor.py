@@ -91,8 +91,8 @@ STATUS_SHORT = {
     "NA": "Away",
 }
 LEAVE_SHORT = {
-    "ANNUAL": "Annual",
-    "EDU": "Educ",
+    "ANNUAL": "AL",
+    "EDU": "Edu",
     "CONF": "Conf",
     "LIEU": "Lieu",
     "SICK": "Sick",

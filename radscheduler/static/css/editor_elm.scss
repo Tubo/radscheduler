@@ -892,13 +892,6 @@ tfoot .re-corner {
   }
 }
 
-// Morning or afternoon leaves room for the leave type by setting the half smaller.
-.re-portion {
-  margin-right: 1px;
-  font-size: 0.5625rem;
-  font-weight: 700;
-}
-
 .re-shift,
 .re-swatch {
   &.is-long {
@@ -979,6 +972,25 @@ tfoot .re-corner {
     background-color: transparent;
     color: var(--re-muted);
     text-decoration: line-through;
+  }
+
+  // A half day shades the half it takes, in the state's own colour, so it reads before the "·am" or "·pm".
+  --re-half: color-mix(in srgb, currentColor 22%, transparent);
+
+  &.is-am {
+    background-image: linear-gradient(
+      to right,
+      var(--re-half) 50%,
+      transparent 50%
+    );
+  }
+
+  &.is-pm {
+    background-image: linear-gradient(
+      to left,
+      var(--re-half) 50%,
+      transparent 50%
+    );
   }
 }
 

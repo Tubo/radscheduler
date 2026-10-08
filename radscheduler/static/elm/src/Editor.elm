@@ -3385,21 +3385,39 @@ viewLeaveChip model leave =
         state =
             leaveState leave
     in
-    span [ class ("re-chip re-leave is-" ++ leaveStateClass state), title (choice.label ++ " leave" ++ portionLabel leave ++ ", " ++ leaveStateName state), attribute "aria-hidden" "true" ]
+    span [ class (leaveChipClass state leave), title (choice.label ++ " leave" ++ portionLabel leave ++ ", " ++ leaveStateName state), attribute "aria-hidden" "true" ]
         (leaveChipContent choice state leave)
 
 
-{-| The state icon, the half ("PM") set small, and the type, so a half day fits a column without losing its type.
+{-| A leave chip's classes: its state, and for a half day the half it shades.
+-}
+leaveChipClass : LeaveState -> T.LeaveOut -> String
+leaveChipClass state leave =
+    "re-chip re-leave is-"
+        ++ leaveStateClass state
+        ++ (case leave.portion of
+                "AM" ->
+                    " is-am"
+
+                "PM" ->
+                    " is-pm"
+
+                _ ->
+                    ""
+           )
+
+
+{-| The state icon and the type, followed by the half ("AL·pm") for a half day.
 -}
 leaveChipContent : Choice -> LeaveState -> T.LeaveOut -> List (Html Msg)
 leaveChipContent choice state leave =
     [ i [ class ("bi " ++ leaveIcon state) ] []
+    , text choice.short
     , if leave.portion == "ALL" then
         text ""
 
       else
-        span [ class "re-portion" ] [ text leave.portion ]
-    , text choice.short
+        text ("·" ++ String.toLower leave.portion)
     ]
 
 
@@ -3981,7 +3999,7 @@ viewLeaveSection model roster cell withShifts leave =
     in
     section [ class "re-section" ]
         ([ h3 [ class "re-section-title" ]
-            [ span [ class ("re-chip re-leave is-" ++ leaveStateClass state), attribute "aria-hidden" "true" ] (leaveChipContent choice state leave)
+            [ span [ class (leaveChipClass state leave), attribute "aria-hidden" "true" ] (leaveChipContent choice state leave)
             , text (choice.label ++ " leave" ++ portionLabel leave)
             ]
          , p [ class "re-status" ] [ text (leaveStateSentence leave) ]
@@ -4361,7 +4379,7 @@ viewKey model =
             )
         , ul [ class "re-keylist mt-1" ]
             [ li [] [ span [ class "re-chip re-shift is-long is-extra" ] [ text "Long" ], text "Extra duty (folded corner): doesn't count towards load" ]
-            , li [] [ span [ class "re-keycell is-stack" ] [ span [ class "re-chip re-shift is-rdo" ] [ text "RDO" ], span [ class "re-chip re-leave is-approved" ] [ i [ class "bi bi-check-lg" ] [], text "Annual" ] ], text "A day holding more than one thing lists each on its own line" ]
+            , li [] [ span [ class "re-keycell is-stack" ] [ span [ class "re-chip re-shift is-rdo" ] [ text "RDO" ], span [ class "re-chip re-leave is-approved" ] [ i [ class "bi bi-check-lg" ] [], text "AL" ] ], text "A day holding more than one thing lists each on its own line" ]
             , li [] [ span [ class "re-ruledout" ] [ i [ class "bi bi-person-slash", attribute "aria-hidden" "true" ] [] ], text "In a day's menu: their status rules this shift out" ]
             ]
         ]
@@ -4372,12 +4390,14 @@ viewKey model =
                 (\state ->
                     li []
                         [ span [ class ("re-chip re-leave is-" ++ leaveStateClass state) ]
-                            [ i [ class ("bi " ++ leaveIcon state), attribute "aria-hidden" "true" ] [], text "Annual" ]
+                            [ i [ class ("bi " ++ leaveIcon state), attribute "aria-hidden" "true" ] [], text "AL" ]
                         , text (capitalise (leaveStateName state))
                         ]
                 )
                 [ Pending, PartlyApproved, Approved, Declined, Cancelled ]
-                ++ [ li [] [ span [ class "re-chip re-leave is-approved" ] [ i [ class "bi bi-check-lg", attribute "aria-hidden" "true" ] [], span [ class "re-portion" ] [ text "PM" ], text "Annual" ], text "Half a day: the morning (AM) or afternoon (PM)" ] ]
+                ++ [ li [] [ span [ class "re-chip re-leave is-approved is-pm" ] [ i [ class "bi bi-check-lg", attribute "aria-hidden" "true" ] [], text "AL·pm" ], text "Half a day: the morning (am) or afternoon (pm), with that half shaded" ]
+                   , li [] [ text (model.flags.leaveTypes |> List.filter (\c -> c.short /= c.label) |> List.map (\c -> c.short ++ " " ++ String.toLower c.label) |> String.join " · ") ]
+                   ]
             )
         ]
     , section [ class "re-section" ]
