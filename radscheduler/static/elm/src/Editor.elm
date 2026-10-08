@@ -150,6 +150,9 @@ type alias RowData =
     , violations : Dict Int (List T.ViolationOut)
     , statuses : List T.StatusOut
     , load : Float
+
+    -- The last of a training year, where a firmer line sets the next year apart.
+    , lastOfYear : Bool
     }
 
 
@@ -642,13 +645,17 @@ buildIndex model roster =
         violations =
             Dict.foldl (\( r, d ) vs acc -> Dict.update r (\row -> Just (Dict.insert d vs (Maybe.withDefault Dict.empty row))) acc) Dict.empty checks.violations
 
-        rowOf registrar =
+        nextYears =
+            List.map (.year >> nullable >> Just) (List.drop 1 roster.registrars) ++ [ Nothing ]
+
+        rowOf registrar nextYear =
             { registrar = registrar
             , shifts = Dict.get registrar.id shifts |> Maybe.withDefault Dict.empty
             , leaves = Dict.get registrar.id leaves |> Maybe.withDefault Dict.empty
             , violations = Dict.get registrar.id violations |> Maybe.withDefault Dict.empty
             , statuses = Dict.get registrar.id checks.statuses |> Maybe.withDefault []
             , load = loadOf checks registrar.id
+            , lastOfYear = nextYear /= Nothing && nextYear /= Just (nullable registrar.year)
             }
 
         window =
@@ -689,7 +696,7 @@ buildIndex model roster =
         , window = window
         , maxLoad = checks.maxLoad
         }
-    , rows = List.map rowOf roster.registrars
+    , rows = List.map2 rowOf roster.registrars nextYears
     }
 
 
@@ -3129,7 +3136,7 @@ viewRow context data cursorDay openDay selFrom selTo errorDay savingDays =
         saving =
             String.split "," savingDays |> List.filterMap String.toInt
     in
-    tr []
+    tr [ classList [ ( "is-cursor-row", cursorDay >= 0 ), ( "is-last-of-year", data.lastOfYear ) ] ]
         (th [ scope "row", class "re-name", title (registrar.name ++ " (" ++ registrar.username ++ ")") ]
             [ div [ class "re-nameline" ]
                 [ span [ class "re-username" ] [ text registrar.name ]

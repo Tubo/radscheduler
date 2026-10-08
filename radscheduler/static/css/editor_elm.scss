@@ -636,8 +636,41 @@
   width: var(--re-load-col);
   min-width: var(--re-load-col);
   max-width: var(--re-load-col);
+  padding-inline: 6px;
   box-shadow: inset -1px 0 0 var(--re-line-strong);
   text-align: right;
+}
+
+// Names, row labels and loads keep off the grid's edges.
+.re-grid .re-corner:not(.re-loadcol),
+.re-grid .re-name {
+  padding-left: 8px;
+}
+
+// A name and its load hang from the top of the row, on the baseline of the first chip in its cells, however
+// tall a busy day makes the row.
+.re-grid .re-name,
+.re-grid .re-load {
+  padding-top: 5px;
+  vertical-align: top;
+}
+
+.re-grid .re-load {
+  padding-top: 6px;
+}
+
+// The registrar under the pointer, or under the keyboard cursor while the grid has focus, so a cell far from
+// the names can be traced back.
+.re-grid tr:hover > .re-name,
+.re-grid tr:hover > .re-load,
+.re-grid:focus-within tr.is-cursor-row > .re-name,
+.re-grid:focus-within tr.is-cursor-row > .re-load {
+  background-color: var(--re-accent-tint);
+}
+
+// A firmer line closes each training year.
+.re-grid tr.is-last-of-year > * {
+  border-bottom-color: var(--re-line-strong);
 }
 
 .re-corner {
@@ -704,7 +737,6 @@
 .re-load {
   z-index: 2;
   background-color: #fff;
-  vertical-align: middle;
 }
 
 .re-loadvalue {
