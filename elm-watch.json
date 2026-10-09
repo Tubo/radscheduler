@@ -4,6 +4,10 @@
     "Roster editor": {
       "inputs": ["radscheduler/static/elm/src/Editor.elm"],
       "output": "radscheduler/static/elm-build/editor.js"
+    },
+    "Leave requests": {
+      "inputs": ["radscheduler/static/elm/src/LeaveRequests.elm"],
+      "output": "radscheduler/static/elm-build/leave_requests.js"
     }
   }
 }

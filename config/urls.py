@@ -9,6 +9,7 @@ from django.views.generic import TemplateView
 import radscheduler.core.ical as ical
 import radscheduler.core.views.editor as editor_views
 import radscheduler.core.views.extra_duties as extra_duties_views
+import radscheduler.core.views.leave_requests as leave_requests_views
 import radscheduler.core.views.leaves as leaves_views
 from radscheduler.core.api import api
 
@@ -42,6 +43,7 @@ editor_view_urls = [
 roster_view_urls = [
     path("", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"),
     path("editor/", include(editor_view_urls)),
+    path("leave/", leave_requests_views.page, name="leave_requests"),
 ]
 
 extra_duties_urls = [

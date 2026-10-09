@@ -1,6 +1,7 @@
 module Radscheduler.Api exposing
     ( addShift, changeLeave, changeLeaves, changeShift, deleteShift, getChecks
-    , getRoster, holidayEvents, leaveEvents, previewPublished, setPublished, shiftEvents
+    , getLeaveRequests, getRoster, holidayEvents, leaveEvents, previewPublished, setPublished
+    , shiftEvents
     )
 
 {-|
@@ -9,7 +10,8 @@ module Radscheduler.Api exposing
 ## Operations
 
 @docs addShift, changeLeave, changeLeaves, changeShift, deleteShift, getChecks
-@docs getRoster, holidayEvents, leaveEvents, previewPublished, setPublished, shiftEvents
+@docs getLeaveRequests, getRoster, holidayEvents, leaveEvents, previewPublished, setPublished
+@docs shiftEvents
 
 -}
 
@@ -218,6 +220,54 @@ getChecks config =
             OpenApi.Common.expectJsonCustom
                 (Dict.fromList [])
                 Radscheduler.Json.decodeChecksOut
+                config.toMsg
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| Get Leave Requests
+
+Leave requests waiting for a decision, or recently decided, each with the roster around it.
+
+-}
+getLeaveRequests :
+    { authorization : { x_csrftoken : String }
+    , toMsg :
+        Result (OpenApi.Common.Error e String) Radscheduler.Types.LeaveRequestsOut
+        -> msg
+    , params : { decided : Maybe Bool }
+    }
+    -> Cmd msg
+getLeaveRequests config =
+    Http.request
+        { url =
+            Url.Builder.absolute
+                [ "api", "editor", "leave-requests" ]
+                (List.filterMap
+                    Basics.identity
+                    [ Maybe.map
+                        (Url.Builder.string "decided")
+                        (Maybe.map
+                            (\mapUnpack ->
+                                if mapUnpack then
+                                    "true"
+
+                                else
+                                    "false"
+                            )
+                            config.params.decided
+                        )
+                    ]
+                )
+        , method = "GET"
+        , headers =
+            [ Http.header "X-CSRFToken" config.authorization.x_csrftoken ]
+        , expect =
+            OpenApi.Common.expectJsonCustom
+                (Dict.fromList [])
+                Radscheduler.Json.decodeLeaveRequestsOut
                 config.toMsg
         , body = Http.emptyBody
         , timeout = Nothing

@@ -1,8 +1,10 @@
-// The Elm roster editor. Bootstrap (from the vendors bundle) supplies the reset, form checks and utilities;
-// this file owns the grid, its colour system, the editor's buttons and the popover layer. Every text colour pair below meets WCAG AA,
+// The Elm roster editor, and the leave requests page that shares its colours, buttons and chips. Bootstrap
+// (from the vendors bundle) supplies the reset, form checks and utilities; this file owns the grid, its colour
+// system, the editor's buttons and the popover layer. Every text colour pair below meets WCAG AA,
 // and every mark that carries meaning on its own (markers, edges, outlines) meets 3:1 against its ground.
 
-.roster-editor {
+.roster-editor,
+.leave-requests {
   // Ink and lines
   --re-ink: #1f2933;
   --re-muted: #5c6670;
@@ -54,10 +56,6 @@
   --re-name-col: 156px;
   --re-load-col: 48px;
 
-  display: flex;
-  flex-direction: column;
-  height: calc(100dvh - var(--re-top, 64px));
-  padding: 0 0.75rem 0.5rem;
   color: var(--re-ink);
   font-variant-numeric: tabular-nums;
 
@@ -92,6 +90,13 @@
     border-color: var(--re-accent-soft);
     box-shadow: none;
   }
+}
+
+.roster-editor {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--re-top, 64px));
+  padding: 0 0.75rem 0.5rem;
 }
 
 // Buttons. One size everywhere, four roles, all on the editor's own colours:

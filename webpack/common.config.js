@@ -11,6 +11,10 @@ module.exports = {
     calendar: path.resolve(__dirname, '../radscheduler/static/js/calendar'),
     editor: path.resolve(__dirname, '../radscheduler/static/js/editor'),
     editor_elm: path.resolve(__dirname, '../radscheduler/static/js/editor_elm'),
+    leave_requests: path.resolve(
+      __dirname,
+      '../radscheduler/static/js/leave_requests',
+    ),
   },
   output: {
     path: path.resolve(__dirname, '../radscheduler/static/webpack_bundles/'),

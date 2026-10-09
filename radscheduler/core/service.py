@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import date, timedelta
 
 from django.db.models import F, OuterRef, Q, Subquery
@@ -140,18 +141,23 @@ def editor_checks(week: date) -> dict:
     }
 
 
-def roster_violations(start: date, end: date) -> list[rules.Violation]:
+def roster_violations(
+    start: date, end: date, registrar_id: int | None = None, without_leave: Iterable[int] = ()
+) -> list[rules.Violation]:
     """
-    Contract and department rule breaks that touch any day from `start` to `end`. Leave that is cancelled or
-    declined doesn't count; leave still waiting for approval does, so a clash shows before it is approved.
+    Contract and department rule breaks that touch any day from `start` to `end`, for everyone or for one
+    registrar, as if the leave in `without_leave` hadn't been asked for. Leave that is cancelled or declined
+    doesn't count; leave still waiting for approval does, so a clash shows before it is approved.
     """
     around = [start - CHECK_MARGIN, end + CHECK_MARGIN]
+    whose = Q(registrar_id=registrar_id) if registrar_id else Q()
     shifts, leaves, statuses = domain_mapper.roster_from_db(
-        Shift.objects.filter(date__range=around, registrar__isnull=False),
-        Leave.objects.filter(date__range=around, cancelled=False)
+        Shift.objects.filter(whose, date__range=around, registrar__isnull=False),
+        Leave.objects.filter(whose, date__range=around, cancelled=False)
         .exclude(reg_approved=False)
-        .exclude(dot_approved=False),
-        Status.objects.filter(start__lte=around[1], end__gte=around[0]),
+        .exclude(dot_approved=False)
+        .exclude(pk__in=list(without_leave)),
+        Status.objects.filter(whose, start__lte=around[1], end__gte=around[0]),
     )
     violations = rules.check_roster(shifts, leaves, statuses, period=(start, end))
     touching = [v for v in violations if any(start <= day <= end for day in v.dates)]

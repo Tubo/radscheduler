@@ -302,6 +302,25 @@ class TestUnassignedShifts:
         )
 
 
+class TestLeaveRequests:
+    def test_waiting_requests_with_their_roster(self, app, director, juniors_db):
+        for day in (16, 17):
+            Leave.objects.create(date=date(2024, 12, day), type=LeaveType.ANNUAL, registrar=juniors_db[0])
+
+        body = app.get("/api/editor/leave-requests", user=director).json
+
+        [request] = body["requests"]
+        assert [leave["date"] for leave in request["leaves"]] == ["2024-12-16", "2024-12-17"]
+        assert request["dates"][0] == "2024-12-14" and request["dates"][-1] == "2024-12-19"
+        # Nobody is rostered, so nothing is lost by the leave and everything is short
+        assert (request["days"][2]["lost"], request["days"][2]["short"]) == ([], [["SWING"], ["NIGHT"]])
+        assert [r["name"] for r in body["registrars"]] == [juniors_db[0].user.name or juniors_db[0].user.username]
+        assert app.get("/api/editor/leave-requests", {"decided": True}, user=director).json["requests"] == []
+
+    def test_registrars_cannot_list_them(self, app, juniors_db):
+        app.get("/api/editor/leave-requests", user=juniors_db[0].user, status=401)
+
+
 class TestPublishPreview:
     def test_counts_what_registrars_gain_and_lose(self, app, staff, juniors_db):
         Settings.objects.create(publish_start_date=date(2025, 1, 1), publish_end_date=date(2025, 1, 31))

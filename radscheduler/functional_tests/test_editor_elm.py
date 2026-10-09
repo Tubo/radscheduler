@@ -2,44 +2,20 @@
 The Elm roster editor, driven in a real browser. Needs the built bundles: run `pnpm build` first.
 """
 
-import json
 import os
 import re
-import socket
 from datetime import date
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 import pytest  # noqa: E402
-from django.conf import settings as django_settings  # noqa: E402
 from playwright.sync_api import Page, expect  # noqa: E402
-from webpack_loader import config as webpack_config  # noqa: E402
-from webpack_loader.utils import get_loader  # noqa: E402
 
 from radscheduler.core.models import Leave, Registrar, Settings, Shift  # noqa: E402
 from radscheduler.roster.models import LeaveType, ShiftType  # noqa: E402
 from radscheduler.users.tests.factories import UserFactory  # noqa: E402
 
 pytestmark = pytest.mark.django_db
-
-
-@pytest.fixture
-def real_bundles(monkeypatch):
-    """Serve the built bundles instead of the test settings' fake ones."""
-    stats = django_settings.BASE_DIR / "webpack-stats.json"
-    elm = django_settings.BASE_DIR / "radscheduler/static/elm-build/editor.js"
-    if not elm.exists() or not stats.exists() or "editor_elm" not in json.loads(stats.read_text()).get("chunks", {}):
-        pytest.fail("The Elm editor isn't built; run `pnpm build` first.")
-    # A build from `elm-watch hot` loads its code from elm-watch, so it only works while that runs.
-    hot = re.search(r'webSocketPort":(\d+)', elm.read_text())
-    if hot and socket.socket().connect_ex(("localhost", int(hot[1]))) != 0:
-        pytest.fail("The Elm editor build is from `elm-watch hot`, which isn't running: run `pnpm build` first.")
-    # django-webpack-loader reads its settings once, at import.
-    real = {**webpack_config.user_config["DEFAULT"], "LOADER_CLASS": "webpack_loader.loaders.WebpackLoader"}
-    monkeypatch.setitem(webpack_config.user_config, "DEFAULT", real)
-    get_loader.cache_clear()
-    yield
-    get_loader.cache_clear()
 
 
 @pytest.fixture

@@ -1,8 +1,8 @@
 module Radscheduler.Types exposing
-    ( ChecksOut, ErrorOut, FullCalendarHolidaySchema, FullCalendarLeaveSchema, FullCalendarShiftSchema, GapOut
-    , HolidayOut, LeaveOut, LeavePatch, LeavesPatch, PreviewOut, PublishedRange
-    , RegistrarOut, RosterOut, ShiftIn, ShiftOut, ShiftPatch, StatusOut
-    , ViolationOut, WorkloadOut
+    ( AwayOut, ChecksOut, ErrorOut, FullCalendarHolidaySchema, FullCalendarLeaveSchema, FullCalendarShiftSchema
+    , GapOut, HolidayOut, LeaveOut, LeavePatch, LeaveRequestOut, LeaveRequestsOut
+    , LeavesPatch, PreviewOut, PublishedRange, RegistrarOut, RequestDayOut, RosterOut
+    , ShiftIn, ShiftOut, ShiftPatch, StatusOut, ViolationOut, WorkloadOut
     , LeaveType(..), ShiftType(..), StatusType(..), leaveTypeFromString, leaveTypeToString, leaveTypeVariants
     , shiftTypeFromString, shiftTypeToString, shiftTypeVariants, statusTypeFromString, statusTypeToString, statusTypeVariants
     )
@@ -12,10 +12,10 @@ module Radscheduler.Types exposing
 
 ## Aliases
 
-@docs ChecksOut, ErrorOut, FullCalendarHolidaySchema, FullCalendarLeaveSchema, FullCalendarShiftSchema, GapOut
-@docs HolidayOut, LeaveOut, LeavePatch, LeavesPatch, PreviewOut, PublishedRange
-@docs RegistrarOut, RosterOut, ShiftIn, ShiftOut, ShiftPatch, StatusOut
-@docs ViolationOut, WorkloadOut
+@docs AwayOut, ChecksOut, ErrorOut, FullCalendarHolidaySchema, FullCalendarLeaveSchema, FullCalendarShiftSchema
+@docs GapOut, HolidayOut, LeaveOut, LeavePatch, LeaveRequestOut, LeaveRequestsOut
+@docs LeavesPatch, PreviewOut, PublishedRange, RegistrarOut, RequestDayOut, RosterOut
+@docs ShiftIn, ShiftOut, ShiftPatch, StatusOut, ViolationOut, WorkloadOut
 
 
 ## Enum
@@ -28,6 +28,17 @@ module Radscheduler.Types exposing
 import Date
 import OpenApi.Common
 import Time
+
+
+{-| Someone else's leave on a day next to a request: approved, or still waiting for a decision.
+-}
+type alias AwayOut =
+    { approved : Bool
+    , date : Date.Date
+    , portion : String
+    , registrar : Int
+    , type_ : LeaveType
+    }
 
 
 type alias ChecksOut =
@@ -105,6 +116,26 @@ type alias LeavePatch =
     }
 
 
+type alias LeaveRequestOut =
+    { away : List AwayOut
+    , dates : List Date.Date
+    , days : List RequestDayOut
+    , existing_violations : List ViolationOut
+    , leaves : List LeaveOut
+    , other_leave : List LeaveOut
+    , registrar : Int
+    , shifts : List ShiftOut
+    , violations : List ViolationOut
+    }
+
+
+type alias LeaveRequestsOut =
+    { holidays : List HolidayOut
+    , registrars : List RegistrarOut
+    , requests : List LeaveRequestOut
+    }
+
+
 {-| The same change to several days of leave, e.g. approving a whole request.
 -}
 type alias LeavesPatch =
@@ -137,6 +168,15 @@ type alias RegistrarOut =
     , name : String
     , username : String
     , year : OpenApi.Common.Nullable Int
+    }
+
+
+type alias RequestDayOut =
+    { date : Date.Date
+    , lost : List (List ShiftType)
+    , registrars : Int
+    , rostered : Bool
+    , short : List (List ShiftType)
     }
 
 

@@ -1,6 +1,40 @@
 {
   "components": {
     "schemas": {
+      "AwayOut": {
+        "description": "Someone else's leave on a day next to a request: approved, or still waiting for a decision.",
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "portion": {
+            "title": "Portion",
+            "type": "string"
+          },
+          "registrar": {
+            "title": "Registrar",
+            "type": "integer"
+          },
+          "type": {
+            "$ref": "#/components/schemas/LeaveType"
+          }
+        },
+        "required": [
+          "registrar",
+          "date",
+          "type",
+          "portion",
+          "approved"
+        ],
+        "title": "AwayOut",
+        "type": "object"
+      },
       "ChecksOut": {
         "properties": {
           "variances": {
@@ -378,6 +412,116 @@
         "title": "LeavePatch",
         "type": "object"
       },
+      "LeaveRequestOut": {
+        "properties": {
+          "away": {
+            "items": {
+              "$ref": "#/components/schemas/AwayOut"
+            },
+            "title": "Away",
+            "type": "array"
+          },
+          "dates": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Dates",
+            "type": "array"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/RequestDayOut"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "existing_violations": {
+            "items": {
+              "$ref": "#/components/schemas/ViolationOut"
+            },
+            "title": "Existing Violations",
+            "type": "array"
+          },
+          "leaves": {
+            "items": {
+              "$ref": "#/components/schemas/LeaveOut"
+            },
+            "title": "Leaves",
+            "type": "array"
+          },
+          "other_leave": {
+            "items": {
+              "$ref": "#/components/schemas/LeaveOut"
+            },
+            "title": "Other Leave",
+            "type": "array"
+          },
+          "registrar": {
+            "title": "Registrar",
+            "type": "integer"
+          },
+          "shifts": {
+            "items": {
+              "$ref": "#/components/schemas/ShiftOut"
+            },
+            "title": "Shifts",
+            "type": "array"
+          },
+          "violations": {
+            "items": {
+              "$ref": "#/components/schemas/ViolationOut"
+            },
+            "title": "Violations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "registrar",
+          "leaves",
+          "dates",
+          "shifts",
+          "other_leave",
+          "away",
+          "days",
+          "violations",
+          "existing_violations"
+        ],
+        "title": "LeaveRequestOut",
+        "type": "object"
+      },
+      "LeaveRequestsOut": {
+        "properties": {
+          "holidays": {
+            "items": {
+              "$ref": "#/components/schemas/HolidayOut"
+            },
+            "title": "Holidays",
+            "type": "array"
+          },
+          "registrars": {
+            "items": {
+              "$ref": "#/components/schemas/RegistrarOut"
+            },
+            "title": "Registrars",
+            "type": "array"
+          },
+          "requests": {
+            "items": {
+              "$ref": "#/components/schemas/LeaveRequestOut"
+            },
+            "title": "Requests",
+            "type": "array"
+          }
+        },
+        "required": [
+          "requests",
+          "registrars",
+          "holidays"
+        ],
+        "title": "LeaveRequestsOut",
+        "type": "object"
+      },
       "LeaveType": {
         "enum": [
           "ANNUAL",
@@ -553,6 +697,52 @@
           "year"
         ],
         "title": "RegistrarOut",
+        "type": "object"
+      },
+      "RequestDayOut": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "lost": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/ShiftType"
+              },
+              "type": "array"
+            },
+            "title": "Lost",
+            "type": "array"
+          },
+          "registrars": {
+            "title": "Registrars",
+            "type": "integer"
+          },
+          "rostered": {
+            "title": "Rostered",
+            "type": "boolean"
+          },
+          "short": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/ShiftType"
+              },
+              "type": "array"
+            },
+            "title": "Short",
+            "type": "array"
+          }
+        },
+        "required": [
+          "date",
+          "registrars",
+          "rostered",
+          "lost",
+          "short"
+        ],
+        "title": "RequestDayOut",
         "type": "object"
       },
       "RosterOut": {
@@ -1035,6 +1225,42 @@
           }
         },
         "summary": "Shift Events"
+      }
+    },
+    "/api/editor/leave-requests": {
+      "get": {
+        "description": "Leave requests waiting for a decision, or recently decided, each with the roster around it.",
+        "operationId": "getLeaveRequests",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "decided",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Decided",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaveRequestsOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Get Leave Requests"
       }
     },
     "/api/editor/leaves": {

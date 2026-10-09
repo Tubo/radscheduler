@@ -24,6 +24,7 @@
       {% if request.user.is_staff %}
         <ul class="navbar-nav navbar-group" aria-label="{% translate 'Staff' %}">
           {% nav_link "editor" "Edit roster" also="editor_by_date editor_next editor_next_by_date settings" alias="/roster/editor/*" %}
+          {% nav_link "leave_requests" "Leave requests" %}
           {% nav_link "extra_edit_page" "Edit extra duties" %}
         </ul>
       {% endif %}

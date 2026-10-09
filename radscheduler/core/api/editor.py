@@ -11,7 +11,7 @@ from ninja import Field, Router, Schema, Status
 from ninja.errors import HttpError
 from ninja.security import SessionAuth
 
-from radscheduler.core import service
+from radscheduler.core import leave_requests, service
 from radscheduler.core.models import Leave, Registrar, Shift
 from radscheduler.core.roles import leave_approvers
 from radscheduler.roster.models import LeaveType, ShiftType, StatusType
@@ -172,6 +172,50 @@ class PreviewOut(Schema):
     checked_to: date | None
 
 
+class AwayOut(Schema):
+    """Someone else's leave on a day next to a request: approved, or still waiting for a decision."""
+
+    registrar: int
+    date: date
+    type: LeaveType
+    portion: str
+    approved: bool
+
+
+class RequestDayOut(Schema):
+    date: date
+    # Registrars on the roster that day, to weigh how many are away against.
+    registrars: int
+    # Whether anyone is rostered that day yet; until then its cover can't be judged.
+    rostered: bool
+    # Cover the leave would take away: the registrar is the only one rostered for it.
+    lost: list[list[ShiftType]]
+    # Cover nobody is rostered for, leave or not.
+    short: list[list[ShiftType]]
+
+
+class LeaveRequestOut(Schema):
+    registrar: int
+    # The days asked for together, in order.
+    leaves: list[LeaveOut]
+    # The roster shown with it: the request and a couple of days either side.
+    dates: list[date]
+    # The registrar's own shifts and other leave on those dates.
+    shifts: list[ShiftOut]
+    other_leave: list[LeaveOut]
+    away: list[AwayOut]
+    days: list[RequestDayOut]
+    # The registrar's rule breaks touching those dates: those the leave causes, and those already there.
+    violations: list[ViolationOut]
+    existing_violations: list[ViolationOut]
+
+
+class LeaveRequestsOut(Schema):
+    requests: list[LeaveRequestOut]
+    registrars: list[RegistrarOut]
+    holidays: list[HolidayOut]
+
+
 class ErrorOut(Schema):
     detail: str
 
@@ -204,6 +248,12 @@ class LeavesPatch(LeavePatch):
 @router.get("/roster", response=RosterOut)
 def get_roster(request, week: date):
     return service.editor_roster(week)
+
+
+@router.get("/leave-requests", response=LeaveRequestsOut)
+def get_leave_requests(request, decided: bool = False):
+    """Leave requests waiting for a decision, or recently decided, each with the roster around it."""
+    return leave_requests.leave_requests(decided)
 
 
 @router.get("/roster/checks", response=ChecksOut)
