@@ -61,6 +61,13 @@ $red: #b94a48;
   box-shadow: none;
 }
 
+// The emoji that marks the admin group, leading its links.
+.navbar-group-mark {
+  padding-inline: 0.5rem 0.25rem;
+  line-height: 1.5;
+  user-select: none;
+}
+
 // Staff have twice the links, so their menu stacks up to lg rather than md (see navbar.html).
 // Groups after the first sit behind a rule: above them when stacked, beside them in a row.
 // The account links go to the far end instead.
@@ -68,9 +75,20 @@ $red: #b94a48;
   .navbar-expand-#{$breakpoint} {
     @include media-breakpoint-down($breakpoint) {
       .navbar-group {
+        position: relative;
         margin-top: 0.5rem;
         padding-top: 0.5rem;
         border-top: var(--bs-border-width) solid var(--bs-border-color);
+      }
+
+      // Set into the rule above the admin links rather than taking a row of its own.
+      .navbar-group-mark {
+        position: absolute;
+        top: calc(-1 * var(--bs-border-width));
+        left: 0;
+        padding: 0 0.5rem 0 0;
+        background-color: var(--bs-dark);
+        transform: translateY(-50%);
       }
 
       // Registrars open the menu on a phone between cases: give each link a full-size tap target.

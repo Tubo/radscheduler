@@ -2,5 +2,5 @@
   <a class="nav-link{% if current %} active{% endif %}"
      href="{{ href }}"
      {% if current %}aria-current="page"{% endif %}
-     {% if alias %}up-alias="{{ alias }}"{% endif %}>{{ label }}</a>
+     {% if alias %}up-alias="{{ alias }}"{% endif %}>{% if prefix %}<span class="visually-hidden">{{ prefix }}</span>{% endif %}{{ label }}</a>
 </li>

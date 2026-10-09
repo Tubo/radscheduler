@@ -62,13 +62,13 @@ class TestNavbar:
     def test_registrars_see_their_pages_with_the_current_one_marked(self, app, juniors_db):
         resp = app.get(reverse("leave_page"), user=juniors_db[0].user)
 
-        assert self.current_links(resp) == ["Leave"]
-        assert not resp.html.select("nav [aria-label='Staff']")
+        assert self.current_links(resp) == ["My leaves"]
+        assert not resp.html.select("nav [aria-label='Admin']")
 
     def test_any_date_in_the_editor_marks_edit_roster(self, app, admin_user):
         resp = app.get(reverse("editor_next_by_date", args=["2024-12-16"]), user=admin_user)
 
-        assert self.current_links(resp) == ["Edit roster"]
+        assert self.current_links(resp) == ["Admin: Roster"]
         assert resp.html.select_one("nav a[up-alias='/roster/editor/*']")
 
 

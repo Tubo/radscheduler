@@ -18,14 +18,16 @@
     <div class="collapse navbar-collapse" id="navbar-menu">
       <ul class="navbar-nav">
         {% nav_link "home" "Calendar" also="calendar" %}
-        {% nav_link "leave_page" "Leave" %}
+        {% nav_link "leave_page" "My leaves" %}
         {% nav_link "extra_page" "Extra duties" %}
       </ul>
       {% if request.user.is_staff %}
-        <ul class="navbar-nav navbar-group" aria-label="{% translate 'Staff' %}">
-          {% nav_link "editor" "Edit roster" also="editor_by_date editor_next editor_next_by_date settings" alias="/roster/editor/*" %}
-          {% nav_link "leave_requests" "Leave requests" %}
-          {% nav_link "extra_edit_page" "Edit extra duties" %}
+        {# The emoji marks the admin pages; screen readers hear "Admin:" before each link instead. #}
+        <ul class="navbar-nav navbar-group" aria-label="{% translate 'Admin' %}">
+          <li class="navbar-text navbar-group-mark" aria-hidden="true">🛠️</li>
+          {% nav_link "editor" "Roster" also="editor_by_date editor_next editor_next_by_date settings" alias="/roster/editor/*" prefix="Admin" %}
+          {% nav_link "leave_requests" "Leaves" prefix="Admin" %}
+          {% nav_link "extra_edit_page" "Extra duties" prefix="Admin" %}
         </ul>
       {% endif %}
       <ul class="navbar-nav navbar-group navbar-account">
