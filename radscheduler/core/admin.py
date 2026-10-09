@@ -15,6 +15,7 @@ from django.utils import timezone
 from rangefilter.filters import DateRangeFilterBuilder
 
 from radscheduler.core.models import Leave, Settings, Shift, Status
+from radscheduler.core.roles import leave_approvers
 from radscheduler.paper_forms.pdf import leaves_to_buffer
 from radscheduler.roster.models import ShiftType, Weekday
 
@@ -265,7 +266,7 @@ class LeaveAdmin(admin.ModelAdmin):
         return queryset
 
     def get_list_display(self, request: HttpRequest) -> Sequence[str]:
-        if request.user.username in ["dot", "office"]:
+        if "reg" not in leave_approvers(request.user):
             return (
                 "custom_date_format",
                 "registrar",
@@ -282,18 +283,11 @@ class LeaveAdmin(admin.ModelAdmin):
 
     def get_actions(self, request: HttpRequest) -> OrderedDict[Any, Any]:
         actions = super().get_actions(request)
-        if request.user.username == "dot":
-            if "mark_reg_approved" in actions:
-                del actions["mark_reg_approved"]
-            return actions
-        elif request.user.username == "office":
-            if "mark_dot_approved" in actions:
-                del actions["mark_dot_approved"]
-            if "mark_reg_approved" in actions:
-                del actions["mark_reg_approved"]
-            return actions
-        else:
-            return actions
+        approvers = leave_approvers(request.user)
+        for approver in ("reg", "dot"):
+            if approver not in approvers:
+                actions.pop(f"mark_{approver}_approved", None)
+        return actions
 
     @admin.display(description="Date", ordering="date")
     def custom_date_format(self, obj):

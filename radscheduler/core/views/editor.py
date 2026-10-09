@@ -17,6 +17,7 @@ from radscheduler.core.forms import (
     ShiftChangeForm,
 )
 from radscheduler.core.models import Leave, Settings, Shift
+from radscheduler.core.roles import leave_approvers
 from radscheduler.core.service import COVER, WORKLOAD_WEEKS, get_events
 from radscheduler.core.views.decorators import staff_required
 from radscheduler.roster import canterbury_holidays
@@ -135,6 +136,7 @@ def next_page(request, date_=None):
         **type_choices(),
         "cover": COVER,
         "workloadWeeks": WORKLOAD_WEEKS,
+        "leaveApprovers": leave_approvers(request.user),
     }
     return render(request, "editor/next.html", {"flags": flags})
 

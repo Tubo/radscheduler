@@ -146,6 +146,24 @@ class TestLeaves:
         leave.refresh_from_db()
         assert (leave.reg_approved, leave.dot_approved, leave.cancelled) == (None, False, True)
 
+    def test_the_director_makes_only_their_own_decision(self, app, director, leave):
+        url = f"/api/editor/leaves/{leave.pk}"
+
+        changed = app.patch_json(url, {"dot_approved": True}, user=director).json
+        assert changed["dot_approved"] is True
+
+        app.patch_json(url, {"reg_approved": True}, user=director, status=403)
+        body = {"ids": [leave.pk], "reg_approved": True, "dot_approved": True}
+        app.patch_json("/api/editor/leaves", body, user=director, status=403)
+        leave.refresh_from_db()
+        assert (leave.reg_approved, leave.dot_approved) == (None, True)
+
+    def test_office_staff_decide_nothing(self, app, office_staff, leave):
+        url = f"/api/editor/leaves/{leave.pk}"
+        app.patch_json(url, {"dot_approved": True}, user=office_staff, status=403)
+        app.patch_json(url, {"reg_approved": True}, user=office_staff, status=403)
+        assert app.patch_json(url, {"microster": True}, user=office_staff).json["microster"] is True
+
     def test_unknown_leave(self, app, staff):
         app.patch_json("/api/editor/leaves/999999", {"cancelled": True}, user=staff, status=404)
 

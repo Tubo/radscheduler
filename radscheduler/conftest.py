@@ -1,8 +1,10 @@
 from datetime import date
 
 import pytest
+from django.contrib.auth.models import Group
 
 from radscheduler.core.models import Registrar as Registrar_db
+from radscheduler.core.roles import DIRECTOR_OF_TRAINING, OFFICE_STAFF
 from radscheduler.roster.models import Registrar as Registrar_py
 from radscheduler.users.models import User
 from radscheduler.users.tests.factories import UserFactory
@@ -21,6 +23,25 @@ def app(django_app_factory):
 @pytest.fixture
 def user(db) -> User:
     return UserFactory()
+
+
+def _in_group(name: str) -> User:
+    user = UserFactory(is_staff=True)
+    # get_or_create: live-server tests empty the database, the groups made by migrations included
+    user.groups.add(Group.objects.get_or_create(name=name)[0])
+    return user
+
+
+@pytest.fixture
+def director(db) -> User:
+    """The Director of Training: staff who make only the Director's decision on leave."""
+    return _in_group(DIRECTOR_OF_TRAINING)
+
+
+@pytest.fixture
+def office_staff(db) -> User:
+    """Office staff: they see leave but don't decide it."""
+    return _in_group(OFFICE_STAFF)
 
 
 YEAR2 = ["Erika", "Will", "Kelly", "Carol", "Edward"]

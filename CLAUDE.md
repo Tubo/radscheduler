@@ -64,7 +64,7 @@ pytest --create-db                                        # after migration chan
 
 ### Roles
 
-Signed-in registrars use the calendar, leave and extra-duty pages. Staff (`is_staff`) use the roster editor (`/roster/editor/`) and the extra-duty editor.
+Signed-in registrars use the calendar, leave and extra-duty pages. Staff (`is_staff`) use the roster editor (`/roster/editor/`) and the extra-duty editor. Who may decide leave comes from groups, in `core/roles.py` (`leave_approvers`): the "Director of Training" group makes only the `dot` decision, "Office Staff" none, and other staff both. The leave PATCH endpoints refuse a decision the user can't make, the Elm pages disable it, and the admin hides its action. Migration `0013` creates the groups; live-server tests empty the database, so tests use `get_or_create` for them.
 
 ## Frontend conventions
 

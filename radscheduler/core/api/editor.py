@@ -8,10 +8,12 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Field, Router, Schema, Status
+from ninja.errors import HttpError
 from ninja.security import SessionAuth
 
 from radscheduler.core import service
 from radscheduler.core.models import Leave, Registrar, Shift
+from radscheduler.core.roles import leave_approvers
 from radscheduler.roster.models import LeaveType, ShiftType, StatusType
 
 
@@ -234,6 +236,14 @@ def delete_shift(request, shift_id: int):
     return deleted
 
 
+def check_leave_decisions(changes: dict, user) -> None:
+    """Refuse a decision the user may not make, e.g. the Director of Training's on the chief registrar's."""
+    approvers = leave_approvers(user)
+    for approver in ("reg", "dot"):
+        if f"{approver}_approved" in changes and approver not in approvers:
+            raise HttpError(403, "You can't make this decision on leave.")
+
+
 def apply_leave_patch(leave: Leave, changes: dict, user) -> Leave:
     for field, value in changes.items():
         if field in ("reg_approved", "dot_approved"):
@@ -247,12 +257,15 @@ def apply_leave_patch(leave: Leave, changes: dict, user) -> Leave:
 @router.patch("/leaves/{leave_id}", response=LeaveOut)
 def change_leave(request, leave_id: int, payload: LeavePatch):
     leave = get_object_or_404(Leave, pk=leave_id)
-    return apply_leave_patch(leave, payload.dict(exclude_unset=True), request.user)
+    changes = payload.dict(exclude_unset=True)
+    check_leave_decisions(changes, request.user)
+    return apply_leave_patch(leave, changes, request.user)
 
 
 @router.patch("/leaves", response=list[LeaveOut])
 def change_leaves(request, payload: LeavesPatch):
     changes = payload.dict(exclude_unset=True, exclude={"ids"})
+    check_leave_decisions(changes, request.user)
     leaves = Leave.objects.filter(pk__in=payload.ids).order_by("date")
     with transaction.atomic():
         return [apply_leave_patch(leave, changes, request.user) for leave in leaves]

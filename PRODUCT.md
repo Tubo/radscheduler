@@ -60,7 +60,7 @@ It also weights on-call load, so fairness can be measured rather than argued abo
   - Django Ninja for the JSON API.
   - Deployed on Fly.io.
   - Not a SPA: the baseline must work without JavaScript. The exception is the roster editor, a staff-only Elm app; staff can still edit shifts and leave in the Django admin without JavaScript.
-- **Roles:** registrar (signed in), and staff (`is_staff`) for roster and extra-duty editing. Accounts use django-allauth.
+- **Roles:** registrar (signed in), and staff (`is_staff`) for roster and extra-duty editing. Accounts use django-allauth. Leave decisions follow groups: the **Director of Training** group makes only the Director's decision, **Office Staff** see leave but decide none, and other staff (the chief registrars, in **Roster master**) make both, recording the Director's for them when asked.
 - **Roster editor:** a dense grid of dates by registrars for three weeks, with shift and leave cells, statuses and workload beside each name, contract and department rule breaks marked on the cells they touch (with the clause), a cover strip that shows only gaps (each opens a list of who is free, least loaded first), a problems list, unpublished days marked, a keyboard grid, undo, leave approved a request at a time with who decided and when, and publishing in a dialog that previews what registrars will gain or lose and the gaps and rule breaks in the days they would start seeing. Edits always save; rule breaks are flagged, not blocked.
 - **Undecided:** how department-specific configuration (supervisor, holidays, shift definitions) will work once multiple departments are supported.
 

@@ -68,6 +68,9 @@ type alias Flags =
     , workloadWeeks : Int
     , hiddenShiftTypes : List String
     , hiddenLeaveTypes : List String
+
+    -- The decisions on leave this user may make: "reg" (chief registrar) and "dot" (Director of Training).
+    , leaveApprovers : List String
     }
 
 
@@ -306,6 +309,7 @@ flagsDecoder =
         |> andMap (Decode.field "workloadWeeks" Decode.int)
         |> andMap (optionalList "hiddenShiftTypes")
         |> andMap (optionalList "hiddenLeaveTypes")
+        |> andMap (optionalList "leaveApprovers")
 
 
 andMap : Decoder a -> Decoder (a -> b) -> Decoder b
@@ -349,7 +353,7 @@ init value =
         Err err ->
             let
                 model =
-                    initialModel (Flags "" "" "" [] [] [] (CoverRules [] [] []) 0 [] []) (Date.fromRataDie 1)
+                    initialModel (Flags "" "" "" [] [] [] (CoverRules [] [] []) 0 [] [] []) (Date.fromRataDie 1)
             in
             ( { model | loading = False, failure = Just (Failure ("The editor couldn't start: " ++ err) Nothing Nothing) }
             , Cmd.none
@@ -4011,8 +4015,11 @@ decidedBy model by at =
 {-| One approver's decision as a group of radio buttons, and who made it.
 -}
 approvalGroup : Model -> T.LeaveOut -> String -> String -> Maybe Bool -> Maybe String -> (Maybe Bool -> Msg) -> Html Msg
-approvalGroup _ leave approver who current decided toMsg =
+approvalGroup model leave approver who current decided toMsg =
     let
+        allowed =
+            List.member approver model.flags.leaveApprovers
+
         groupName =
             approver ++ "-" ++ String.fromInt leave.id
 
@@ -4027,7 +4034,7 @@ approvalGroup _ leave approver who current decided toMsg =
                 , name groupName
                 , id optionId
                 , checked (current == value)
-                , disabled leave.cancelled
+                , disabled (leave.cancelled || not allowed)
                 , onCheck (\_ -> toMsg value)
                 ]
                 []
