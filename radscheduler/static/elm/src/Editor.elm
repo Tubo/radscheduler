@@ -15,6 +15,7 @@ the cells each rule break touches. Edits save at once and can be undone (Ctrl+Z)
 import Browser
 import Browser.Dom as Dom
 import Browser.Events
+import Choice exposing (Choice, choiceDecoder, choiceFor)
 import Date exposing (Date)
 import Dict exposing (Dict)
 import Html exposing (..)
@@ -23,6 +24,7 @@ import Html.Events exposing (on, onCheck, onClick, onFocus, onInput, onSubmit, p
 import Html.Lazy
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
+import Leave exposing (LeaveState(..), leaveChipClass, leaveChipContent, leaveIcon, leaveState, leaveStateClass, leaveStateName, leaveStateSentence, portionLabel)
 import OpenApi.Common exposing (Nullable(..))
 import Process
 import Radscheduler.Api as Api
@@ -53,18 +55,6 @@ main =
 
 
 -- MODEL
-
-
-{-| A shift, leave or status type as the page describes it: stored value, full label, short label for the
-grid, and the key that picks it (empty unless it is a shift). Labels live on the server so other
-departments can differ.
--}
-type alias Choice =
-    { value : String
-    , label : String
-    , short : String
-    , key : String
-    }
 
 
 type alias Flags =
@@ -301,15 +291,6 @@ type alias Failure =
 -}
 type alias ApiError =
     OpenApi.Common.Error Never String
-
-
-choiceDecoder : Decoder Choice
-choiceDecoder =
-    Decode.map4 Choice
-        (Decode.field "value" Decode.string)
-        (Decode.field "label" Decode.string)
-        (Decode.field "short" Decode.string)
-        (Decode.field "key" Decode.string)
 
 
 flagsDecoder : Decoder Flags
@@ -2251,14 +2232,6 @@ describeCell model ( registrar, d ) =
     registrarName model registrar ++ " on " ++ dayDate (Date.fromRataDie d)
 
 
-choiceFor : List Choice -> String -> Choice
-choiceFor choices value =
-    choices
-        |> List.filter (\c -> c.value == value)
-        |> List.head
-        |> Maybe.withDefault { value = value, label = value, short = value, key = "" }
-
-
 shiftChoice : { a | flags : Flags } -> T.ShiftType -> Choice
 shiftChoice model shiftType =
     choiceFor model.flags.shiftTypes (T.shiftTypeToString shiftType)
@@ -3394,38 +3367,6 @@ viewLeaveChip model leave =
     in
     span [ class (leaveChipClass state leave), title (choice.label ++ " leave" ++ portionLabel leave ++ ", " ++ leaveStateName state), attribute "aria-hidden" "true" ]
         (leaveChipContent choice state leave)
-
-
-{-| A leave chip's classes: its state, and for a half day the half it shades.
--}
-leaveChipClass : LeaveState -> T.LeaveOut -> String
-leaveChipClass state leave =
-    "re-chip re-leave is-"
-        ++ leaveStateClass state
-        ++ (case leave.portion of
-                "AM" ->
-                    " is-am"
-
-                "PM" ->
-                    " is-pm"
-
-                _ ->
-                    ""
-           )
-
-
-{-| The state icon and the type, followed by the half ("AL·pm") for a half day.
--}
-leaveChipContent : Choice -> LeaveState -> T.LeaveOut -> List (Html Msg)
-leaveChipContent choice state leave =
-    [ i [ class ("bi " ++ leaveIcon state) ] []
-    , text choice.short
-    , if leave.portion == "ALL" then
-        text ""
-
-      else
-        text ("·" ++ String.toLower leave.portion)
-    ]
 
 
 viewLeaveCount : Window -> Int -> DayData -> Html Msg
@@ -4730,148 +4671,6 @@ viewToast toast =
 
         Nothing ->
             text ""
-
-
-
--- LEAVE STATE
-
-
-type LeaveState
-    = Cancelled
-    | Declined
-    | Approved
-    | PartlyApproved
-    | Pending
-
-
-leaveState : T.LeaveOut -> LeaveState
-leaveState leave =
-    let
-        reg =
-            nullable leave.reg_approved
-
-        dot =
-            nullable leave.dot_approved
-    in
-    if leave.cancelled then
-        Cancelled
-
-    else if reg == Just False || dot == Just False then
-        Declined
-
-    else if reg == Just True && dot == Just True then
-        Approved
-
-    else if reg == Just True || dot == Just True then
-        PartlyApproved
-
-    else
-        Pending
-
-
-leaveStateClass : LeaveState -> String
-leaveStateClass state =
-    case state of
-        Cancelled ->
-            "cancelled"
-
-        Declined ->
-            "declined"
-
-        Approved ->
-            "approved"
-
-        PartlyApproved ->
-            "partial"
-
-        Pending ->
-            "pending"
-
-
-leaveIcon : LeaveState -> String
-leaveIcon state =
-    case state of
-        Cancelled ->
-            "bi-slash-circle"
-
-        Declined ->
-            "bi-x-lg"
-
-        Approved ->
-            "bi-check-lg"
-
-        PartlyApproved ->
-            "bi-hourglass-split"
-
-        Pending ->
-            "bi-question-lg"
-
-
-leaveStateName : LeaveState -> String
-leaveStateName state =
-    case state of
-        Cancelled ->
-            "cancelled"
-
-        Declined ->
-            "declined"
-
-        Approved ->
-            "approved"
-
-        PartlyApproved ->
-            "approved by one, waiting on the other"
-
-        Pending ->
-            "waiting for approval"
-
-
-{-| Names who has decided and who is still to: "Chief registrar approved · waiting on the Director of Training."
--}
-leaveStateSentence : T.LeaveOut -> String
-leaveStateSentence leave =
-    let
-        reg =
-            nullable leave.reg_approved
-
-        dot =
-            nullable leave.dot_approved
-    in
-    if leave.cancelled then
-        "Cancelled."
-
-    else
-        case ( reg, dot ) of
-            ( Just True, Just True ) ->
-                "Approved by the chief registrar and the Director of Training."
-
-            ( Just False, _ ) ->
-                "Declined by the chief registrar."
-
-            ( _, Just False ) ->
-                "Declined by the Director of Training."
-
-            ( Just True, Nothing ) ->
-                "Chief registrar approved · waiting on the Director of Training."
-
-            ( Nothing, Just True ) ->
-                "Director of Training approved · waiting on the chief registrar."
-
-            ( Nothing, Nothing ) ->
-                "Waiting on the chief registrar and the Director of Training."
-
-
-portionLabel : T.LeaveOut -> String
-portionLabel leave =
-    case leave.portion of
-        "AM" ->
-            " (morning)"
-
-        "PM" ->
-            " (afternoon)"
-
-        _ ->
-            " (all day)"
 
 
 

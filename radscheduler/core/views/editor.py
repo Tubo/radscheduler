@@ -101,23 +101,12 @@ LEAVE_SHORT = {
 }
 
 
-@staff_required
-@require_GET
-def next_page(request, date_=None):
-    """
-    The Elm roster editor. The page only carries start-up settings; the grid is drawn in the browser
-    from /api/editor/roster.
-    """
-    date_form = DateForm({"date": date_})
-    week = date_form.cleaned_data["date"] if date_form.is_valid() else date.today()
-    shift_types = roster.ShiftType
-    flags = {
-        "csrfToken": get_token(request),
-        "week": week.isoformat(),
-        "editorUrl": reverse("editor_next"),
+def type_choices() -> dict:
+    """The shift, leave and status types as the Elm pages name them: value, label, short label and key."""
+    return {
         "shiftTypes": [
             {"value": value, "label": label, "short": SHIFT_SHORT[value], "key": SHIFT_KEYS[value]}
-            for value, label in shift_types.choices
+            for value, label in roster.ShiftType.choices
         ],
         "leaveTypes": [
             {"value": value, "label": label, "short": LEAVE_SHORT[value], "key": ""}
@@ -127,6 +116,23 @@ def next_page(request, date_=None):
             {"value": value, "label": label, "short": STATUS_SHORT[value], "key": ""}
             for value, label in roster.StatusType.choices
         ],
+    }
+
+
+@staff_required
+@require_GET
+def next_page(request, date_=None):
+    """
+    The Elm roster editor. The page only carries start-up settings; the grid is drawn in the browser
+    from /api/editor/roster.
+    """
+    date_form = DateForm({"date": date_})
+    week = date_form.cleaned_data["date"] if date_form.is_valid() else date.today()
+    flags = {
+        "csrfToken": get_token(request),
+        "week": week.isoformat(),
+        "editorUrl": reverse("editor_next"),
+        **type_choices(),
         "cover": COVER,
         "workloadWeeks": WORKLOAD_WEEKS,
     }
