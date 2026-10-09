@@ -1,0 +1,22 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": ["radscheduler/static/css/editor_elm.scss"],
+        "createdAt": "2026-10-07T19:50:35.081Z",
+        "reason": "Claude's triage: L211 is the today marker on a roster grid date column header (inset top line plus a 'Today' text label), a calendar convention, not a card side-tab"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": ["radscheduler/static/css/leave_requests.scss"],
+        "createdAt": "2026-10-08T18:28:32.272Z",
+        "reason": "Claude's call: the 3px inset stripe marks the requested days' columns in a data-grid header, the same marker the roster editor uses for today (.re-date.is-today); it is not a card accent"
+      }
+    ]
+  }
+}

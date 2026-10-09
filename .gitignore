@@ -300,3 +300,6 @@ devenv.local.yaml
 elm-stuff/
 # Built by elm-watch
 radscheduler/static/elm-build/
+
+# Impeccable critique snapshots
+.impeccable/critique/

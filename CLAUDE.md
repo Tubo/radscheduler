@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Radscheduler is a Django app for rostering radiology registrars in one Canterbury (NZ) department. It handles shifts, leave requests with two-step approval, extra-duty allocation, iCal feeds, and checks rosters against the STONZ MECA employment contract. `PRODUCT.md` describes the users, domain vocabulary and product principles; read it before any user-facing work.
+Radscheduler is a Django app for rostering radiology registrars in one Canterbury (NZ) department. It handles shifts, leave requests with two-step approval, extra-duty allocation, iCal feeds, and checks rosters against the STONZ MECA employment contract. `PRODUCT.md` describes the users, domain vocabulary and product principles, and `DESIGN.md` the visual system (tokens, components, rules); read both before any user-facing work.
 
 ## Development environment
 
@@ -75,6 +75,8 @@ Signed-in registrars use the calendar, leave and extra-duty pages. Staff (`is_st
 - Unpoly is configured in `radscheduler/static/js/vendors.js`. Non-GET requests send the CSRF token in the `X-CSRFToken` header (read from the `csrf-token` meta tag in `base.html`), and `wrapMethod = false`, so `up-method="delete"` sends a real DELETE.
 - Prefer real `<form method="post">` with `{% csrf_token %}`, `up-submit` and `up-target`. Unpoly endpoints return HTML, not JSON. A non-form element can use `up-follow up-href up-method`.
 - Unpoly parses responses as full documents, which **drops a bare `<tr>`**. Views that return a single table row must wrap it in a `<table>` (see `leaves/form_inline.html` and `extra_duties/row_response.html`). The `up-target` must also match an element in the response, usually a row id like `#leave-{{ pk }}`.
+- **Visual system:** `DESIGN.md` (with its machine-readable sidecar `.impeccable/design.json`) treats the Elm pages' `--re-*` tokens in `editor_elm.scss` as the design system; the Bootstrap templates are legacy and should move toward them. Regenerate both with `/impeccable document` when the tokens or components change.
+- **Navbar** (`templates/navbar.html`): add links with `{% nav_link "url_name" "Label" %}` (`core/templatetags/nav_tags.py`), which marks the current page on the server; `also=` lists other url names that count as that page and `alias=` gives Unpoly's `up-alias` for the client side. Staff get a stacked menu up to `lg`, registrars up to `md`, and a `<noscript>` style in `base.html` shows the menu open without JS.
 - When a template is included with `{% include ... only %}`, pass `csrf_token` through explicitly. There is a regression test for this in `functional_tests/test_editor.py`.
 
 ## Deployment
