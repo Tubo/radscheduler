@@ -1,63 +1,52 @@
-{% load static i18n %}
+{% load static i18n nav_tags %}
 
-<nav class="navbar navbar-expand-md bg-dark border-bottom border-body"
-     data-bs-theme="dark">
+{# Staff have twice the links, so their menu stays stacked up to a wider screen. #}
+<nav class="navbar {% if request.user.is_staff %}navbar-expand-lg{% else %}navbar-expand-md{% endif %} bg-dark border-bottom border-body"
+     data-bs-theme="dark"
+     aria-label="{% translate 'Main' %}">
   <div class="container-fluid">
-    <button class="navbar-toggler navbar-toggler-right"
+    <a class="navbar-brand" href="{% url 'home' %}"><i class="bi bi-calendar-heart text-warning me-2" aria-hidden="true"></i>Radscheduler</a>
+    <button class="navbar-toggler"
             type="button"
             data-bs-toggle="collapse"
-            data-bs-target="#navbarSupportedContent"
-            aria-controls="navbarSupportedContent"
+            data-bs-target="#navbar-menu"
+            aria-controls="navbar-menu"
             aria-expanded="false"
-            aria-label="Toggle navigation">
+            aria-label="{% translate 'Menu' %}">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <a class="navbar-brand" href="{% url 'home' %}"><i class="bi bi-calendar-heart text-warning px-2"></i>Radscheduler</a>
-    <div class="collapse navbar-collapse" id="navbarSupportedContent">
-      <ul class="navbar-nav pe-2">
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'home' %}">Calendar</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'leave_page' %}">Leave</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'extra_page' %}">Extra duties</a>
-        </li>
+    <div class="collapse navbar-collapse" id="navbar-menu">
+      <ul class="navbar-nav">
+        {% nav_link "home" "Calendar" also="calendar" %}
+        {% nav_link "leave_page" "Leave" %}
+        {% nav_link "extra_page" "Extra duties" %}
       </ul>
       {% if request.user.is_staff %}
-        <ul class="navbar-nav mr-auto border-start border-2 ps-2">
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'editor' %}">Edit roster</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'extra_edit_page' %}">Edit extra duties</a>
-          </li>
+        <ul class="navbar-nav navbar-group" aria-label="{% translate 'Staff' %}">
+          {% nav_link "editor" "Edit roster" also="editor_by_date editor_next editor_next_by_date settings" alias="/roster/editor/*" %}
+          {% nav_link "extra_edit_page" "Edit extra duties" %}
         </ul>
       {% endif %}
-    </div>
-    <div class="collapse navbar-collapse justify-content-end"
-         id="navbarSupportedContent">
-      <ul class="navbar-nav mr-auto">
+      <ul class="navbar-nav navbar-group navbar-account">
         {% if request.user.is_authenticated %}
           <li class="nav-item">
             <a class="nav-link"
-               href="{% url 'users:detail' request.user.username %}">{% translate request.user.username %}</a>
+               href="{% url 'users:detail' request.user.username %}"><i class="bi bi-person-circle me-2" aria-hidden="true"></i>{{ request.user.username }}</a>
           </li>
           <li class="nav-item">
             {# URL provided by django-allauth/account/urls.py #}
-            <a class="nav-link" href="{% url 'account_logout' %}">{% translate "Sign Out" %}</a>
+            <a class="nav-link" href="{% url 'account_logout' %}">{% translate "Sign out" %}</a>
           </li>
         {% else %}
           {% if ACCOUNT_ALLOW_REGISTRATION %}
             <li class="nav-item">
               {# URL provided by django-allauth/account/urls.py #}
-              <a id="sign-up-link" class="nav-link" href="{% url 'account_signup' %}">{% translate "Sign Up" %}</a>
+              <a id="sign-up-link" class="nav-link" href="{% url 'account_signup' %}">{% translate "Sign up" %}</a>
             </li>
           {% endif %}
           <li class="nav-item">
             {# URL provided by django-allauth/account/urls.py #}
-            <a id="log-in-link" class="nav-link" href="{% url 'account_login' %}">{% translate "Sign In" %}</a>
+            <a id="log-in-link" class="nav-link" href="{% url 'account_login' %}">{% translate "Sign in" %}</a>
           </li>
         {% endif %}
       </ul>

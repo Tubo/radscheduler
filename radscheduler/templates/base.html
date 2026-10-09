@@ -23,6 +23,30 @@
       {% render_bundle 'project' 'css' %}
       {% render_bundle 'vendors' 'css' %}
     {% endblock css %}
+    <noscript>
+      {# The menu button needs Bootstrap's JS: without it, show the menu open on small screens. #}
+      <style>
+        @media (max-width: 767.98px) {
+          .navbar-expand-md .navbar-collapse.collapse {
+            display: block !important;
+          }
+
+          .navbar-expand-md .navbar-toggler {
+            display: none;
+          }
+        }
+
+        @media (max-width: 991.98px) {
+          .navbar-expand-lg .navbar-collapse.collapse {
+            display: block !important;
+          }
+
+          .navbar-expand-lg .navbar-toggler {
+            display: none;
+          }
+        }
+      </style>
+    </noscript>
     <!-- Le javascript
     ================================================== -->
     {# Placed at the top of the document so pages load faster with defer #}

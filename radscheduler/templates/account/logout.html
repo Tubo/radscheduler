@@ -3,10 +3,10 @@
 {% load i18n %}
 
 {% block head_title %}
-  {% translate "Sign Out" %}
+  {% translate "Sign out" %}
 {% endblock head_title %}
 {% block inner %}
-  <h1 class="h3 mb-2">{% translate "Sign Out" %}</h1>
+  <h1 class="h3 mb-2">{% translate "Sign out" %}</h1>
   <p class="text-body-secondary mb-4">{% translate "Are you sure you want to sign out?" %}</p>
   <form id="logout-form" method="post" action="{% url 'account_logout' %}">
     {% csrf_token %}
@@ -15,7 +15,7 @@
              name="{{ redirect_field_name }}"
              value="{{ redirect_field_value }}" />
     {% endif %}
-    <button class="btn btn-primary w-100 py-2" type="submit" autofocus>{% translate "Sign Out" %}</button>
+    <button class="btn btn-primary w-100 py-2" type="submit" autofocus>{% translate "Sign out" %}</button>
   </form>
   <p class="text-center mt-3 mb-0">
     <a class="d-inline-block py-1" href="{% url 'home' %}">{% translate "Cancel" %}</a>

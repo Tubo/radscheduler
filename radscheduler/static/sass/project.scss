@@ -35,6 +35,66 @@ $red: #b94a48;
   color: $red;
 }
 
+////////////
+// Navbar //
+////////////
+
+// The current page is underlined in the mark's amber as well as brightened, so it isn't shown by colour alone.
+.navbar .nav-link[aria-current='page'] {
+  text-decoration: underline 2px var(--bs-warning);
+  text-underline-offset: 0.45em;
+}
+
+// Links keep to one line; the menu stacks before they would have to wrap.
+.navbar .nav-link {
+  white-space: nowrap;
+}
+
+// The navbar is dark, so Bootstrap's blue focus shadow barely shows on it.
+.navbar :is(.nav-link, .navbar-brand, .navbar-toggler):focus-visible {
+  outline: 2px solid var(--bs-warning);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.navbar-toggler:focus:not(:focus-visible) {
+  box-shadow: none;
+}
+
+// Staff have twice the links, so their menu stacks up to lg rather than md (see navbar.html).
+// Groups after the first sit behind a rule: above them when stacked, beside them in a row.
+// The account links go to the far end instead.
+@each $breakpoint in (md, lg) {
+  .navbar-expand-#{$breakpoint} {
+    @include media-breakpoint-down($breakpoint) {
+      .navbar-group {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: var(--bs-border-width) solid var(--bs-border-color);
+      }
+
+      // Registrars open the menu on a phone between cases: give each link a full-size tap target.
+      .navbar-nav .nav-link {
+        padding-block: 0.625rem;
+      }
+    }
+
+    @include media-breakpoint-up($breakpoint) {
+      .navbar-group {
+        margin-left: 0.5rem;
+        padding-left: 0.5rem;
+        border-left: 2px solid var(--bs-border-color);
+      }
+
+      .navbar-account {
+        margin-left: auto;
+        padding-left: 0;
+        border-left: 0;
+      }
+    }
+  }
+}
+
 //////////////////
 // Account pages //
 //////////////////
