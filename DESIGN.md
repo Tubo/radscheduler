@@ -312,7 +312,7 @@ There are no cards. The roster is a table, a leave request is a row of the list 
 
 ### Navigation
 
-- **Global navbar:** Navbar Charcoal with the amber calendar-heart mark and the name. Links are white at reduced opacity; the current page is full white with a 2px amber underline, server-rendered and kept in step by Unpoly. Admin links (Roster, Leaves, Extra duties) sit in their own group behind a rule, led by a 🛠️ (set into the rule when the menu is stacked); screen readers hear "Admin:" before each instead. The account links sit at the far end. Focus is a 2px amber outline.
+- **Global navbar:** Navbar Charcoal with the amber calendar-heart mark and the name. Links are white at reduced opacity; the current page is full white with a 2px amber underline, server-rendered and kept in step by Unpoly. Admin links (Roster, Leaves, Extra duties) sit in their own group behind a rule, led by a 🛠️ (set into the rule when the menu is stacked); screen readers hear "Admin:" before each instead. The account links sit at the far end, a long username ending in an ellipsis. A "Skip to content" link, white with an amber outline, appears over the navbar's corner when it takes keyboard focus. The navbar doesn't print. Focus is a 2px amber outline.
 - **Tabs (leave requests):** a panel-grey well with 8px corners holding 6px-cornered tabs; the selected tab is white with the Lift shadow and ink text, the rest muted. A pill count follows each label.
 
 ### Popovers

@@ -32,25 +32,27 @@
       {% endif %}
       <ul class="navbar-nav navbar-group navbar-account">
         {% if request.user.is_authenticated %}
+          {% is_own_profile as here %}
+          {# A long username is cut short, with the whole of it on hover. #}
           <li class="nav-item">
-            <a class="nav-link"
-               href="{% url 'users:detail' request.user.username %}"><i class="bi bi-person-circle me-2" aria-hidden="true"></i>{{ request.user.username }}</a>
+            <a class="nav-link navbar-user{% if here %} active{% endif %}"
+               href="{% url 'users:detail' request.user.username %}"
+               title="{{ request.user.username }}"
+               {% if here %}aria-current="page"{% endif %}
+               up-alias="{% url 'users:update' %}"><i class="bi bi-person-circle me-2" aria-hidden="true"></i>{{ request.user.username }}</a>
           </li>
           <li class="nav-item">
             {# URL provided by django-allauth/account/urls.py #}
             <a class="nav-link" href="{% url 'account_logout' %}">{% translate "Sign out" %}</a>
           </li>
         {% else %}
+          {# URLs provided by django-allauth/account/urls.py #}
           {% if ACCOUNT_ALLOW_REGISTRATION %}
-            <li class="nav-item">
-              {# URL provided by django-allauth/account/urls.py #}
-              <a id="sign-up-link" class="nav-link" href="{% url 'account_signup' %}">{% translate "Sign up" %}</a>
-            </li>
+            {% translate "Sign up" as sign_up %}
+            {% nav_link "account_signup" sign_up %}
           {% endif %}
-          <li class="nav-item">
-            {# URL provided by django-allauth/account/urls.py #}
-            <a id="log-in-link" class="nav-link" href="{% url 'account_login' %}">{% translate "Sign in" %}</a>
-          </li>
+          {% translate "Sign in" as sign_in %}
+          {% nav_link "account_login" sign_in %}
         {% endif %}
       </ul>
     </div>

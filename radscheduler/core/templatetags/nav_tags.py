@@ -24,3 +24,15 @@ def nav_link(context, url_name, label, also="", alias="", prefix=""):
         "alias": alias,
         "prefix": f"{prefix}: " if prefix else "",
     }
+
+
+@register.simple_tag(takes_context=True)
+def is_own_profile(context):
+    """Whether the request is for the signed-in user's profile or its edit page."""
+    request = context.get("request")
+    match = request.resolver_match if request else None
+    if match is None:
+        return False
+    if match.view_name == "users:update":
+        return True
+    return match.view_name == "users:detail" and match.kwargs.get("username") == request.user.username

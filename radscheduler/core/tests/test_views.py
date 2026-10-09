@@ -71,6 +71,27 @@ class TestNavbar:
         assert self.current_links(resp) == ["Admin: Roster"]
         assert resp.html.select_one("nav a[up-alias='/roster/editor/*']")
 
+    def test_your_own_profile_marks_your_name(self, app, juniors_db):
+        me, them = juniors_db[0].user, juniors_db[1].user
+
+        mine = app.get(reverse("users:detail", args=[me.username]), user=me)
+        theirs = app.get(reverse("users:detail", args=[them.username]), user=me)
+
+        assert self.current_links(mine) == [me.username]
+        assert self.current_links(theirs) == []
+
+    def test_visitors_see_sign_in_marked_on_its_page(self, app):
+        resp = app.get(reverse("account_login"))
+
+        assert self.current_links(resp) == ["Sign in"]
+
+    def test_skip_link_lands_past_the_navbar(self, app, juniors_db):
+        resp = app.get(reverse("home"), user=juniors_db[0].user)
+
+        skip = resp.html.select_one("a.skip-link")
+        assert skip.find_next_sibling("div").select_one("nav")
+        assert resp.html.select_one(skip["href"])
+
 
 class TestRosterGeneration:
     def test_generate_empty_schedule(self, app, juniors_db):

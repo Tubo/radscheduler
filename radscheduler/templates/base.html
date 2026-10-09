@@ -58,7 +58,10 @@
     {% endblock javascript %}
   </head>
   <body>
-    <div class="mb-1">{% include "navbar.html" %}</div>
+    <a class="skip-link visually-hidden-focusable" href="#content">{% translate "Skip to content" %}</a>
+    <div class="mb-1 d-print-none">{% include "navbar.html" %}</div>
+    {# Where "Skip to content" lands: just past the navbar, whatever the page puts there. #}
+    <div id="content"></div>
     {% block messages %}
       <div class="container">{% include "messages.html" %}</div>
     {% endblock messages %}

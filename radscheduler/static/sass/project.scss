@@ -61,6 +61,33 @@ $red: #b94a48;
   box-shadow: none;
 }
 
+// A long username ends in an ellipsis (its title has the whole of it) rather than pushing the navbar wider.
+.navbar-user {
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  @include media-breakpoint-up(xl) {
+    max-width: 14rem;
+  }
+}
+
+// "Skip to content": the keyboard's first stop, shown over the navbar's corner only while focused.
+.skip-link:focus {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 1080;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  background: var(--bs-white);
+  color: #1f2933;
+  font-weight: 500;
+  text-decoration: none;
+  outline: 2px solid var(--bs-warning);
+  outline-offset: 2px;
+}
+
 // The emoji that marks the admin group, leading its links.
 .navbar-group-mark {
   padding-inline: 0.5rem 0.25rem;
@@ -94,6 +121,11 @@ $red: #b94a48;
       // Registrars open the menu on a phone between cases: give each link a full-size tap target.
       .navbar-nav .nav-link {
         padding-block: 0.625rem;
+      }
+
+      // A stacked menu has the width to show the whole username.
+      .navbar-user {
+        max-width: none;
       }
     }
 
