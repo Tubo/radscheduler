@@ -52,7 +52,10 @@ MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]  # noqa: F405
 # https://django-debug-toolbar.readthedocs.io/en/latest/configuration.html#debug-toolbar-config
 # The profiling panel stays off: since Python 3.12 only one profiler can run per process, so two requests
 # at once (the editor saves a change and fetches the checks together) made one fail with a 500. The JSON
-# API is left out too: instrumenting every editor call doubled its time.
+# API is left out too: instrumenting every editor call doubled its time. The toolbar isn't drawn in a shadow
+# root: a stylesheet there doesn't hold up the first paint, so its unstyled markup (a page-wide theme icon)
+# flashed up on the Elm pages, which are empty until their script runs. In the document, its CSS (all scoped
+# under #djDebug) holds up what follows it.
 DEBUG_TOOLBAR_CONFIG = {
     "DISABLE_PANELS": [
         "debug_toolbar.panels.redirects.RedirectsPanel",
@@ -60,6 +63,7 @@ DEBUG_TOOLBAR_CONFIG = {
     ],
     "SHOW_TEMPLATE_CONTEXT": True,
     "SHOW_TOOLBAR_CALLBACK": lambda request: DEBUG and not request.path.startswith("/api/"),
+    "USE_SHADOW_DOM": False,
 }
 # https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#internal-ips
 INTERNAL_IPS = ["127.0.0.1"]
