@@ -2,8 +2,9 @@ from datetime import date, timedelta
 
 import pytest
 from django.urls import reverse
+from freezegun import freeze_time
 
-from radscheduler.core.models import Leave, Shift, ShiftInterest
+from radscheduler.core.models import Leave, Settings, Shift, ShiftInterest
 from radscheduler.roster.models import LeaveType, ShiftType
 
 pytestmark = pytest.mark.django_db
@@ -57,19 +58,67 @@ class TestStaffPages:
 
 class TestNavbar:
     def current_links(self, resp):
-        return [a.text.strip() for a in resp.html.select("nav a[aria-current='page']")]
+        return [(a.select_one(".nav-label") or a).text.strip() for a in resp.html.select("nav a[aria-current='page']")]
+
+    def link_labels(self, resp):
+        return [label.text.strip() for label in resp.html.select("nav .nav-label")]
 
     def test_registrars_see_their_pages_with_the_current_one_marked(self, app, juniors_db):
         resp = app.get(reverse("leave_page"), user=juniors_db[0].user)
 
-        assert self.current_links(resp) == ["My leaves"]
+        assert self.current_links(resp) == ["My leave"]
+        assert self.link_labels(resp) == ["Calendar", "My leave", "Extra duties"]
         assert not resp.html.select("nav [aria-label='Admin']")
 
-    def test_any_date_in_the_editor_marks_edit_roster(self, app, admin_user):
-        resp = app.get(reverse("editor_next_by_date", args=["2024-12-16"]), user=admin_user)
+    def test_any_date_in_either_editor_marks_the_roster_editor(self, app, admin_user):
+        new = app.get(reverse("editor_next_by_date", args=["2024-12-16"]), user=admin_user)
+        old = app.get(reverse("editor_by_date", args=["2024-12-16"]), user=admin_user)
 
-        assert self.current_links(resp) == ["Admin: Roster"]
-        assert resp.html.select_one("nav a[up-alias='/roster/editor/*']")
+        assert self.current_links(new) == self.current_links(old) == ["Roster editor"]
+        assert new.html.select_one("nav a[up-alias='/roster/editor/*']")["href"] == reverse("editor_next")
+
+    def test_admin_links_say_which_page_they_open(self, app, admin_user):
+        resp = app.get(reverse("home"), user=admin_user)
+
+        admin = resp.html.select_one("nav ul[aria-label='Admin']")
+        assert [a.text.strip() for a in admin.select("a")] == [
+            "Roster editor",
+            "Leave requests",
+            "Extra-duty editor",
+            "Admin site",
+        ]
+        assert len(self.link_labels(resp)) == len(set(self.link_labels(resp)))
+
+    def test_the_director_and_office_staff_see_only_the_admin_pages_they_use(self, app, director, office_staff):
+        for user in (director, office_staff):
+            resp = app.get(reverse("leave_requests"), user=user)
+
+            admin = resp.html.select_one("nav ul[aria-label='Admin']")
+            assert [a.text.strip() for a in admin.select("a")] == ["Leave requests", "Admin site"]
+
+    def test_leave_requests_count_those_waiting_on_you(self, app, admin_user, director, office_staff, juniors_db):
+        # One request of two days, and one approved by the chief registrar that waits only on the Director.
+        Leave.objects.create(date=date(2024, 12, 16), type=LeaveType.ANNUAL, registrar=juniors_db[0])
+        Leave.objects.create(date=date(2024, 12, 17), type=LeaveType.ANNUAL, registrar=juniors_db[0])
+        Leave.objects.create(date=date(2025, 1, 6), type=LeaveType.ANNUAL, registrar=juniors_db[1], reg_approved=True)
+
+        def count(user):
+            link = app.get(reverse("home"), user=user).html.select_one(f"nav a[href='{reverse('leave_requests')}']")
+            # The spaces either side of the number are non-breaking, so the template's formatter keeps them
+            return link.select_one(".navbar-count") and link.select_one(".navbar-count").text.replace("\xa0", " ")
+
+        assert count(admin_user) == ", 1 waiting on you"
+        assert count(director) == ", 2 waiting on you"
+        assert count(office_staff) is None
+
+    def test_signed_in_users_see_how_far_the_roster_is_published(self, app, juniors_db):
+        Settings.objects.create(publish_start_date=date(2024, 12, 2), publish_end_date=date(2025, 3, 2))
+
+        with freeze_time("2026-10-09"):
+            status = app.get(reverse("home"), user=juniors_db[0].user).html.select_one("nav .navbar-status")
+
+        assert " ".join(status.text.split()) == "Roster published to Sun 2 Mar 2025"
+        assert status.select_one("time")["datetime"] == "2025-03-02"
 
     def test_your_own_profile_marks_your_name(self, app, juniors_db):
         me, them = juniors_db[0].user, juniors_db[1].user
@@ -80,17 +129,28 @@ class TestNavbar:
         assert self.current_links(mine) == [me.username]
         assert self.current_links(theirs) == []
 
-    def test_visitors_see_sign_in_marked_on_its_page(self, app):
+    def test_visitors_are_offered_only_sign_in(self, app):
         resp = app.get(reverse("account_login"))
 
+        assert self.link_labels(resp) == ["Sign in"]
         assert self.current_links(resp) == ["Sign in"]
+        assert not resp.html.select("nav .navbar-toggler")
 
-    def test_skip_link_lands_past_the_navbar(self, app, juniors_db):
+    def test_unpoly_marks_the_link_lists_not_the_brand(self, app, juniors_db):
+        # Unpoly marks every link in a nav that matches the URL, which would include the brand on "/".
+        nav = app.get(reverse("home"), user=juniors_db[0].user).html.select_one("nav")
+
+        assert nav["up-nav"] == "false"
+        assert nav.select("ul[up-nav]") and not nav.select_one(".navbar-brand").find_parent(attrs={"up-nav": ""})
+
+    def test_skip_link_lands_on_the_main_content(self, app, juniors_db):
         resp = app.get(reverse("home"), user=juniors_db[0].user)
 
         skip = resp.html.select_one("a.skip-link")
         assert skip.find_next_sibling("div").select_one("nav")
-        assert resp.html.select_one(skip["href"])
+        target = resp.html.select_one(skip["href"])
+        assert target.name == "main" and target["tabindex"] == "-1"
+        assert len(resp.html.select("main")) == 1
 
 
 class TestRosterGeneration:

@@ -39,26 +39,121 @@ $red: #b94a48;
 // Navbar //
 ////////////
 
-// The current page is underlined in the mark's amber as well as brightened, so it isn't shown by colour alone.
-.navbar .nav-link[aria-current='page'] {
-  text-decoration: underline 2px var(--bs-warning);
-  text-underline-offset: 0.45em;
+// The navbar's tokens, named as in DESIGN.md (Navbar Charcoal, Mark Amber) beside the Elm pages' --re-* set.
+:root {
+  --re-navbar: #212529;
+  --re-navbar-ink: rgba(255, 255, 255, 0.68); // 6.9:1 on the navbar
+  --re-navbar-line: #6c757d; // 3.2:1: the rules between groups carry the grouping
+  --re-mark-amber: #ffc107;
+  --re-tap: 2.75rem;
 }
 
-// Links keep to one line; the menu stacks before they would have to wrap.
+// Compact, in the type of the pages it frames: 0.875rem links at 500, the name at 1.0625rem.
+.navbar {
+  --bs-navbar-padding-y: 0.25rem;
+  --bs-navbar-color: var(--re-navbar-ink);
+  --bs-navbar-hover-color: rgba(255, 255, 255, 0.9);
+  --bs-navbar-brand-font-size: 1.0625rem;
+  --bs-navbar-brand-padding-y: 0.25rem;
+  --bs-navbar-nav-link-padding-x: 0.625rem;
+  background-color: var(--re-navbar);
+  font-size: 0.875rem;
+
+  > .container-fluid {
+    justify-content: flex-start;
+  }
+}
+
+.navbar-brand {
+  font-weight: 600;
+}
+
+.navbar-mark {
+  margin-right: 0.5rem;
+  color: var(--re-mark-amber);
+}
+
+// Links keep to one line; the menu folds before they would have to wrap.
 .navbar .nav-link {
+  font-weight: 500;
   white-space: nowrap;
+}
+
+// The current page is underlined in the mark's amber as well as brightened, so it isn't shown by colour alone.
+.navbar .nav-link[aria-current='page'] {
+  text-decoration: underline 2px var(--re-mark-amber);
+  text-underline-offset: 0.45em;
 }
 
 // The navbar is dark, so Bootstrap's blue focus shadow barely shows on it.
 .navbar :is(.nav-link, .navbar-brand, .navbar-toggler):focus-visible {
-  outline: 2px solid var(--bs-warning);
+  outline: 2px solid var(--re-mark-amber);
   outline-offset: 2px;
+  border-radius: 0.375rem;
   box-shadow: none;
 }
 
-.navbar-toggler:focus:not(:focus-visible) {
-  box-shadow: none;
+.navbar-toggler {
+  display: grid;
+  place-items: center;
+  width: var(--re-tap);
+  height: var(--re-tap);
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0.375rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.375rem;
+  transition: background-color 120ms ease-out;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  &:focus:not(:focus-visible) {
+    box-shadow: none;
+  }
+}
+
+// A registrar's own pages stay in a row whether or not the rest of the menu is folded.
+.navbar-primary {
+  flex-direction: row;
+
+  .nav-link {
+    padding-inline: var(--bs-navbar-nav-link-padding-x);
+  }
+}
+
+// How many leave requests wait on you. Amber, the navbar's one colour, because it asks for you.
+.navbar-count {
+  display: inline-block;
+  min-width: 1.25rem;
+  margin-left: 0.375rem;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background-color: var(--re-mark-amber);
+  color: #1f2933;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+// How far the roster is published: past this day, registrars can't see it yet.
+.navbar-status {
+  margin: 0;
+  color: var(--re-navbar-ink);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+
+  time {
+    color: var(--bs-white);
+    font-weight: 500;
+  }
 }
 
 // A long username ends in an ellipsis (its title has the whole of it) rather than pushing the navbar wider.
@@ -67,8 +162,31 @@ $red: #b94a48;
   overflow: hidden;
   text-overflow: ellipsis;
 
-  @include media-breakpoint-up(xl) {
+  @include media-breakpoint-up(xxl) {
     max-width: 14rem;
+  }
+}
+
+// Signed out, signing in is the one thing to do, so it's a button rather than a muted link.
+.navbar-signin {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+
+  .nav-item:last-child .nav-link {
+    min-height: 2rem;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 0.375rem;
+    color: var(--bs-white);
+    text-decoration: none;
+    transition: background-color 120ms ease-out;
+
+    &:hover {
+      border-color: var(--bs-white);
+      background-color: rgba(255, 255, 255, 0.1);
+    }
   }
 }
 
@@ -84,64 +202,125 @@ $red: #b94a48;
   color: #1f2933;
   font-weight: 500;
   text-decoration: none;
-  outline: 2px solid var(--bs-warning);
+  outline: 2px solid var(--re-mark-amber);
   outline-offset: 2px;
 }
 
-// The emoji that marks the admin group, leading its links.
-.navbar-group-mark {
-  padding-inline: 0.5rem 0.25rem;
-  line-height: 1.5;
-  user-select: none;
+// The skip link lands on <main>, which takes focus without drawing a ring round the whole page.
+#content:focus {
+  outline: none;
 }
 
-// Staff have twice the links, so their menu stacks up to lg rather than md (see navbar.html).
-// Groups after the first sit behind a rule: above them when stacked, beside them in a row.
-// The account links go to the far end instead.
-@each $breakpoint in (md, lg) {
+// The icon that leads the admin group.
+.navbar-group-mark {
+  color: var(--re-navbar-ink);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+// On a phone the brand row stays one tap target tall, and the registrar's pages become a row of tabs below
+// it, each a full-size tap target, so the page they're on shows without opening anything.
+@include media-breakpoint-down(md) {
+  .navbar {
+    --bs-navbar-padding-y: 0;
+  }
+
+  .navbar-brand {
+    display: flex;
+    align-items: center;
+    min-height: var(--re-tap);
+  }
+
+  .navbar-primary {
+    order: 3;
+    flex-basis: calc(100% + var(--bs-gutter-x));
+    margin-inline: calc(var(--bs-gutter-x) * -0.5);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+
+    .nav-item {
+      flex: 1 1 0;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: var(--re-tap);
+    }
+
+    .nav-link:focus-visible {
+      outline-offset: -3px;
+    }
+  }
+
+  .navbar-collapse {
+    order: 4;
+  }
+}
+
+// Staff have more in the menu, so theirs stays folded up to xl rather than md (see navbar.html).
+// Folded, each group sits behind a rule above it; open in a row, the admin group sits behind a rule beside
+// the registrar's pages and the account goes to the far end.
+@each $breakpoint in (md, xl) {
   .navbar-expand-#{$breakpoint} {
     @include media-breakpoint-down($breakpoint) {
-      .navbar-group {
+      .navbar-admin,
+      .navbar-end {
         position: relative;
-        margin-top: 0.5rem;
-        padding-top: 0.5rem;
-        border-top: var(--bs-border-width) solid var(--bs-border-color);
+        margin-top: 0.25rem;
+        padding-top: 0.25rem;
+        border-top: 1px solid var(--re-navbar-line);
+      }
+
+      .navbar-collapse .nav-link {
+        padding-block: 0.6875rem;
       }
 
       // Set into the rule above the admin links rather than taking a row of its own.
       .navbar-group-mark {
         position: absolute;
-        top: calc(-1 * var(--bs-border-width));
+        top: -1px;
         left: 0;
-        padding: 0 0.5rem 0 0;
-        background-color: var(--bs-dark);
+        padding-right: 0.5rem;
+        background-color: var(--re-navbar);
         transform: translateY(-50%);
       }
 
-      // Registrars open the menu on a phone between cases: give each link a full-size tap target.
-      .navbar-nav .nav-link {
-        padding-block: 0.625rem;
+      .navbar-status {
+        padding-block: 0.6875rem;
       }
 
-      // A stacked menu has the width to show the whole username.
+      // A folded menu has the width to show the whole username.
       .navbar-user {
         max-width: none;
       }
     }
 
     @include media-breakpoint-up($breakpoint) {
-      .navbar-group {
+      .navbar-admin {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
         margin-left: 0.5rem;
-        padding-left: 0.5rem;
-        border-left: 2px solid var(--bs-border-color);
+        padding-left: 0.625rem;
+        border-left: 1px solid var(--re-navbar-line);
       }
 
-      .navbar-account {
+      .navbar-end {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
         margin-left: auto;
-        padding-left: 0;
-        border-left: 0;
       }
     }
+  }
+}
+
+// Between xl and xxl a staff navbar has room for its links but not for the published date as well; the
+// editor shows that date in its own toolbar.
+.navbar-expand-xl .navbar-status {
+  @include media-breakpoint-only(xl) {
+    display: none;
   }
 }
 

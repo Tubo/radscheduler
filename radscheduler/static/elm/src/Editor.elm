@@ -61,6 +61,9 @@ type alias Flags =
     { csrfToken : String
     , week : String
     , editorUrl : String
+
+    -- The old template editor, followed by a week, until this one replaces it.
+    , oldEditorUrl : String
     , shiftTypes : List Choice
     , leaveTypes : List Choice
     , statusTypes : List Choice
@@ -302,6 +305,7 @@ flagsDecoder =
         |> andMap (Decode.field "csrfToken" Decode.string)
         |> andMap (Decode.field "week" Decode.string)
         |> andMap (Decode.field "editorUrl" Decode.string)
+        |> andMap (Decode.field "oldEditorUrl" Decode.string)
         |> andMap (Decode.field "shiftTypes" (Decode.list choiceDecoder))
         |> andMap (Decode.field "leaveTypes" (Decode.list choiceDecoder))
         |> andMap (Decode.field "statusTypes" (Decode.list choiceDecoder))
@@ -353,7 +357,7 @@ init value =
         Err err ->
             let
                 model =
-                    initialModel (Flags "" "" "" [] [] [] (CoverRules [] [] []) 0 [] [] []) (Date.fromRataDie 1)
+                    initialModel (Flags "" "" "" "" [] [] [] (CoverRules [] [] []) 0 [] [] []) (Date.fromRataDie 1)
             in
             ( { model | loading = False, failure = Just (Failure ("The editor couldn't start: " ++ err) Nothing Nothing) }
             , Cmd.none
@@ -2657,6 +2661,7 @@ viewToolbar model =
                 , onClick (Open ForKey "key-button")
                 ]
                 [ i [ class "bi bi-info-circle", attribute "aria-hidden" "true" ] [], text "Key" ]
+            , a [ href (model.flags.oldEditorUrl ++ Date.toIsoString model.week ++ "/"), class "re-btn re-btn--quiet" ] [ text "Old editor" ]
             , viewPublishedStatus model.roster
             , button [ type_ "button", id "publish-button", class "re-btn re-btn--primary", onClick OpenPublish ]
                 [ i [ class "bi bi-send", attribute "aria-hidden" "true" ] [], text "Publish…" ]

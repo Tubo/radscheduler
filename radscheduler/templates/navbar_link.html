@@ -2,5 +2,5 @@
   <a class="nav-link{% if current %} active{% endif %}"
      href="{{ href }}"
      {% if current %}aria-current="page"{% endif %}
-     {% if alias %}up-alias="{{ alias }}"{% endif %}>{% if prefix %}<span class="visually-hidden">{{ prefix }}</span>{% endif %}{{ label }}</a>
+     {% if alias %}up-alias="{{ alias }}"{% endif %}><span class="nav-label">{{ label }}</span>{% if count %}<span class="navbar-count"><span class="visually-hidden">,&nbsp;</span>{{ count }}<span class="visually-hidden">&nbsp;{{ count_label }}</span></span>{% endif %}</a>
 </li>

@@ -1,60 +1,92 @@
 {% load static i18n nav_tags %}
 
-{# Staff have twice the links, so their menu stays stacked up to a wider screen. #}
-<nav class="navbar {% if request.user.is_staff %}navbar-expand-lg{% else %}navbar-expand-md{% endif %} bg-dark border-bottom border-body"
+{% navbar_status as status %}
+{% comment %}
+  A registrar's own pages are always in view: beside the name on a wide screen, a row of tabs under it on a
+  phone. The rest (the admin pages, how far the roster is published and the account) folds into a menu
+  until there's room, which comes later for staff, who have more of it.
+  up-nav="false" stops Unpoly marking the brand as the current page on "/"; the link lists mark their own.
+{% endcomment %}
+<nav class="navbar {% if request.user.is_staff %}navbar-expand-xl{% else %}navbar-expand-md{% endif %}"
      data-bs-theme="dark"
-     aria-label="{% translate 'Main' %}">
+     aria-label="{% translate 'Main' %}"
+     up-nav="false">
   <div class="container-fluid">
-    <a class="navbar-brand" href="{% url 'home' %}"><i class="bi bi-calendar-heart text-warning me-2" aria-hidden="true"></i>Radscheduler</a>
-    <button class="navbar-toggler"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#navbar-menu"
-            aria-controls="navbar-menu"
-            aria-expanded="false"
-            aria-label="{% translate 'Menu' %}">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbar-menu">
-      <ul class="navbar-nav">
+    <a class="navbar-brand" href="{% url 'home' %}"><i class="bi bi-calendar-heart navbar-mark" aria-hidden="true"></i>Radscheduler</a>
+    {% if request.user.is_authenticated %}
+      <ul class="navbar-nav navbar-primary" up-nav>
         {% nav_link "home" "Calendar" also="calendar" %}
-        {% nav_link "leave_page" "My leaves" %}
+        {% nav_link "leave_page" "My leave" %}
         {% nav_link "extra_page" "Extra duties" %}
       </ul>
-      {% if request.user.is_staff %}
-        {# The emoji marks the admin pages; screen readers hear "Admin:" before each link instead. #}
-        <ul class="navbar-nav navbar-group" aria-label="{% translate 'Admin' %}">
-          <li class="navbar-text navbar-group-mark" aria-hidden="true">🛠️</li>
-          {% nav_link "editor" "Roster" also="editor_by_date editor_next editor_next_by_date settings" alias="/roster/editor/*" prefix="Admin" %}
-          {% nav_link "leave_requests" "Leaves" prefix="Admin" %}
-          {% nav_link "extra_edit_page" "Extra duties" prefix="Admin" %}
-        </ul>
-      {% endif %}
-      <ul class="navbar-nav navbar-group navbar-account">
-        {% if request.user.is_authenticated %}
-          {% is_own_profile as here %}
-          {# A long username is cut short, with the whole of it on hover. #}
-          <li class="nav-item">
-            <a class="nav-link navbar-user{% if here %} active{% endif %}"
-               href="{% url 'users:detail' request.user.username %}"
-               title="{{ request.user.username }}"
-               {% if here %}aria-current="page"{% endif %}
-               up-alias="{% url 'users:update' %}"><i class="bi bi-person-circle me-2" aria-hidden="true"></i>{{ request.user.username }}</a>
-          </li>
-          <li class="nav-item">
-            {# URL provided by django-allauth/account/urls.py #}
-            <a class="nav-link" href="{% url 'account_logout' %}">{% translate "Sign out" %}</a>
-          </li>
-        {% else %}
-          {# URLs provided by django-allauth/account/urls.py #}
-          {% if ACCOUNT_ALLOW_REGISTRATION %}
-            {% translate "Sign up" as sign_up %}
-            {% nav_link "account_signup" sign_up %}
-          {% endif %}
-          {% translate "Sign in" as sign_in %}
-          {% nav_link "account_login" sign_in %}
+      <button class="navbar-toggler"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#navbar-menu"
+              aria-controls="navbar-menu"
+              aria-expanded="false"
+              aria-label="{% if request.user.is_staff %}{% translate 'Menu' %}{% else %}{% translate 'Account' %}{% endif %}">
+        <i class="bi {% if request.user.is_staff %}bi-list{% else %}bi-person-circle{% endif %}"
+           aria-hidden="true"></i>
+      </button>
+      <div class="collapse navbar-collapse" id="navbar-menu">
+        {% if request.user.is_staff %}
+          <div class="navbar-group navbar-admin">
+            <i class="bi bi-tools navbar-group-mark" aria-hidden="true"></i>
+            <ul class="navbar-nav" aria-label="{% translate 'Admin' %}" up-nav>
+              {% if status.edits_roster %}
+                {% nav_link "editor_next" "Roster editor" also="editor_next_by_date editor editor_by_date settings" alias="/roster/editor/*" %}
+              {% endif %}
+              {% translate "waiting on you" as waiting_on_you %}
+              {% nav_link "leave_requests" "Leave requests" count=status.waiting count_label=waiting_on_you %}
+              {% if status.edits_roster %}
+                {% nav_link "extra_edit_page" "Extra-duty editor" %}
+              {% endif %}
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'admin:index' %}">{% translate "Admin site" %}</a>
+              </li>
+            </ul>
+          </div>
         {% endif %}
+        <div class="navbar-end">
+          {# What registrars can see: past this day the roster may still change. The editor shows it in its own toolbar. #}
+          {% if request.resolver_match.url_name != "editor_next" and request.resolver_match.url_name != "editor_next_by_date" %}
+            <p class="navbar-text navbar-status">
+              {% if status.published_to %}
+                {% translate "Roster published to" %} <time datetime="{{ status.published_to|date:'Y-m-d' }}">{{ status.published_to|short_date }}</time>
+              {% else %}
+                {% translate "Roster not published" %}
+              {% endif %}
+            </p>
+          {% endif %}
+          <ul class="navbar-nav navbar-group navbar-account" up-nav>
+            {% is_own_profile as here %}
+            {# A long username is cut short, with the whole of it on hover. #}
+            <li class="nav-item">
+              <a class="nav-link navbar-user{% if here %} active{% endif %}"
+                 href="{% url 'users:detail' request.user.username %}"
+                 title="{{ request.user.username }}"
+                 {% if here %}aria-current="page"{% endif %}
+                 up-alias="{% url 'users:update' %}"><i class="bi bi-person-circle me-2" aria-hidden="true"></i>{{ request.user.username }}</a>
+            </li>
+            <li class="nav-item">
+              {# URL provided by django-allauth/account/urls.py #}
+              <a class="nav-link" href="{% url 'account_logout' %}">{% translate "Sign out" %}</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    {% else %}
+      {# Signed out, the pages behind sign-in aren't offered: signing in is the one thing to do. #}
+      <ul class="navbar-nav navbar-signin" up-nav>
+        {# URLs provided by django-allauth/account/urls.py #}
+        {% if ACCOUNT_ALLOW_REGISTRATION %}
+          {% translate "Sign up" as sign_up %}
+          {% nav_link "account_signup" sign_up %}
+        {% endif %}
+        {% translate "Sign in" as sign_in %}
+        {% nav_link "account_login" sign_in %}
       </ul>
-    </div>
+    {% endif %}
   </div>
 </nav>

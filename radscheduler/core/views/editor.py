@@ -133,6 +133,8 @@ def next_page(request, date_=None):
         "csrfToken": get_token(request),
         "week": week.isoformat(),
         "editorUrl": reverse("editor_next"),
+        # Until this editor does everything the old one does.
+        "oldEditorUrl": reverse("editor"),
         **type_choices(),
         "cover": COVER,
         "workloadWeeks": WORKLOAD_WEEKS,

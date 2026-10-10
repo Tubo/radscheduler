@@ -36,12 +36,12 @@
           }
         }
 
-        @media (max-width: 991.98px) {
-          .navbar-expand-lg .navbar-collapse.collapse {
+        @media (max-width: 1199.98px) {
+          .navbar-expand-xl .navbar-collapse.collapse {
             display: block !important;
           }
 
-          .navbar-expand-lg .navbar-toggler {
+          .navbar-expand-xl .navbar-toggler {
             display: none;
           }
         }
@@ -59,16 +59,17 @@
   </head>
   <body>
     <a class="skip-link visually-hidden-focusable" href="#content">{% translate "Skip to content" %}</a>
-    <div class="mb-1 d-print-none">{% include "navbar.html" %}</div>
-    {# Where "Skip to content" lands: just past the navbar, whatever the page puts there. #}
-    <div id="content"></div>
-    {% block messages %}
-      <div class="container">{% include "messages.html" %}</div>
-    {% endblock messages %}
-    {% block content %}
-      <p>Use this document as a way to quick start any new project.</p>
-    {% endblock content %}
-    <!-- /container -->
+    {# Pages that fill the window below the navbar drop the gap under it. #}
+    <div class="{% block navbar_gap %}mb-1{% endblock navbar_gap %} d-print-none">{% include "navbar.html" %}</div>
+    {# Where "Skip to content" lands: everything past the navbar. #}
+    <main id="content" tabindex="-1">
+      {% block messages %}
+        <div class="container">{% include "messages.html" %}</div>
+      {% endblock messages %}
+      {% block content %}
+        <p>Use this document as a way to quick start any new project.</p>
+      {% endblock content %}
+    </main>
     {% block modal %}
     {% endblock modal %}
     {% block inline_javascript %}

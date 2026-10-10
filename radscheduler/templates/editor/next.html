@@ -15,10 +15,12 @@
   <script defer src="{% static 'elm-build/editor.js' %}"></script>
   {% render_bundle 'editor_elm' 'js' attrs='defer' %}
 {% endblock javascript %}
+{% block navbar_gap %}
+{% endblock navbar_gap %}
 {% block messages %}
 {% endblock messages %}
 {% block content %}
-  <main>
+  <div>
     {{ flags|json_script:"editor-flags" }}
     <div id="editor-app"></div>
     <noscript>
@@ -28,5 +30,5 @@
         </p>
       </div>
     </noscript>
-  </main>
+  </div>
 {% endblock content %}

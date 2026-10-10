@@ -24,3 +24,12 @@ def leave_approvers(user) -> tuple[str, ...]:
     if OFFICE_STAFF in groups:
         return ()
     return APPROVERS
+
+
+def edits_roster(user) -> bool:
+    """Whether `user` builds the roster and allocates extra duties: staff other than the Director and office staff."""
+    if not (user.is_active and user.is_staff):
+        return False
+    if user.is_superuser:
+        return True
+    return not user.groups.filter(name__in=(DIRECTOR_OF_TRAINING, OFFICE_STAFF)).exists()
