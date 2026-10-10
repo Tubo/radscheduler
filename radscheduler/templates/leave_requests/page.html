@@ -15,6 +15,10 @@
   <script defer src="{% static 'elm-build/leave_requests.js' %}"></script>
   {% render_bundle 'leave_requests' 'js' attrs='defer' %}
 {% endblock javascript %}
+{% block navbar_gap %}
+{% endblock navbar_gap %}
+{% block messages %}
+{% endblock messages %}
 {% block content %}
   <div>
     {{ flags|json_script:"leave-requests-flags" }}

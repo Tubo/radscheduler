@@ -132,6 +132,9 @@ type alias Model =
     -- Rows ticked to approve together.
     , selected : Set Int
 
+    -- On a narrow screen, whether the filters are open over the list.
+    , filtersOpen : Bool
+
     -- The row opened in place, a shelf under it holding the request with its roster, loaded when opened; and
     -- the number of that load, as for the overview's.
     , shelf : Maybe ( Int, Remote T.LeaveRequestsOut )
@@ -225,6 +228,7 @@ emptyModel flags =
     , refreshing = False
     , loadingMore = False
     , selected = Set.empty
+    , filtersOpen = False
     , shelf = Nothing
     , shelfAsked = 0
     , data = Loading
@@ -434,6 +438,7 @@ type Msg
     | SetRegistrar String
     | SetSort String
     | ClearFilters
+    | ToggleFilters
     | GotOverview Int Bool (Result ApiError T.LeaveOverviewOut)
     | ShowMore
     | Select Int Bool
@@ -507,6 +512,9 @@ update msg model =
 
         ClearFilters ->
             refilter (\_ -> LeaveFilters.defaults (decides model.flags)) model
+
+        ToggleFilters ->
+            ( { model | filtersOpen = not model.filtersOpen }, Cmd.none )
 
         GotOverview asked more result ->
             if asked /= model.overviewAsked then
@@ -657,7 +665,7 @@ update msg model =
                 ( loading, cmd ) =
                     loadReview { model | mode = Review, goingTo = key, undos = [] }
             in
-            ( loading, Cmd.batch [ cmd, saveQuery loading, Task.attempt (\_ -> NoOp) (Dom.setViewport 0 0) ] )
+            ( loading, Cmd.batch [ cmd, saveQuery loading, Task.attempt (\_ -> NoOp) (Dom.setViewportOf "lr-pane" 0 0) ] )
 
         CloseReview ->
             let
@@ -1024,28 +1032,19 @@ shortcut key model =
             ( model, Cmd.none )
 
 
-{-| Focus a request and scroll it to the top, just under the bar of tabs.
+{-| Focus a request and scroll it to the top of the list's pane.
 -}
 goTo : Int -> Cmd Msg
 goTo key =
-    Task.map3 (\target bar viewport -> ( target, bar, viewport ))
+    Task.map3 (\target pane viewport -> ( target, pane, viewport ))
         (Dom.getElement (requestId key))
-        (Dom.getElement "lr-bar")
-        Dom.getViewport
+        (Dom.getElement "lr-pane")
+        (Dom.getViewportOf "lr-pane")
         |> Task.andThen
-            (\( target, bar, viewport ) ->
-                let
-                    -- The bar sticks over the list from 48rem wide.
-                    covered =
-                        if viewport.viewport.width >= 768 then
-                            bar.element.height
-
-                        else
-                            0
-                in
+            (\( target, pane, viewport ) ->
                 -- Focus first: focus landing during the (smooth) scroll would cut it short.
                 Dom.focus (requestId key)
-                    |> Task.andThen (\_ -> Dom.setViewport viewport.viewport.x (target.element.y - covered - 12))
+                    |> Task.andThen (\_ -> Dom.setViewportOf "lr-pane" 0 (viewport.viewport.y + target.element.y - pane.element.y - 12))
             )
         |> Task.attempt (\_ -> NoOp)
 
@@ -1686,22 +1685,92 @@ spotAttributes model request spot =
 -- VIEW
 
 
+{-| An app like the roster editor: a toolbar, then the filters down the side of a pane of requests, which
+scrolls by itself; the whole fills the window below the navbar.
+-}
 view : Model -> Html Msg
 view model =
-    div [ class "leave-requests", classList [ ( "is-review", model.mode == Review ) ] ]
-        [ header [ class "lr-head" ]
-            [ h1 [] [ text "Leave requests" ]
-            , p [ class "lr-role" ] [ text (roleLine model.flags) ]
-            , viewHelp model
-            ]
-        , case model.mode of
-            Overview ->
-                viewOverview model
+    div
+        [ class "leave-requests"
+        , classList [ ( "is-review", model.mode == Review ), ( "is-filtering", model.filtersOpen ) ]
+        ]
+        [ viewToolbar model
+        , div [ class "lr-frame" ]
+            [ if model.mode == Overview then
+                viewRail model
 
-            Review ->
-                viewReview model
+              else
+                text ""
+            , div [ class "lr-pane", id "lr-pane" ]
+                [ case model.mode of
+                    Overview ->
+                        viewOverview model
+
+                    Review ->
+                        viewReview model
+                ]
+            ]
         , div [ class "re-toasts lr-toasts", attribute "aria-live" "polite" ] [ viewToast model.undos ]
         ]
+
+
+viewToolbar : Model -> Html Msg
+viewToolbar model =
+    div [ class "re-toolbar lr-toolbar" ]
+        (h1 [ class "re-title" ] [ text "Leave requests" ]
+            :: (case model.mode of
+                    Overview ->
+                        [ viewStatuses model
+                        , div [ class "re-tools" ]
+                            [ let
+                                active =
+                                    activeFilters model.filters
+                              in
+                              button
+                                [ type_ "button"
+                                , class "re-btn lr-filters-toggle"
+                                , attribute "aria-expanded" (boolString model.filtersOpen)
+                                , attribute "aria-controls" "lr-rail"
+                                , onClick ToggleFilters
+                                ]
+                                (i [ class "bi bi-funnel", attribute "aria-hidden" "true" ] []
+                                    :: text "Filters"
+                                    :: (if active > 0 then
+                                            [ span [ class "re-btn-count" ] [ text (String.fromInt active) ] ]
+
+                                        else
+                                            []
+                                       )
+                                )
+                            , viewHelp model
+                            ]
+                        ]
+
+                    Review ->
+                        [ div [ class "re-nav" ]
+                            [ button [ type_ "button", class "re-btn", onClick CloseReview, title "Back to the overview (Esc)" ]
+                                [ i [ class "bi bi-arrow-left", attribute "aria-hidden" "true" ] [], text "Overview" ]
+                            , span [ class "re-window" ] [ text (reviewSummary model) ]
+                            ]
+                        , div [ class "re-tools" ]
+                            [ -- The key to the "On leave" row, while one is drawn.
+                              if not (verdictFirst model.flags) || not (Set.isEmpty model.expanded) then
+                                viewScale
+
+                              else
+                                text ""
+                            , viewHelp model
+                            ]
+                        ]
+               )
+        )
+
+
+{-| How many filters are set besides where the requests stand, for the narrow screen's Filters button.
+-}
+activeFilters : Filters -> Int
+activeFilters filters =
+    List.length (List.filter identity [ filters.start /= "", filters.end /= "", not (List.isEmpty filters.years), not (List.isEmpty filters.types), filters.registrar /= Nothing ])
 
 
 viewError : Model -> Html Msg
@@ -1721,8 +1790,7 @@ viewError model =
 viewOverview : Model -> Html Msg
 viewOverview model =
     div [ class "lr-overview" ]
-        [ viewFilters model
-        , viewOverviewBar model
+        [ viewOverviewBar model
         , viewError model
         , case model.overview of
             Loading ->
@@ -1763,14 +1831,11 @@ viewOverview model =
         ]
 
 
-{-| Where the requests stand, then when, whose and what, and the order.
+{-| Where the requests stand, as tabs in the toolbar, with how many wait.
 -}
-viewFilters : Model -> Html Msg
-viewFilters model =
+viewStatuses : Model -> Html Msg
+viewStatuses model =
     let
-        filters =
-            model.filters
-
         count status =
             case ( status, model.counts ) of
                 ( "mine", Just counts ) ->
@@ -1786,8 +1851,8 @@ viewFilters model =
             button
                 [ type_ "button"
                 , class "lr-tab"
-                , classList [ ( "is-on", filters.status == status ) ]
-                , attribute "aria-pressed" (boolString (filters.status == status))
+                , classList [ ( "is-on", model.filters.status == status ) ]
+                , attribute "aria-pressed" (boolString (model.filters.status == status))
                 , onClick (SetStatus status)
                 ]
                 (text (LeaveFilters.statusLabel status)
@@ -1799,6 +1864,27 @@ viewFilters model =
                                 []
                        )
                 )
+    in
+    div [ class "lr-tabs lr-statuses", attribute "role" "group", attribute "aria-label" "Where they stand" ]
+        (List.map statusButton
+            ((if decides model.flags then
+                [ "mine" ]
+
+              else
+                []
+             )
+                ++ [ "waiting", "approved", "declined", "cancelled", "any" ]
+            )
+        )
+
+
+{-| When, whose and what, down the side of the list; on a narrow screen, over it when opened.
+-}
+viewRail : Model -> Html Msg
+viewRail model =
+    let
+        filters =
+            model.filters
 
         registrars =
             case model.overview of
@@ -1827,26 +1913,14 @@ viewFilters model =
                 ]
                 []
     in
-    section [ class "lr-filters", attribute "aria-label" "Which requests" ]
-        [ div [ class "lr-tabs lr-statuses", attribute "role" "group", attribute "aria-label" "Where they stand" ]
-            (List.map statusButton
-                ((if decides model.flags then
-                    [ "mine" ]
-
-                  else
-                    []
-                 )
-                    ++ [ "waiting", "approved", "declined", "cancelled", "any" ]
-                )
-            )
-        , div [ class "lr-filter-row" ]
+    aside [ class "lr-rail", id "lr-rail", attribute "aria-label" "Filters" ]
+        [ div [ class "lr-filter-row" ]
             [ div [ class "lr-field" ]
                 [ span [ class "lr-field-label", id "lr-dates-label" ] [ text "Leave between" ]
                 , div [ class "lr-dates", attribute "role" "group", attribute "aria-labelledby" "lr-dates-label" ]
-                    [ label [ class "visually-hidden", for "lr-start" ] [ text "From" ]
+                    [ label [ class "lr-date-label", for "lr-start" ] [ text "From" ]
                     , dateInput "lr-start" filters.start SetStart
-                    , span [ class "lr-dates-and", attribute "aria-hidden" "true" ] [ text "and" ]
-                    , label [ class "visually-hidden", for "lr-end" ] [ text "To" ]
+                    , label [ class "lr-date-label", for "lr-end" ] [ text "To" ]
                     , dateInput "lr-end" filters.end SetEnd
                     ]
                 ]
@@ -1880,6 +1954,9 @@ viewFilters model =
 
               else
                 button [ type_ "button", class "re-btn re-btn--quiet lr-clear", onClick ClearFilters ] [ text "Clear filters" ]
+
+            -- Only while the filters are open over the list.
+            , button [ type_ "button", class "re-btn re-btn--primary lr-rail-done", onClick ToggleFilters ] [ text "Done" ]
             ]
         ]
 
@@ -2363,48 +2440,8 @@ viewOverviewEmpty model =
 
 viewReview : Model -> Html Msg
 viewReview model =
-    let
-        sortName =
-            LeaveFilters.sorts |> List.filter (Tuple.first >> (==) model.filters.sort) |> List.head |> Maybe.map Tuple.second |> Maybe.withDefault ""
-
-        summary =
-            case model.data of
-                Loaded data ->
-                    "Reviewing "
-                        ++ (if data.total > List.length data.requests then
-                                "the first " ++ String.fromInt (List.length data.requests) ++ " of " ++ thousands data.total
-
-                            else
-                                thousands data.total
-                           )
-                        ++ (if data.total == 1 then
-                                " request · "
-
-                            else
-                                " requests · "
-                           )
-                        ++ LeaveFilters.statusLabel model.filters.status
-                        ++ " · "
-                        ++ sortName
-
-                _ ->
-                    "Reviewing · " ++ LeaveFilters.statusLabel model.filters.status
-    in
     div [ class "lr-review" ]
-        [ div [ class "lr-bar", id "lr-bar" ]
-            [ div [ class "lr-review-head" ]
-                [ button [ type_ "button", class "re-btn", onClick CloseReview ]
-                    [ i [ class "bi bi-arrow-left", attribute "aria-hidden" "true" ] [], text "Overview" ]
-                , p [ class "lr-review-title" ] [ text summary ]
-                ]
-            , -- The key to the "On leave" row, while one is drawn.
-              if not (verdictFirst model.flags) || not (Set.isEmpty model.expanded) then
-                viewScale
-
-              else
-                text ""
-            ]
-        , viewError model
+        [ viewError model
         , case model.data of
             Loaded data ->
                 if data.total > List.length data.requests then
@@ -2417,6 +2454,37 @@ viewReview model =
                 text ""
         , viewBody model
         ]
+
+
+{-| "Reviewing 16 requests · Waiting on you · Leave date, soonest first"
+-}
+reviewSummary : Model -> String
+reviewSummary model =
+    let
+        sortName =
+            LeaveFilters.sorts |> List.filter (Tuple.first >> (==) model.filters.sort) |> List.head |> Maybe.map Tuple.second |> Maybe.withDefault ""
+    in
+    case model.data of
+        Loaded data ->
+            "Reviewing "
+                ++ (if data.total > List.length data.requests then
+                        "the first " ++ String.fromInt (List.length data.requests) ++ " of " ++ thousands data.total
+
+                    else
+                        thousands data.total
+                   )
+                ++ (if data.total == 1 then
+                        " request · "
+
+                    else
+                        " requests · "
+                   )
+                ++ LeaveFilters.statusLabel model.filters.status
+                ++ " · "
+                ++ sortName
+
+        _ ->
+            "Reviewing · " ++ LeaveFilters.statusLabel model.filters.status
 
 
 roleLine : Flags -> String
@@ -2464,51 +2532,54 @@ viewHelp model =
             (choiceFor model.flags.shiftTypes (T.shiftTypeToString shiftType)).short
     in
     details [ class "lr-help" ]
-        [ summary [] [ text "How this page works" ]
-        , ul []
-            [ li [] [ text "Leave needs two approvals, the chief registrar's and the Director of Training's; either can decline it." ]
-            , li [] [ text "The overview lists the requests of registrars in training, filtered and sorted as you choose. Requests with nothing against them can be ticked and approved together; review the rest, with their roster, to decide them." ]
-            , li []
-                [ text "In review, approve or decline a whole request, or a single day with "
-                , icon "bi-check-lg" "approve"
-                , text " and "
-                , icon "bi-x-lg" "decline"
-                , text " in its column; pressing a day's decision again sets it back to waiting. The request's buttons only change the days still waiting for you. Every decision can be undone for a few seconds."
-                ]
-            , li [ class "lr-help-marks" ]
-                [ text "Their roster: "
-                , chip Pending
-                , text " waiting on both, "
-                , chip PartlyApproved
-                , text " approved by one, "
-                , chip Approved
-                , text " approved. A day outlined in red, with its "
-                , span [ class "re-clause" ] [ text "clause" ]
-                , text ", is a rule break this leave would cause."
-                ]
-            , li [] [ text "On leave: everyone off that day, this request included, with a bar for their share of the roster. Click a day for their names." ]
-            , li [ class "lr-help-marks" ]
-                [ text "Cover lost: "
-                , span [ class "lr-gap" ] [ i [ class "bi bi-exclamation-diamond-fill", attribute "aria-hidden" "true" ] [], text (shortName T.ShiftType__SWING) ]
-                , text " cover this leave would lose, "
-                , span [ class "lr-short" ] [ text (shortName T.ShiftType__NIGHT) ]
-                , text " cover already short without it, and "
-                , span [ class "lr-hatch", attribute "aria-hidden" "true" ] []
-                , text " days not rostered yet, which can't be checked."
-                ]
-            , li [] [ text ("Short forms: " ++ String.join " · " abbreviations ++ ".") ]
-            , li []
-                [ text "Keys in review: "
-                , key "j"
-                , text " and "
-                , key "k"
-                , text " move between requests. With a request in focus, "
-                , key "a"
-                , text " approves and "
-                , key "d"
-                , text " declines what waits for you in it, and the arrow keys move around its roster. A request that would break a rule or lose cover takes you to its Approve button instead. "
-                , key "Esc"
-                , text " goes back to the overview."
+        [ summary [ class "re-btn re-btn--quiet" ] [ i [ class "bi bi-question-circle", attribute "aria-hidden" "true" ] [], text "How it works" ]
+        , div [ class "lr-help-panel" ]
+            [ p [ class "lr-role" ] [ text (roleLine model.flags) ]
+            , ul []
+                [ li [] [ text "Leave needs two approvals, the chief registrar's and the Director of Training's; either can decline it." ]
+                , li [] [ text "The overview lists the requests of registrars in training, filtered and sorted as you choose. Requests with nothing against them can be ticked and approved together; review the rest, with their roster, to decide them." ]
+                , li []
+                    [ text "In review, approve or decline a whole request, or a single day with "
+                    , icon "bi-check-lg" "approve"
+                    , text " and "
+                    , icon "bi-x-lg" "decline"
+                    , text " in its column; pressing a day's decision again sets it back to waiting. The request's buttons only change the days still waiting for you. Every decision can be undone for a few seconds."
+                    ]
+                , li [ class "lr-help-marks" ]
+                    [ text "Their roster: "
+                    , chip Pending
+                    , text " waiting on both, "
+                    , chip PartlyApproved
+                    , text " approved by one, "
+                    , chip Approved
+                    , text " approved. A day outlined in red, with its "
+                    , span [ class "re-clause" ] [ text "clause" ]
+                    , text ", is a rule break this leave would cause."
+                    ]
+                , li [] [ text "On leave: everyone off that day, this request included, with a bar for their share of the roster. Click a day for their names." ]
+                , li [ class "lr-help-marks" ]
+                    [ text "Cover lost: "
+                    , span [ class "lr-gap" ] [ i [ class "bi bi-exclamation-diamond-fill", attribute "aria-hidden" "true" ] [], text (shortName T.ShiftType__SWING) ]
+                    , text " cover this leave would lose, "
+                    , span [ class "lr-short" ] [ text (shortName T.ShiftType__NIGHT) ]
+                    , text " cover already short without it, and "
+                    , span [ class "lr-hatch", attribute "aria-hidden" "true" ] []
+                    , text " days not rostered yet, which can't be checked."
+                    ]
+                , li [] [ text ("Short forms: " ++ String.join " · " abbreviations ++ ".") ]
+                , li []
+                    [ text "Keys in review: "
+                    , key "j"
+                    , text " and "
+                    , key "k"
+                    , text " move between requests. With a request in focus, "
+                    , key "a"
+                    , text " approves and "
+                    , key "d"
+                    , text " declines what waits for you in it, and the arrow keys move around its roster. A request that would break a rule or lose cover takes you to its Approve button instead. "
+                    , key "Esc"
+                    , text " goes back to the overview."
+                    ]
                 ]
             ]
         ]
