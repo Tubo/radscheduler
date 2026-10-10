@@ -32,8 +32,8 @@ colors:
   weekend: '#f0f2f4'
   holiday: '#ece6fa'
   holiday-ink: '#4b2e83'
-  heat-1: '#cde2fb'
-  heat-2: '#86b6ef'
+  heat-1: '#86b6ef'
+  heat-2: '#4a8ee0'
   heat-3: '#256abf'
   heat-4: '#104281'
   toast: '#2b2f33'
@@ -206,7 +206,7 @@ A cool, near-neutral ground with four saturated shift hues and a strict three-st
 ### Tertiary
 
 - **State triads**, each a text colour, a ground and a line: **Approved Green** (`ok`, `ok-bg`, `ok-line`), **Waiting Ochre** (`wait`, `wait-bg`, `wait-line`) and **Breach Red** (`bad`, `bad-bg`, `bad-line`). They mean approved/covered, pending/partial, and declined/gap/rule break, and nothing else.
-- **Leave Heat** (`heat-1` to `heat-4`): the leave requests page's share of the roster on leave, one blue from light to dark. Ink text on the two light steps, white on the two dark.
+- **Leave Heat** (`heat-1` to `heat-4`): the leave requests page's share of the roster on leave, one blue from light to dark, drawn as a thin bar under each day's count that grows a quarter of its track per step. The count stays ink, so the bar is never the only signal and the row stays quieter than the shifts.
 
 ### Neutral
 
@@ -250,11 +250,11 @@ A cool, near-neutral ground with four saturated shift hues and a strict three-st
 
 ## Layout
 
-The editor is a full-height app frame: it fills the window below the navbar (`100dvh` minus the measured navbar height) and scrolls inside. Its grid has a sticky date header (64px), a sticky cover strip (44px), and sticky registrar name (156px) and load (48px) columns, with 80px day columns. The leave requests page is a document, max 100rem wide with 1.25rem padding, whose tab bar and colour key stick while the list scrolls; each request sits beside a roster strip of fixed 4.75rem day columns.
+The editor is a full-height app frame: it fills the window below the navbar (`100dvh` minus the measured navbar height) and scrolls inside. Its grid has a sticky date header (64px), a sticky cover strip (44px), and sticky registrar name (156px) and load (48px) columns, with 80px day columns. The leave requests page is a document, max 100rem wide with 1.25rem padding, in two modes. The overview is a dense table of requests under a block of filters (status tabs, date fields, year and type chips that take a Roster Blue edge and wash when on, a registrar select), with a sticky bar holding the count, the sort and the one primary action (Review these, or Approve the ticked); a row is a card on a phone. A row opens in place: its cells take the panel grey, its chevron turns down, and a shelf under it, panel grey around a white, 0.5rem-cornered body, holds the request as approval mode draws it, the row's own who-what-when hidden from sight. In approval mode the bar holds the way back and the colour key, sticking while the list scrolls (from 48rem; on a phone they scroll away), and each request is two bands: the decision (who, what, the verdict, the buttons) beside a roster strip of fixed 4.75rem day columns, then underneath a wrapping row of what to weigh it against (the rule breaks and the leave-by-year tables, 26rem each). Narrow, they stack in that order; with the roster hidden, the second band takes its place beside the decision.
 
 Spacing steps are small and rem-based: 0.125, 0.25, 0.375, 0.5, 0.75 and 1.25rem. Groups inside a control or chip sit 2–6px apart; sections inside a popover 0.75rem; page regions 1.25rem.
 
-The navbar stacks into a menu below 768px for registrars and below 992px for staff, who have twice the links. Stacked links get full-size tap targets and rules between the groups; without JavaScript the menu shows open.
+The navbar is one 45px row on a wide screen. A registrar's own pages (Calendar, My leave, Extra duties) are always in view: beside the name from 768px, and below it on a phone as a full-width row of 44px tabs. The rest (the admin links, the published date, the account) folds into a menu below 768px for registrars and below 1200px for staff, who have more of it; between 1200px and 1400px staff lose only the published date, which the editor shows in its own toolbar. Folded links get full-size tap targets and rules between the groups; without JavaScript the menu shows open. Full-height pages (the editor) drop the 4px gap under the navbar.
 
 **The Wide Screen, Short Burst Rule.** Design the editor for a wide desktop and long sessions; design registrar pages for a phone and a glance. The same tokens serve both; density changes, meaning doesn't.
 
@@ -296,13 +296,13 @@ Dense but friendly: one compact size, crisp 1px edges, 6px corners, and a quiet 
 
 - **Shifts:** filled with their hue, white 0.75rem/500 text, 4px corners, 3px 4px padding. RDO and sleep take the dashed off-duty style. An extra duty adds a folded corner.
 - **Leave:** outlined, never filled with a hue. White with a `line-strong` edge by default; waiting is ochre on wash, partial is dashed ochre, approved is green on wash, declined is red and struck through, cancelled is dashed grey and struck through. A half day shades its half (left for AM, right for PM) in the state's own colour.
-- **Cover gaps:** outlined in Breach Red on white, never filled, so a gap can't be read as a shift. Open cover is a dashed ochre outline.
+- **Cover gaps:** outlined in Breach Red on white, never filled, so a gap can't be read as a shift. Open cover is a dashed ochre outline; on the leave requests page that is cover already short without the leave. Days not rostered yet take the unpublished hatch, a run of them one cell. A day a leave would break a rule on is outlined in Breach Red with its clause inside.
 - **Clause tag:** the contract clause beside a rule break, small red text in a `bad-line` outline.
 - **Status badge:** tiny ochre-on-wash tags for a registrar's statuses; buddy-required in blue.
 
 ### Cards / Containers
 
-There are no cards. The roster is a table, a leave request is a row of the list beside its strip, and grouping is done with headings, hairlines and panel tints.
+There are no cards. The roster is a table, a leave request is a row of the list beside its strip, and grouping is done with headings, hairlines and panel tints. A leave request ends in a small tally of the registrar's leave by year: types down the side, 0.8125rem tabular numbers under micro column heads, hairline rows, waiting days in ochre, the request's own days in blue with a + and its type's row on Blue Wash.
 
 ### Inputs / Fields
 
@@ -312,7 +312,7 @@ There are no cards. The roster is a table, a leave request is a row of the list 
 
 ### Navigation
 
-- **Global navbar:** Navbar Charcoal with the amber calendar-heart mark and the name. Links are white at reduced opacity; the current page is full white with a 2px amber underline, server-rendered and kept in step by Unpoly. Admin links (Roster, Leaves, Extra duties) sit in their own group behind a rule, led by a 🛠️ (set into the rule when the menu is stacked); screen readers hear "Admin:" before each instead. The account links sit at the far end, a long username ending in an ellipsis. A "Skip to content" link, white with an amber outline, appears over the navbar's corner when it takes keyboard focus. The navbar doesn't print. Focus is a 2px amber outline.
+- **Global navbar:** Navbar Charcoal (`--re-navbar`) with the Mark Amber (`--re-mark-amber`) calendar-heart and the name at 1.0625rem/600; links at 0.875rem/500, white at 68% (6.9:1), the current page full white with a 2px amber underline, server-rendered, with Unpoly keeping the link lists (not the brand) in step. Admin links are named for the pages they open (Roster editor, Leave requests, Extra-duty editor, Admin site) and sit in their own group behind a 3:1 rule, led by the `bi-tools` icon (set into the rule when folded); the Director of Training and office staff see only Leave requests and Admin site. Leave requests carries an amber pill counting the requests waiting on you, read as "16 waiting on you". "Roster published to Tue 2 Feb" and the account links sit at the far end, a long username ending in an ellipsis. Signed out, the bar holds only the name and a "Sign in" outline button. A "Skip to content" link, white with an amber outline, appears over the navbar's corner when it takes keyboard focus and lands on `<main>`. The navbar doesn't print. Focus is a 2px amber outline with 6px corners.
 - **Tabs (leave requests):** a panel-grey well with 8px corners holding 6px-cornered tabs; the selected tab is white with the Lift shadow and ink text, the rest muted. A pill count follows each label.
 
 ### Popovers

@@ -194,8 +194,27 @@ class RequestDayOut(Schema):
     short: list[list[ShiftType]]
 
 
+class LeaveTallyOut(Schema):
+    type: LeaveType
+    # Days of this type in the year, a half day counting 0.5: approved by both, still waiting, and the request's own.
+    approved: float
+    waiting: float
+    request: float
+
+
+class LeaveYearOut(Schema):
+    # A leave year runs from the first Monday of February to the day before the next.
+    start: date
+    end: date
+    # A year the request falls in, rather than an earlier one.
+    lead: bool
+    types: list[LeaveTallyOut]
+
+
 class LeaveRequestOut(Schema):
     registrar: int
+    # When it was asked for; None for leave loaded in bulk from the old system, whose asking wasn't recorded.
+    asked: datetime | None
     # The days asked for together, in order.
     leaves: list[LeaveOut]
     # The roster shown with it: the request and a couple of days either side.
@@ -208,12 +227,67 @@ class LeaveRequestOut(Schema):
     # The registrar's rule breaks touching those dates: those the leave causes, and those already there.
     violations: list[ViolationOut]
     existing_violations: list[ViolationOut]
+    # The registrar's leave by year: the years the request falls in, then earlier ones, latest first.
+    years: list[LeaveYearOut]
 
 
 class LeaveRequestsOut(Schema):
     requests: list[LeaveRequestOut]
     registrars: list[RegistrarOut]
     holidays: list[HolidayOut]
+    # How many requests match, when only the first of them are drawn.
+    total: int
+
+
+class RequestChecksOut(Schema):
+    """What a waiting request's verdict turns on."""
+
+    # Rule breaks the leave would cause, and shifts of cover it would lose.
+    breaks: int
+    lost: int
+    # Days asked for, and how many of them aren't rostered yet, so can't be checked.
+    days: int
+    unrostered: int
+    # The busiest of those days: how many on leave, this request included, of how many on the roster.
+    away: float
+    roster: int
+
+
+class RequestRowOut(Schema):
+    """A request in the overview, keyed by its first day's id."""
+
+    key: int
+    registrar: int
+    type: LeaveType
+    portion: str
+    start: date
+    end: date
+    # Days asked for, a half day counting 0.5.
+    days: float
+    # None for leave loaded in bulk from the old system, whose asking wasn't recorded.
+    asked: datetime | None
+    # The latest decision on any of its days.
+    decided: datetime | None
+    # "waiting", "approved", "declined" or "cancelled".
+    status: str
+    leaves: list[LeaveOut]
+    comment: str
+    # For a request still waiting only.
+    checks: RequestChecksOut | None
+
+
+class LeaveOverviewOut(Schema):
+    rows: list[RequestRowOut]
+    # How many requests match, of which `rows` is a page.
+    total: int
+    # The registrars in training, for the filters and the rows.
+    registrars: list[RegistrarOut]
+
+
+class WaitingCountsOut(Schema):
+    # Requests waiting on this user's own decision (None if they decide none), and on anyone's.
+    mine: int | None
+    all: int
 
 
 class ErrorOut(Schema):
@@ -250,10 +324,86 @@ def get_roster(request, week: date):
     return service.editor_roster(week)
 
 
+def request_filters(request, status, start, end, years, types, registrar, sort) -> leave_requests.Filters:
+    """The overview's filters from the query: `years` and `types` comma-separated, empty for all."""
+    if status not in leave_requests.STATUSES:
+        raise HttpError(422, f"Unknown status: {status}")
+    if sort not in leave_requests.SORTS:
+        raise HttpError(422, f"Unknown sort: {sort}")
+    try:
+        year_list = tuple(int(year) for year in years.split(",") if year)
+    except ValueError as error:
+        raise HttpError(422, "Years must be numbers") from error
+    type_list = tuple(t for t in types.split(",") if t)
+    if not set(type_list) <= set(LeaveType.values):
+        raise HttpError(422, f"Unknown leave type in: {types}")
+    approvers = leave_approvers(request.user)
+    return leave_requests.Filters(
+        status=status,
+        approver=approvers[0] if approvers else None,
+        start=start,
+        end=end,
+        years=year_list,
+        types=type_list,
+        registrar=registrar,
+        sort=sort,
+    )
+
+
 @router.get("/leave-requests", response=LeaveRequestsOut)
-def get_leave_requests(request, decided: bool = False):
-    """Leave requests waiting for a decision, or recently decided, each with the roster around it."""
-    return leave_requests.leave_requests(decided)
+def get_leave_requests(
+    request,
+    status: str = "waiting",
+    start: date | None = None,
+    end: date | None = None,
+    years: str = "",
+    types: str = "",
+    registrar: int | None = None,
+    sort: str = "leave",
+):
+    """
+    The leave requests that match the overview's filters, each with the roster around it: the first of them,
+    with how many match. "mine" means those waiting on this user's decision.
+    """
+    filters = request_filters(request, status, start, end, years, types, registrar, sort)
+    return leave_requests.matching_requests(filters)
+
+
+@router.get("/leave-requests/overview", response=LeaveOverviewOut)
+def get_leave_overview(
+    request,
+    status: str = "waiting",
+    start: date | None = None,
+    end: date | None = None,
+    years: str = "",
+    types: str = "",
+    registrar: int | None = None,
+    sort: str = "leave",
+    offset: int = 0,
+):
+    """A page of the leave requests of registrars in training that match the filters, a row each."""
+    filters = request_filters(request, status, start, end, years, types, registrar, sort)
+    return leave_requests.overview(filters, offset=max(0, offset))
+
+
+@router.get("/leave-requests/counts", response=WaitingCountsOut)
+def get_leave_counts(request):
+    """How many requests wait on this user's decision, and on anyone's: the navbar's count and the filters'."""
+    approvers = leave_approvers(request.user)
+    return {
+        "mine": leave_requests.waiting_count(approvers[0]) if approvers else None,
+        "all": leave_requests.waiting_count(None),
+    }
+
+
+# After the fixed paths, which a key would otherwise swallow.
+@router.get("/leave-requests/{key}", response=LeaveRequestsOut)
+def get_leave_request(request, key: int):
+    """One request, by any of its days' ids, with the roster around it: for the overview's shelf."""
+    days = leave_requests.request_of(key)
+    if days is None:
+        raise HttpError(404, "No such leave")
+    return leave_requests.describe([days])
 
 
 @router.get("/roster/checks", response=ChecksOut)

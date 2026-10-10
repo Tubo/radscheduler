@@ -12,6 +12,7 @@
   --re-line-strong: #aab3bc;
   --re-panel: #f6f7f9;
   --re-accent: #0b5ed7;
+  --re-accent-deep: #0a4bab;
   --re-accent-soft: #9ec5fe;
   --re-accent-tint: #e8f0fe;
 
@@ -32,12 +33,14 @@
   --re-wait-bg: #fff4d6;
   --re-wait-line: #d9a63a;
   --re-bad: #b42318;
+  --re-bad-deep: #8f1c13;
   --re-bad-bg: #fdf0ee;
   --re-bad-line: #e4a1a8;
 
   // Days
   --re-weekend: #f0f2f4;
   --re-holiday: #ece6fa;
+  --re-holiday-ink: #4b2e83;
   --re-unpublished: repeating-linear-gradient(
     135deg,
     transparent 0 6px,
@@ -151,8 +154,8 @@
   color: #fff;
 
   &:hover {
-    border-color: #0a4bab;
-    background: #0a4bab;
+    border-color: var(--re-accent-deep);
+    background: var(--re-accent-deep);
   }
 
   &:active {
@@ -166,8 +169,8 @@
   color: #fff;
 
   &:hover {
-    border-color: #8f1c13;
-    background: #8f1c13;
+    border-color: var(--re-bad-deep);
+    background: var(--re-bad-deep);
   }
 
   &:active {
@@ -198,7 +201,7 @@
   &:hover {
     border-color: transparent;
     background: none;
-    color: #0a4bab;
+    color: var(--re-accent-deep);
   }
 
   &:active {
@@ -370,7 +373,7 @@
   padding: 2px 8px;
   border-radius: 0.375rem;
   background: var(--re-accent-tint);
-  color: #0a4bab;
+  color: var(--re-accent-deep);
   font-size: 0.8125rem;
 
   kbd {
@@ -543,7 +546,7 @@
 }
 
 .re-tag--holiday {
-  color: #4b2e83;
+  color: var(--re-holiday-ink);
 }
 
 .re-tag--unpublished {
@@ -735,7 +738,7 @@
   &.is-buddy {
     border-color: var(--re-accent-soft);
     background: var(--re-accent-tint);
-    color: #0a4bab;
+    color: var(--re-accent-deep);
   }
 }
 
@@ -1173,8 +1176,8 @@ tfoot .re-corner {
   }
 
   &.is-error {
-    background: #fbe9eb;
-    color: #8a1f2b;
+    background: var(--re-bad-bg);
+    color: var(--re-bad-deep);
   }
 
   &.is-ok {
@@ -1360,7 +1363,7 @@ tfoot .re-corner {
   cursor: pointer;
 
   &:hover {
-    color: #0a4bab;
+    color: var(--re-accent-deep);
   }
 }
 
@@ -1439,7 +1442,7 @@ tfoot .re-corner {
 
   &.is-holiday {
     background: var(--re-holiday);
-    color: #4b2e83;
+    color: var(--re-holiday-ink);
   }
 
   &.is-unpublished {

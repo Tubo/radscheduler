@@ -16,7 +16,7 @@ the chip that shows it.
 
 import Choice exposing (Choice)
 import Html exposing (Html, i, text)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (attribute, class)
 import OpenApi.Common exposing (Nullable(..))
 import Radscheduler.Types as T
 
@@ -181,7 +181,7 @@ leaveChipClass state leave =
 -}
 leaveChipContent : Choice -> LeaveState -> T.LeaveOut -> List (Html msg)
 leaveChipContent choice state leave =
-    [ i [ class ("bi " ++ leaveIcon state) ] []
+    [ i [ class ("bi " ++ leaveIcon state), attribute "aria-hidden" "true" ] []
     , text choice.short
     , if leave.portion == "ALL" then
         text ""

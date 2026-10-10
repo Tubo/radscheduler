@@ -1,8 +1,9 @@
 module Radscheduler.Types exposing
     ( AwayOut, ChecksOut, ErrorOut, FullCalendarHolidaySchema, FullCalendarLeaveSchema, FullCalendarShiftSchema
-    , GapOut, HolidayOut, LeaveOut, LeavePatch, LeaveRequestOut, LeaveRequestsOut
-    , LeavesPatch, PreviewOut, PublishedRange, RegistrarOut, RequestDayOut, RosterOut
-    , ShiftIn, ShiftOut, ShiftPatch, StatusOut, ViolationOut, WorkloadOut
+    , GapOut, HolidayOut, LeaveOut, LeaveOverviewOut, LeavePatch, LeaveRequestOut
+    , LeaveRequestsOut, LeaveTallyOut, LeaveYearOut, LeavesPatch, PreviewOut, PublishedRange
+    , RegistrarOut, RequestChecksOut, RequestDayOut, RequestRowOut, RosterOut, ShiftIn
+    , ShiftOut, ShiftPatch, StatusOut, ViolationOut, WaitingCountsOut, WorkloadOut
     , LeaveType(..), ShiftType(..), StatusType(..), leaveTypeFromString, leaveTypeToString, leaveTypeVariants
     , shiftTypeFromString, shiftTypeToString, shiftTypeVariants, statusTypeFromString, statusTypeToString, statusTypeVariants
     )
@@ -13,9 +14,10 @@ module Radscheduler.Types exposing
 ## Aliases
 
 @docs AwayOut, ChecksOut, ErrorOut, FullCalendarHolidaySchema, FullCalendarLeaveSchema, FullCalendarShiftSchema
-@docs GapOut, HolidayOut, LeaveOut, LeavePatch, LeaveRequestOut, LeaveRequestsOut
-@docs LeavesPatch, PreviewOut, PublishedRange, RegistrarOut, RequestDayOut, RosterOut
-@docs ShiftIn, ShiftOut, ShiftPatch, StatusOut, ViolationOut, WorkloadOut
+@docs GapOut, HolidayOut, LeaveOut, LeaveOverviewOut, LeavePatch, LeaveRequestOut
+@docs LeaveRequestsOut, LeaveTallyOut, LeaveYearOut, LeavesPatch, PreviewOut, PublishedRange
+@docs RegistrarOut, RequestChecksOut, RequestDayOut, RequestRowOut, RosterOut, ShiftIn
+@docs ShiftOut, ShiftPatch, StatusOut, ViolationOut, WaitingCountsOut, WorkloadOut
 
 
 ## Enum
@@ -108,6 +110,10 @@ type alias LeaveOut =
     }
 
 
+type alias LeaveOverviewOut =
+    { registrars : List RegistrarOut, rows : List RequestRowOut, total : Int }
+
+
 type alias LeavePatch =
     { cancelled : Maybe Bool
     , dot_approved : Maybe (OpenApi.Common.Nullable Bool)
@@ -117,7 +123,8 @@ type alias LeavePatch =
 
 
 type alias LeaveRequestOut =
-    { away : List AwayOut
+    { asked : OpenApi.Common.Nullable Time.Posix
+    , away : List AwayOut
     , dates : List Date.Date
     , days : List RequestDayOut
     , existing_violations : List ViolationOut
@@ -126,6 +133,7 @@ type alias LeaveRequestOut =
     , registrar : Int
     , shifts : List ShiftOut
     , violations : List ViolationOut
+    , years : List LeaveYearOut
     }
 
 
@@ -133,6 +141,19 @@ type alias LeaveRequestsOut =
     { holidays : List HolidayOut
     , registrars : List RegistrarOut
     , requests : List LeaveRequestOut
+    , total : Int
+    }
+
+
+type alias LeaveTallyOut =
+    { approved : Float, request : Float, type_ : LeaveType, waiting : Float }
+
+
+type alias LeaveYearOut =
+    { end : Date.Date
+    , lead : Bool
+    , start : Date.Date
+    , types : List LeaveTallyOut
     }
 
 
@@ -171,12 +192,43 @@ type alias RegistrarOut =
     }
 
 
+{-| What a waiting request's verdict turns on.
+-}
+type alias RequestChecksOut =
+    { away : Float
+    , breaks : Int
+    , days : Int
+    , lost : Int
+    , roster : Int
+    , unrostered : Int
+    }
+
+
 type alias RequestDayOut =
     { date : Date.Date
     , lost : List (List ShiftType)
     , registrars : Int
     , rostered : Bool
     , short : List (List ShiftType)
+    }
+
+
+{-| A request in the overview, keyed by its first day's id.
+-}
+type alias RequestRowOut =
+    { asked : OpenApi.Common.Nullable Time.Posix
+    , checks : OpenApi.Common.Nullable RequestChecksOut
+    , comment : String
+    , days : Float
+    , decided : OpenApi.Common.Nullable Time.Posix
+    , end : Date.Date
+    , key : Int
+    , leaves : List LeaveOut
+    , portion : String
+    , registrar : Int
+    , start : Date.Date
+    , status : String
+    , type_ : LeaveType
     }
 
 
@@ -237,6 +289,10 @@ type alias ViolationOut =
     , rule : String
     , variance : OpenApi.Common.Nullable String
     }
+
+
+type alias WaitingCountsOut =
+    { all : Int, mine : OpenApi.Common.Nullable Int }
 
 
 type alias WorkloadOut =

@@ -376,6 +376,35 @@
         "title": "LeaveOut",
         "type": "object"
       },
+      "LeaveOverviewOut": {
+        "properties": {
+          "registrars": {
+            "items": {
+              "$ref": "#/components/schemas/RegistrarOut"
+            },
+            "title": "Registrars",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/RequestRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rows",
+          "total",
+          "registrars"
+        ],
+        "title": "LeaveOverviewOut",
+        "type": "object"
+      },
       "LeavePatch": {
         "properties": {
           "cancelled": {
@@ -414,6 +443,18 @@
       },
       "LeaveRequestOut": {
         "properties": {
+          "asked": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asked"
+          },
           "away": {
             "items": {
               "$ref": "#/components/schemas/AwayOut"
@@ -474,10 +515,18 @@
             },
             "title": "Violations",
             "type": "array"
+          },
+          "years": {
+            "items": {
+              "$ref": "#/components/schemas/LeaveYearOut"
+            },
+            "title": "Years",
+            "type": "array"
           }
         },
         "required": [
           "registrar",
+          "asked",
           "leaves",
           "dates",
           "shifts",
@@ -485,7 +534,8 @@
           "away",
           "days",
           "violations",
-          "existing_violations"
+          "existing_violations",
+          "years"
         ],
         "title": "LeaveRequestOut",
         "type": "object"
@@ -512,14 +562,46 @@
             },
             "title": "Requests",
             "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
           }
         },
         "required": [
           "requests",
           "registrars",
-          "holidays"
+          "holidays",
+          "total"
         ],
         "title": "LeaveRequestsOut",
+        "type": "object"
+      },
+      "LeaveTallyOut": {
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "number"
+          },
+          "request": {
+            "title": "Request",
+            "type": "number"
+          },
+          "type": {
+            "$ref": "#/components/schemas/LeaveType"
+          },
+          "waiting": {
+            "title": "Waiting",
+            "type": "number"
+          }
+        },
+        "required": [
+          "type",
+          "approved",
+          "waiting",
+          "request"
+        ],
+        "title": "LeaveTallyOut",
         "type": "object"
       },
       "LeaveType": {
@@ -534,6 +616,39 @@
         ],
         "title": "LeaveType",
         "type": "string"
+      },
+      "LeaveYearOut": {
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "lead": {
+            "title": "Lead",
+            "type": "boolean"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "types": {
+            "items": {
+              "$ref": "#/components/schemas/LeaveTallyOut"
+            },
+            "title": "Types",
+            "type": "array"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "lead",
+          "types"
+        ],
+        "title": "LeaveYearOut",
+        "type": "object"
       },
       "LeavesPatch": {
         "description": "The same change to several days of leave, e.g. approving a whole request.",
@@ -699,6 +814,45 @@
         "title": "RegistrarOut",
         "type": "object"
       },
+      "RequestChecksOut": {
+        "description": "What a waiting request's verdict turns on.",
+        "properties": {
+          "away": {
+            "title": "Away",
+            "type": "number"
+          },
+          "breaks": {
+            "title": "Breaks",
+            "type": "integer"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "lost": {
+            "title": "Lost",
+            "type": "integer"
+          },
+          "roster": {
+            "title": "Roster",
+            "type": "integer"
+          },
+          "unrostered": {
+            "title": "Unrostered",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "breaks",
+          "lost",
+          "days",
+          "unrostered",
+          "away",
+          "roster"
+        ],
+        "title": "RequestChecksOut",
+        "type": "object"
+      },
       "RequestDayOut": {
         "properties": {
           "date": {
@@ -743,6 +897,106 @@
           "short"
         ],
         "title": "RequestDayOut",
+        "type": "object"
+      },
+      "RequestRowOut": {
+        "description": "A request in the overview, keyed by its first day's id.",
+        "properties": {
+          "asked": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asked"
+          },
+          "checks": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RequestChecksOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comment": {
+            "title": "Comment",
+            "type": "string"
+          },
+          "days": {
+            "title": "Days",
+            "type": "number"
+          },
+          "decided": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "integer"
+          },
+          "leaves": {
+            "items": {
+              "$ref": "#/components/schemas/LeaveOut"
+            },
+            "title": "Leaves",
+            "type": "array"
+          },
+          "portion": {
+            "title": "Portion",
+            "type": "string"
+          },
+          "registrar": {
+            "title": "Registrar",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/LeaveType"
+          }
+        },
+        "required": [
+          "key",
+          "registrar",
+          "type",
+          "portion",
+          "start",
+          "end",
+          "days",
+          "asked",
+          "decided",
+          "status",
+          "leaves",
+          "comment",
+          "checks"
+        ],
+        "title": "RequestRowOut",
         "type": "object"
       },
       "RosterOut": {
@@ -1061,6 +1315,31 @@
         "title": "ViolationOut",
         "type": "object"
       },
+      "WaitingCountsOut": {
+        "properties": {
+          "all": {
+            "title": "All",
+            "type": "integer"
+          },
+          "mine": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mine"
+          }
+        },
+        "required": [
+          "mine",
+          "all"
+        ],
+        "title": "WaitingCountsOut",
+        "type": "object"
+      },
       "WorkloadOut": {
         "properties": {
           "load": {
@@ -1229,17 +1508,97 @@
     },
     "/api/editor/leave-requests": {
       "get": {
-        "description": "Leave requests waiting for a decision, or recently decided, each with the roster around it.",
+        "description": "The leave requests that match the overview's filters, each with the roster around it: the first of them,\nwith how many match. \"mine\" means those waiting on this user's decision.",
         "operationId": "getLeaveRequests",
         "parameters": [
           {
             "in": "query",
-            "name": "decided",
+            "name": "status",
             "required": false,
             "schema": {
-              "default": false,
-              "title": "Decided",
-              "type": "boolean"
+              "default": "waiting",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "years",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Years",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "types",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Types",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "registrar",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Registrar"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "leave",
+              "title": "Sort",
+              "type": "string"
             }
           }
         ],
@@ -1261,6 +1620,192 @@
           }
         ],
         "summary": "Get Leave Requests"
+      }
+    },
+    "/api/editor/leave-requests/counts": {
+      "get": {
+        "description": "How many requests wait on this user's decision, and on anyone's: the navbar's count and the filters'.",
+        "operationId": "getLeaveCounts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaitingCountsOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Get Leave Counts"
+      }
+    },
+    "/api/editor/leave-requests/overview": {
+      "get": {
+        "description": "A page of the leave requests of registrars in training that match the filters, a row each.",
+        "operationId": "getLeaveOverview",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "waiting",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "years",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Years",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "types",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Types",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "registrar",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Registrar"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "leave",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaveOverviewOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Get Leave Overview"
+      }
+    },
+    "/api/editor/leave-requests/{key}": {
+      "get": {
+        "description": "One request, by any of its days' ids, with the roster around it: for the overview's shelf.",
+        "operationId": "getLeaveRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaveRequestsOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Get Leave Request"
       }
     },
     "/api/editor/leaves": {

@@ -16,7 +16,7 @@
   {% render_bundle 'leave_requests' 'js' attrs='defer' %}
 {% endblock javascript %}
 {% block content %}
-  <main>
+  <div>
     {{ flags|json_script:"leave-requests-flags" }}
     <div id="leave-requests-app"></div>
     <noscript>
@@ -26,5 +26,5 @@
         </p>
       </div>
     </noscript>
-  </main>
+  </div>
 {% endblock content %}

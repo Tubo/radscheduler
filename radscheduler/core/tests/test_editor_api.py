@@ -315,7 +315,41 @@ class TestLeaveRequests:
         # Nobody is rostered, so nothing is lost by the leave and everything is short
         assert (request["days"][2]["lost"], request["days"][2]["short"]) == ([], [["SWING"], ["NIGHT"]])
         assert [r["name"] for r in body["registrars"]] == [juniors_db[0].user.name or juniors_db[0].user.username]
-        assert app.get("/api/editor/leave-requests", {"decided": True}, user=director).json["requests"] == []
+        assert body["total"] == 1
+        assert app.get("/api/editor/leave-requests", {"status": "approved"}, user=director).json["requests"] == []
+
+    def test_the_overview_filters_and_counts(self, app, director, juniors_db):
+        erika, will = juniors_db[0], juniors_db[1]
+        Leave.objects.create(date=date(2024, 12, 16), type=LeaveType.ANNUAL, registrar=erika)
+        Leave.objects.create(date=date(2024, 12, 17), type=LeaveType.EDU, registrar=will)
+
+        body = app.get("/api/editor/leave-requests/overview", {"types": "EDU"}, user=director).json
+
+        assert body["total"] == 1
+        [row] = body["rows"]
+        assert (row["registrar"], row["status"], row["days"]) == (will.pk, "waiting", 1)
+        # Still waiting, so it comes with the checks behind its verdict
+        assert row["checks"]["days"] == 1 and row["checks"]["breaks"] == 0
+        # The Director's own decision waits on both requests
+        assert app.get("/api/editor/leave-requests/counts", user=director).json == {"mine": 2, "all": 2}
+
+    def test_one_request_for_the_shelf(self, app, director, juniors_db):
+        first, second = (
+            Leave.objects.create(date=date(2024, 12, day), type=LeaveType.ANNUAL, registrar=juniors_db[0])
+            for day in (16, 17)
+        )
+
+        body = app.get(f"/api/editor/leave-requests/{second.pk}", user=director).json
+
+        [request] = body["requests"]
+        assert [leave["id"] for leave in request["leaves"]] == [first.pk, second.pk]
+        assert request["asked"] is not None
+        app.get(f"/api/editor/leave-requests/{second.pk + 1000}", user=director, status=404)
+
+    def test_the_overview_refuses_filters_it_does_not_know(self, app, director, juniors_db):
+        app.get("/api/editor/leave-requests/overview", {"status": "lost"}, user=director, status=422)
+        app.get("/api/editor/leave-requests/overview", {"types": "HOLIDAY"}, user=director, status=422)
+        app.get("/api/editor/leave-requests/overview", {"years": "two"}, user=director, status=422)
 
     def test_registrars_cannot_list_them(self, app, juniors_db):
         app.get("/api/editor/leave-requests", user=juniors_db[0].user, status=401)

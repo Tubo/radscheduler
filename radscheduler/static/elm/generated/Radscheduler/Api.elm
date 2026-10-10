@@ -1,7 +1,7 @@
 module Radscheduler.Api exposing
     ( addShift, changeLeave, changeLeaves, changeShift, deleteShift, getChecks
-    , getLeaveRequests, getRoster, holidayEvents, leaveEvents, previewPublished, setPublished
-    , shiftEvents
+    , getLeaveCounts, getLeaveOverview, getLeaveRequest, getLeaveRequests, getRoster, holidayEvents
+    , leaveEvents, previewPublished, setPublished, shiftEvents
     )
 
 {-|
@@ -10,8 +10,8 @@ module Radscheduler.Api exposing
 ## Operations
 
 @docs addShift, changeLeave, changeLeaves, changeShift, deleteShift, getChecks
-@docs getLeaveRequests, getRoster, holidayEvents, leaveEvents, previewPublished, setPublished
-@docs shiftEvents
+@docs getLeaveCounts, getLeaveOverview, getLeaveRequest, getLeaveRequests, getRoster, holidayEvents
+@docs leaveEvents, previewPublished, setPublished, shiftEvents
 
 -}
 
@@ -227,9 +227,155 @@ getChecks config =
         }
 
 
+{-| Get Leave Counts
+
+How many requests wait on this user's decision, and on anyone's: the navbar's count and the filters'.
+
+-}
+getLeaveCounts :
+    { authorization : { x_csrftoken : String }
+    , toMsg :
+        Result (OpenApi.Common.Error e String) Radscheduler.Types.WaitingCountsOut
+        -> msg
+    }
+    -> Cmd msg
+getLeaveCounts config =
+    Http.request
+        { url =
+            Url.Builder.absolute
+                [ "api", "editor", "leave-requests", "counts" ]
+                []
+        , method = "GET"
+        , headers =
+            [ Http.header "X-CSRFToken" config.authorization.x_csrftoken ]
+        , expect =
+            OpenApi.Common.expectJsonCustom
+                (Dict.fromList [])
+                Radscheduler.Json.decodeWaitingCountsOut
+                config.toMsg
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| Get Leave Overview
+
+A page of the leave requests of registrars in training that match the filters, a row each.
+
+-}
+getLeaveOverview :
+    { authorization : { x_csrftoken : String }
+    , toMsg :
+        Result (OpenApi.Common.Error e String) Radscheduler.Types.LeaveOverviewOut
+        -> msg
+    , params :
+        { status : Maybe String
+        , start : Maybe (Maybe Date.Date)
+        , end : Maybe (Maybe Date.Date)
+        , years : Maybe String
+        , types : Maybe String
+        , registrar : Maybe (Maybe Int)
+        , sort : Maybe String
+        , offset : Maybe Int
+        }
+    }
+    -> Cmd msg
+getLeaveOverview config =
+    Http.request
+        { url =
+            Url.Builder.absolute
+                [ "api", "editor", "leave-requests", "overview" ]
+                (List.filterMap
+                    Basics.identity
+                    [ Maybe.map
+                        (Url.Builder.string "status")
+                        config.params.status
+                    , Maybe.map
+                        (Url.Builder.string "start")
+                        (Maybe.andThen
+                            (Maybe.map OpenApi.Common.toParamStringStringDate)
+                            config.params.start
+                        )
+                    , Maybe.map
+                        (Url.Builder.string "end")
+                        (Maybe.andThen
+                            (Maybe.map OpenApi.Common.toParamStringStringDate)
+                            config.params.end
+                        )
+                    , Maybe.map
+                        (Url.Builder.string "years")
+                        config.params.years
+                    , Maybe.map
+                        (Url.Builder.string "types")
+                        config.params.types
+                    , Maybe.map
+                        (Url.Builder.string "registrar")
+                        (Maybe.andThen
+                            (Maybe.map String.fromInt)
+                            config.params.registrar
+                        )
+                    , Maybe.map (Url.Builder.string "sort") config.params.sort
+                    , Maybe.map
+                        (Url.Builder.string "offset")
+                        (Maybe.map String.fromInt config.params.offset)
+                    ]
+                )
+        , method = "GET"
+        , headers =
+            [ Http.header "X-CSRFToken" config.authorization.x_csrftoken ]
+        , expect =
+            OpenApi.Common.expectJsonCustom
+                (Dict.fromList [])
+                Radscheduler.Json.decodeLeaveOverviewOut
+                config.toMsg
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| Get Leave Request
+
+One request, by any of its days' ids, with the roster around it: for the overview's shelf.
+
+-}
+getLeaveRequest :
+    { authorization : { x_csrftoken : String }
+    , toMsg :
+        Result (OpenApi.Common.Error e String) Radscheduler.Types.LeaveRequestsOut
+        -> msg
+    , params : { key : Int }
+    }
+    -> Cmd msg
+getLeaveRequest config =
+    Http.request
+        { url =
+            Url.Builder.absolute
+                [ "api"
+                , "editor"
+                , "leave-requests"
+                , String.fromInt config.params.key
+                ]
+                []
+        , method = "GET"
+        , headers =
+            [ Http.header "X-CSRFToken" config.authorization.x_csrftoken ]
+        , expect =
+            OpenApi.Common.expectJsonCustom
+                (Dict.fromList [])
+                Radscheduler.Json.decodeLeaveRequestsOut
+                config.toMsg
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
 {-| Get Leave Requests
 
-Leave requests waiting for a decision, or recently decided, each with the roster around it.
+The leave requests that match the overview's filters, each with the roster around it: the first of them,
+with how many match. "mine" means those waiting on this user's decision.
 
 -}
 getLeaveRequests :
@@ -237,7 +383,15 @@ getLeaveRequests :
     , toMsg :
         Result (OpenApi.Common.Error e String) Radscheduler.Types.LeaveRequestsOut
         -> msg
-    , params : { decided : Maybe Bool }
+    , params :
+        { status : Maybe String
+        , start : Maybe (Maybe Date.Date)
+        , end : Maybe (Maybe Date.Date)
+        , years : Maybe String
+        , types : Maybe String
+        , registrar : Maybe (Maybe Int)
+        , sort : Maybe String
+        }
     }
     -> Cmd msg
 getLeaveRequests config =
@@ -248,17 +402,33 @@ getLeaveRequests config =
                 (List.filterMap
                     Basics.identity
                     [ Maybe.map
-                        (Url.Builder.string "decided")
-                        (Maybe.map
-                            (\mapUnpack ->
-                                if mapUnpack then
-                                    "true"
-
-                                else
-                                    "false"
-                            )
-                            config.params.decided
+                        (Url.Builder.string "status")
+                        config.params.status
+                    , Maybe.map
+                        (Url.Builder.string "start")
+                        (Maybe.andThen
+                            (Maybe.map OpenApi.Common.toParamStringStringDate)
+                            config.params.start
                         )
+                    , Maybe.map
+                        (Url.Builder.string "end")
+                        (Maybe.andThen
+                            (Maybe.map OpenApi.Common.toParamStringStringDate)
+                            config.params.end
+                        )
+                    , Maybe.map
+                        (Url.Builder.string "years")
+                        config.params.years
+                    , Maybe.map
+                        (Url.Builder.string "types")
+                        config.params.types
+                    , Maybe.map
+                        (Url.Builder.string "registrar")
+                        (Maybe.andThen
+                            (Maybe.map String.fromInt)
+                            config.params.registrar
+                        )
+                    , Maybe.map (Url.Builder.string "sort") config.params.sort
                     ]
                 )
         , method = "GET"

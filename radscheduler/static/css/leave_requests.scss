@@ -2,13 +2,12 @@
 // this page's bundle loads first; this file lays out the list and each request beside its strip of roster.
 
 .leave-requests {
-  // Share of the roster on leave, one blue light to dark. Text on the two light steps is ink and on the two
-  // dark steps white, each at least 5.4:1.
-  --lr-heat-1: #cde2fb;
-  --lr-heat-2: #86b6ef;
+  // Share of the roster on leave: a bar under each day's count, longer and darker blue as the share grows.
+  // The count is ink, so the bar is never the only signal; every step but the first is 3:1 on white.
+  --lr-heat-1: #86b6ef;
+  --lr-heat-2: #4a8ee0;
   --lr-heat-3: #256abf;
   --lr-heat-4: #104281;
-  --lr-asked: #f3f7fe;
   --lr-label-col: 9.5rem;
   --lr-day-col: 4.75rem;
 
@@ -39,6 +38,7 @@
 
   summary {
     width: fit-content;
+    padding-block: 0.25rem;
     color: var(--re-accent);
     font-weight: 500;
     cursor: pointer;
@@ -64,11 +64,11 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem 1.5rem;
+  gap: 0.5rem 1.25rem;
   margin: 0 -1.25rem;
   padding: 0.5rem 1.25rem;
   border-bottom: 1px solid var(--re-line);
-  background: rgba(255, 255, 255, 0.96);
+  background: #fff;
 }
 
 .lr-tabs {
@@ -121,24 +121,29 @@
 
   .is-on & {
     background: var(--re-accent-tint);
-    color: #0a4bab;
+    color: var(--re-accent-deep);
   }
 }
 
+// The message, then the way to retry it, the button wrapping below rather than into the sentence.
 .lr-alert {
-  margin: 1rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+  margin: 1.25rem 0;
 }
 
 .lr-loading {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   color: var(--re-muted);
 }
 
 .lr-empty {
-  padding: 3rem 1rem;
+  padding: 2.5rem 1.25rem;
   color: var(--re-muted);
   text-align: center;
 
@@ -178,33 +183,46 @@
   }
 }
 
+// Each step as the bar it draws: a quarter of the track for each step.
 .lr-swatch {
   display: inline-block;
-  width: 1rem;
-  height: 0.75rem;
+  width: 1.5rem;
+  height: 4px;
   border-radius: 2px;
+  background:
+    linear-gradient(
+      to right,
+      var(--lr-heat) calc(var(--lr-share) * 100%),
+      transparent 0
+    ),
+    var(--re-line);
 
   &.is-1 {
-    background: var(--lr-heat-1);
+    --lr-heat: var(--lr-heat-1);
+    --lr-share: 0.25;
   }
 
   &.is-2 {
-    background: var(--lr-heat-2);
+    --lr-heat: var(--lr-heat-2);
+    --lr-share: 0.5;
   }
 
   &.is-3 {
-    background: var(--lr-heat-3);
+    --lr-heat: var(--lr-heat-3);
+    --lr-share: 0.75;
   }
 
   &.is-4 {
-    background: var(--lr-heat-4);
+    --lr-heat: var(--lr-heat-4);
+    --lr-share: 1;
   }
 }
 
 // Groups: by month, or for the Director of Training, by the chief registrar's decision.
 
+// A month apart is twice a request apart.
 .lr-group {
-  margin-top: 1.75rem;
+  margin-top: 2.5rem;
 }
 
 .lr-group-title {
@@ -223,14 +241,24 @@
   font-weight: 500;
 }
 
-// A request: what is asked and the decision on the left, its roster on the right; stacked when narrow.
+// A request in two bands. The decision (who, what, the verdict and the buttons) sits beside its roster, about
+// as tall; under both, what to weigh it against (the rule breaks and the leave they've had) runs as a row.
+// Narrow, the three stack in the same order, which is also the DOM's and so the keyboard's. With the roster
+// hidden (the Director of Training's first view), the context takes its place beside the decision.
 
 .lr-request {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 0.875rem 2rem;
-  padding: 1.25rem 0 1.5rem;
+  grid-template-areas: 'decision' 'strip' 'context';
+  gap: 1.25rem;
+  padding: 1.25rem 0;
   border-bottom: 1px solid var(--re-line);
+  // Clear of the sticky bar when the browser scrolls one into view.
+  scroll-margin-top: 4.5rem;
+
+  &:not(.has-roster) {
+    grid-template-areas: 'decision' 'context';
+  }
 
   &:focus-visible {
     outline: 2px solid var(--re-accent);
@@ -240,28 +268,63 @@
 }
 
 @media (min-width: 72rem) {
-  .lr-request.has-roster {
+  .lr-request {
     grid-template-columns: minmax(19rem, 24rem) minmax(0, 1fr);
+    grid-template-areas: 'decision strip' 'context context';
+
+    &:not(.has-roster) {
+      grid-template-areas: 'decision context';
+    }
   }
 }
 
+// Room for the longest verdict on one line.
+@media (min-width: 80rem) {
+  .lr-request {
+    grid-template-columns: minmax(19rem, 26rem) minmax(0, 1fr);
+  }
+}
+
+// The decision column in three clusters, tight inside and 0.75rem apart: who and what, their words and the
+// verdict, then the action.
 .lr-side {
   display: flex;
+  grid-area: decision;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.375rem;
+  gap: 0.25rem;
   min-width: 0;
 
   > p {
     margin: 0;
   }
 
-  > .lr-verdict {
+  > .lr-comment,
+  > .lr-verdict,
+  > .lr-decide {
+    margin-top: 0.5rem;
+  }
+
+  > .lr-comment + .lr-verdict {
+    margin-top: 0.125rem;
+  }
+
+  > .lr-links {
     margin-top: 0.25rem;
   }
 }
 
 .lr-main {
+  grid-area: strip;
+  min-width: 0;
+}
+
+.lr-context {
+  display: flex;
+  grid-area: context;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem 1.25rem;
   min-width: 0;
 }
 
@@ -290,6 +353,18 @@
   font-size: 0.8125rem;
 }
 
+// Leave on a public holiday, a day off already.
+.lr-note {
+  display: flex;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+
+  .bi {
+    margin-top: 0.0625rem;
+    color: var(--re-holiday-ink);
+  }
+}
+
 // Their own words, upright: often the reason the leave can or can't be given.
 .lr-comment {
   display: flex;
@@ -310,24 +385,42 @@
   }
 }
 
-// The answer in one line, with an icon so it isn't colour alone.
+// The answer in one line, with an icon so it isn't colour alone: red for a cost, ochre for a busy or partly
+// checked request, grey for one with nothing to check yet, green for checked and clear.
 .lr-verdict {
   display: flex;
-  gap: 0.4375rem;
-  color: var(--re-ok);
+  gap: 0.375rem;
   font-size: 0.875rem;
   font-weight: 500;
+  text-wrap: pretty;
 
   .bi {
     margin-top: 0.125rem;
   }
 
+  &.is-ok {
+    color: var(--re-ok);
+  }
+
   &.is-concern {
     color: var(--re-wait);
   }
+
+  &.is-bad {
+    color: var(--re-bad);
+  }
+
+  &.is-unchecked {
+    color: var(--re-muted);
+  }
+
+  .re-clause {
+    margin: 0 0 0 0.25rem;
+    font-size: 0.6875rem;
+  }
 }
 
-// Each part of the verdict stays whole; a narrow column wraps between them.
+// Each part of the verdict stays whole; a narrow column wraps between them, after a part's separator.
 .lr-verdict-part {
   white-space: nowrap;
 }
@@ -337,7 +430,6 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 0.375rem;
-  margin-top: 0.375rem;
 }
 
 .lr-actions {
@@ -361,12 +453,12 @@
 .lr-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1rem;
+  gap: 0.25rem 0.75rem;
 }
 
 .lr-breaks {
-  width: 100%;
-  margin-top: 0.25rem;
+  flex: 1 1 24rem;
+  max-width: 40rem;
 
   h4,
   summary {
@@ -383,10 +475,115 @@
 .lr-existing {
   margin-top: 0.375rem;
 
+  summary {
+    padding-block: 0.25rem;
+  }
+
   .re-clause {
     border-color: var(--re-line-strong);
     color: var(--re-muted);
   }
+}
+
+// Their leave by year: the request weighed against what they've had. A quiet table per year, side by side
+// when there's room, the request's own days in blue (with a +) and waiting days in ochre, the column heads
+// naming each.
+.lr-years {
+  display: flex;
+  flex: 1 1 24rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem 1.25rem;
+
+  > * {
+    flex: 0 1 26rem;
+    min-width: 0;
+  }
+
+  h4,
+  summary {
+    margin: 0 0 0.25rem;
+    font-weight: 500;
+  }
+
+  summary {
+    width: fit-content;
+    padding-block: 0.25rem;
+    cursor: pointer;
+  }
+}
+
+.lr-year-span {
+  margin-left: 0.375rem;
+  font-weight: 400;
+}
+
+.lr-tally-scroll {
+  overflow-x: auto;
+}
+
+// Fixed columns, so the numbers line up from one year to the next.
+.lr-tally {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+
+  th,
+  td {
+    padding: 0.25rem 0 0.25rem 0.5rem;
+    border-bottom: 1px solid var(--re-line);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  th:first-child {
+    padding-left: 0;
+    text-align: left;
+  }
+
+  thead th {
+    color: var(--re-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    vertical-align: bottom;
+    white-space: normal;
+  }
+
+  thead th:first-child {
+    width: 6rem;
+  }
+
+  tbody th {
+    font-weight: 500;
+  }
+
+  .is-none {
+    color: var(--re-muted);
+  }
+
+  .is-waiting {
+    color: var(--re-wait);
+  }
+
+  .is-request {
+    color: var(--re-accent);
+    font-weight: 600;
+  }
+
+  .is-total {
+    font-weight: 600;
+  }
+
+  // The type asked for: the row the decision turns on.
+  tr.is-asked {
+    background: var(--re-accent-tint);
+  }
+}
+
+.lr-earlier .lr-tally {
+  margin-top: 0.25rem;
 }
 
 // The strip of roster: the request's days and two either side, one column each. It is the positioning
@@ -439,7 +636,17 @@
   }
 
   .is-asked {
-    background-color: var(--lr-asked);
+    background-color: var(--re-accent-tint);
+  }
+
+  // Days the roster doesn't reach yet: the unpublished hatch, as in the editor.
+  .is-unrostered {
+    background-image: var(--re-unpublished);
+  }
+
+  // A day this leave would break a rule on: outlined in red, its clause inside.
+  td.has-break {
+    box-shadow: inset 0 0 0 2px var(--re-bad);
   }
 
   // The days asked for carry the editor's column marker (its today rule), not a card accent.
@@ -481,14 +688,15 @@
 // Every waiting day for one approver at once, from the row's label.
 .lr-rowall {
   display: flex;
-  gap: 3px;
-  margin-top: 3px;
+  gap: 4px;
+  margin-top: 4px;
 }
 
 .lr-mini {
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  min-height: 1.5rem;
   padding: 1px 6px;
   border: 1px solid var(--re-line-strong);
   border-radius: 4px;
@@ -519,12 +727,13 @@
   font-weight: 600;
 }
 
+// The holiday's name in full, over as many lines as it takes.
 .lr-holiday {
-  overflow: hidden;
-  color: #5b3f9e;
+  margin-top: 1px;
+  color: var(--re-holiday-ink);
   font-size: 0.6875rem;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .lr-chips {
@@ -553,7 +762,7 @@
   align-items: center;
   justify-content: center;
   width: 28px;
-  height: 26px;
+  height: 28px;
   padding: 0;
   border: 1px solid var(--re-line-strong);
   border-radius: 4px;
@@ -612,65 +821,115 @@
   text-overflow: ellipsis;
 }
 
-// How many are on leave each day, shaded by their share of the roster. The number always shows, so the
-// shade is never the only signal.
+// The clauses of the rule breaks on a day, under its chips.
+.lr-breaktags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 3px;
+
+  // The cell's outline is the tag's box.
+  .re-clause {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+  }
+}
+
+// How many are on leave each day, with a bar under the count for their share of the roster: longer and
+// darker as it grows. The number always shows, so the bar is never the only signal, and the bar is thin so the
+// row stays quieter than the shifts and the decision.
 .lr-heat {
+  position: relative;
   display: block;
   width: 100%;
-  min-height: 28px;
-  padding: 0 4px;
+  min-height: 32px;
+  padding: 0 4px 6px;
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: var(--re-muted);
+  color: var(--re-ink);
   font-size: 0.875rem;
   font-weight: 600;
   text-align: center;
+  transition: background-color 120ms ease-out;
 
   &:hover {
-    box-shadow: inset 0 0 0 1px var(--re-muted);
+    background: var(--re-panel);
   }
 
   &.is-open {
+    background: var(--re-panel);
     box-shadow: inset 0 0 0 2px var(--re-ink);
   }
 
+  &.is-0 {
+    color: var(--re-muted);
+    font-weight: 500;
+  }
+
   &.is-1 {
-    background: var(--lr-heat-1);
-    color: var(--re-ink);
+    --lr-heat: var(--lr-heat-1);
+    --lr-share: 0.25;
   }
 
   &.is-2 {
-    background: var(--lr-heat-2);
-    color: var(--re-ink);
+    --lr-heat: var(--lr-heat-2);
+    --lr-share: 0.5;
   }
 
   &.is-3 {
-    background: var(--lr-heat-3);
-    color: #fff;
+    --lr-heat: var(--lr-heat-3);
+    --lr-share: 0.75;
   }
 
   &.is-4 {
-    background: var(--lr-heat-4);
-    color: #fff;
+    --lr-heat: var(--lr-heat-4);
+    --lr-share: 1;
+  }
+}
+
+.lr-heat-bar {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+  left: 8px;
+  height: 4px;
+  border-radius: 2px;
+  background:
+    linear-gradient(
+      to right,
+      var(--lr-heat) calc(var(--lr-share) * 100%),
+      transparent 0
+    ),
+    var(--re-line);
+
+  .is-0 & {
+    display: none;
   }
 }
 
 .lr-unrostered {
   display: inline-block;
-  padding: 2px 4px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: #fff;
   color: var(--re-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
-.lr-grid .lr-unrostered-row {
+// A run of days not rostered yet, as one cell.
+.lr-grid .lr-unrostered-run {
   width: auto;
   max-width: none;
-  color: var(--re-muted);
-  font-size: 0.75rem;
   vertical-align: middle;
 }
 
-// Cover the leave would lose: outlined in red. Cover already short: quiet, dashed, not the leave's doing.
+// Cover the leave would lose: outlined in red. Cover already short, not the leave's doing: the open cover of the
+// editor, dashed ochre.
 .lr-gap,
 .lr-short {
   display: inline-flex;
@@ -692,11 +951,12 @@
 
 .lr-short {
   padding-left: 5px;
-  border: 1px dashed var(--re-off-line);
-  color: var(--re-muted);
-  font-weight: 500;
+  border: 1px dashed var(--re-wait-line);
+  background: #fff;
+  color: var(--re-wait);
 }
 
+// Who is on leave on a day: this request, then the others approved and waiting.
 .lr-daynames {
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
@@ -704,10 +964,73 @@
   background: var(--re-panel);
   font-size: 0.8125rem;
 
+  p,
+  dl {
+    margin: 0.125rem 0 0;
+  }
+
+  dt {
+    color: var(--re-muted);
+    font-weight: 500;
+  }
+
+  dd {
+    margin: 0;
+  }
+
   // Kept in the page while empty, so the names are announced when they appear.
   &.is-empty {
     margin: 0;
     padding: 0;
+  }
+}
+
+.lr-daygroup {
+  display: flex;
+  gap: 0.5rem;
+
+  dt {
+    flex: 0 0 6.5rem;
+  }
+}
+
+// The marks named in "How this page works", as they look in the roster.
+.lr-help-marks .re-chip,
+.lr-help-marks .lr-gap,
+.lr-help-marks .lr-short,
+.lr-help-marks .re-clause {
+  display: inline-flex;
+  margin: 0;
+  vertical-align: 0.0625rem;
+}
+
+.lr-help-icon .bi {
+  color: var(--re-muted);
+}
+
+.lr-hatch {
+  display: inline-block;
+  width: 1.5rem;
+  height: 0.875rem;
+  border: 1px solid var(--re-line);
+  border-radius: 3px;
+  background-image: var(--re-unpublished);
+  vertical-align: -0.125rem;
+}
+
+// Clear of the decision column, on the side of the roster.
+@media (min-width: 72rem) {
+  .lr-toasts {
+    right: 1rem;
+    left: auto;
+  }
+}
+
+// Touch: room for a finger on the small controls the roster can spare it for.
+@media (pointer: coarse) {
+  .lr-mini {
+    min-height: 2rem;
+    padding-inline: 8px;
   }
 }
 
@@ -718,12 +1041,532 @@
     padding-inline: 1rem;
   }
 
+  // On a phone the tabs scroll away with the page, leaving it to the requests.
   .lr-bar {
+    position: static;
     margin-inline: -1rem;
     padding-inline: 1rem;
   }
 
+  .lr-request {
+    scroll-margin-top: 0.75rem;
+  }
+
   .lr-tab {
     padding-inline: 0.5rem;
+  }
+}
+
+// The overview: every request a row, filtered and sorted, the way into approval mode. Dense like the editor,
+// on the same controls; colour only for the decisions and the checks.
+
+.lr-filters {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.lr-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1.25rem;
+}
+
+.lr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.lr-field-label {
+  color: var(--re-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.lr-dates {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+
+  .re-input {
+    width: 9.5rem;
+  }
+}
+
+.lr-dates-and {
+  color: var(--re-muted);
+  font-size: 0.8125rem;
+}
+
+.lr-filter-row select.re-input {
+  max-width: 16rem;
+}
+
+.lr-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+// A filter that is on takes a heavier Roster Blue edge as well as the wash, so it isn't colour alone.
+.lr-chip {
+  min-height: 2rem;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--re-line-strong);
+  border-radius: 0.375rem;
+  background: #fff;
+  color: var(--re-off-ink);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out;
+
+  &:hover {
+    border-color: var(--re-muted);
+    color: var(--re-ink);
+  }
+
+  &.is-on {
+    border-color: var(--re-accent);
+    background: var(--re-accent-tint);
+    color: var(--re-accent-deep);
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1px var(--re-accent);
+  }
+}
+
+// What the filters found, and what to do with them, in view while the rows scroll.
+.lr-matches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  font-size: 0.875rem;
+
+  strong {
+    font-weight: 600;
+  }
+}
+
+.lr-sort select {
+  width: auto;
+}
+
+.lr-updating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--re-muted);
+  font-size: 0.8125rem;
+}
+
+.lr-picked {
+  color: var(--re-accent-deep);
+  font-weight: 500;
+}
+
+// Rows loading for new filters stay readable, faded, rather than vanish.
+.is-refreshing .lr-table {
+  opacity: 0.55;
+  transition: opacity 150ms ease-out;
+}
+
+.lr-table {
+  width: 100%;
+  margin-top: 0.25rem;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+
+  // Its own cells only, not those of the tables in a shelf.
+  > thead > tr > th {
+    padding: 0.5rem 0.625rem;
+    border-bottom: 1px solid var(--re-line-strong);
+    color: var(--re-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  > tbody > tr > td {
+    padding: 0.5rem 0.625rem;
+    border-bottom: 1px solid var(--re-line);
+    vertical-align: top;
+  }
+
+  .lr-col-tick input[type='checkbox'] {
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.1875rem;
+    accent-color: var(--re-accent);
+  }
+}
+
+// A row opens its request in approval mode; the name is the control a keyboard reaches.
+.lr-row {
+  cursor: pointer;
+
+  &:hover > td {
+    background: var(--re-panel);
+  }
+
+  &.is-ticked > td {
+    background: var(--re-accent-tint);
+  }
+
+  &.is-cancelled {
+    color: var(--re-muted);
+
+    .lr-col-leave strong {
+      text-decoration: line-through;
+    }
+  }
+}
+
+.lr-col-tick {
+  width: 2.25rem;
+  cursor: default;
+
+  .lr-table & {
+    padding-right: 0;
+  }
+}
+
+.lr-col-num {
+  text-align: right;
+
+  .lr-table & {
+    text-align: right;
+  }
+}
+
+.lr-rowlink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--re-ink);
+  font-weight: 600;
+  text-align: left;
+
+  &:hover {
+    color: var(--re-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+.lr-rowyear,
+.lr-rowsub {
+  display: block;
+  color: var(--re-muted);
+  font-size: 0.8125rem;
+}
+
+.lr-rowwhen {
+  display: block;
+}
+
+.lr-unit {
+  display: none;
+}
+
+.lr-col-leave strong {
+  font-weight: 500;
+}
+
+.lr-rownote {
+  margin-left: 0.375rem;
+  color: var(--re-muted);
+}
+
+// One approver's decisions on the row: an icon and a word, in the decision's colour.
+.lr-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--re-muted);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+
+  &.is-approved {
+    color: var(--re-ok);
+  }
+
+  &.is-declined {
+    color: var(--re-bad);
+  }
+
+  &.is-waiting {
+    color: var(--re-wait);
+  }
+
+  &.is-cancelled {
+    text-decoration: line-through;
+  }
+}
+
+// A waiting request's verdict in a few words, as the review's verdict line colours it.
+.lr-check {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+
+  .bi {
+    flex: none;
+  }
+
+  &.is-ok {
+    color: var(--re-ok);
+  }
+
+  &.is-concern {
+    color: var(--re-wait);
+  }
+
+  &.is-bad {
+    color: var(--re-bad);
+  }
+
+  &.is-unchecked {
+    color: var(--re-muted);
+  }
+}
+
+.lr-more {
+  display: flex;
+  justify-content: center;
+  padding: 1.25rem 0;
+}
+
+// Approval mode's bar: back to the overview, and what is being reviewed.
+.lr-review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
+}
+
+.lr-review-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.lr-limit {
+  margin: 0.75rem 0 0;
+  color: var(--re-muted);
+  font-size: 0.875rem;
+}
+
+// On a phone each row is a card: who and how long, the leave, when asked, then the decisions, named.
+@media (max-width: 47.99rem) {
+  .lr-table {
+    > thead {
+      display: none;
+    }
+
+    > tbody {
+      display: block;
+    }
+
+    > tbody > tr > td {
+      padding: 0.0625rem 0;
+      border: 0;
+    }
+  }
+
+  .lr-row {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+    grid-template-areas:
+      'tick who days'
+      'tick leave leave'
+      'tick asked asked'
+      'tick reg reg'
+      'tick dot dot'
+      'tick checks checks';
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--re-line);
+
+    &:hover > td,
+    &.is-ticked > td {
+      background: none;
+    }
+
+    &.is-ticked {
+      background: var(--re-accent-tint);
+    }
+  }
+
+  .lr-col-tick {
+    grid-area: tick;
+  }
+
+  .lr-col-who {
+    grid-area: who;
+
+    .lr-rowyear {
+      display: inline;
+      margin-left: 0.375rem;
+    }
+  }
+
+  .lr-row .lr-col-num {
+    grid-area: days;
+    font-weight: 600;
+
+    .lr-unit {
+      display: inline;
+      color: var(--re-muted);
+      font-weight: 400;
+    }
+  }
+
+  .lr-col-leave {
+    grid-area: leave;
+
+    .lr-rowwhen {
+      display: inline;
+      margin-left: 0.375rem;
+    }
+  }
+
+  .lr-col-asked {
+    grid-area: asked;
+    color: var(--re-muted);
+    font-size: 0.8125rem;
+
+    &::before {
+      content: 'Asked ';
+    }
+
+    .lr-rowsub {
+      display: inline;
+
+      &::before {
+        content: ', ';
+      }
+    }
+  }
+
+  .lr-col-decision {
+    display: flex;
+    gap: 0.5rem;
+
+    &::before {
+      content: attr(data-label);
+      min-width: 9.5rem;
+      color: var(--re-muted);
+      font-size: 0.8125rem;
+    }
+
+    &.is-reg {
+      grid-area: reg;
+    }
+
+    &.is-dot {
+      grid-area: dot;
+    }
+  }
+
+  .lr-col-checks {
+    grid-area: checks;
+  }
+}
+
+// A row opened in place: a shelf under it on the panel grey, holding its request as approval mode draws it.
+.lr-chev {
+  display: inline-block;
+  margin-right: 0.3125rem;
+  color: var(--re-muted);
+  font-size: 0.6875rem;
+  transition: transform 150ms ease-out;
+
+  .lr-row.is-open & {
+    transform: rotate(90deg);
+  }
+}
+
+.lr-row.is-open > td {
+  border-bottom-color: transparent;
+  background: var(--re-panel);
+}
+
+.lr-table .lr-shelf > td {
+  padding: 0 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--re-line-strong);
+  background: var(--re-panel);
+}
+
+// No width of its own, so a long roster scrolls inside the shelf instead of widening the table.
+.lr-shelf-body {
+  width: 0;
+  min-width: 100%;
+  padding: 0 1rem;
+  border: 1px solid var(--re-line);
+  border-radius: 0.5rem;
+  background: #fff;
+
+  .lr-request {
+    border-bottom: 0;
+  }
+
+  // The row above already says who, what and when; they stay for a screen reader, the request's name.
+  .lr-name,
+  .lr-what,
+  .lr-meta {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+  }
+
+  .lr-loading {
+    margin: 0;
+    padding: 1rem 0;
+  }
+}
+
+.lr-shelf-close {
+  display: flex;
+  margin: -0.5rem 0 0.5rem auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lr-chev {
+    transition: none;
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .lr-table .lr-shelf,
+  .lr-table .lr-shelf > td {
+    display: block;
+  }
+
+  .lr-table .lr-shelf > td {
+    padding: 0 0 0.75rem;
+  }
+
+  .lr-shelf-body {
+    padding: 0 0.75rem;
+  }
+
+  .lr-row.is-open {
+    background: var(--re-panel);
   }
 }

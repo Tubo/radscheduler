@@ -1,14 +1,16 @@
 module Radscheduler.Json exposing
     ( encodeAwayOut, encodeChecksOut, encodeErrorOut, encodeFullCalendarHolidaySchema, encodeFullCalendarLeaveSchema, encodeFullCalendarShiftSchema
-    , encodeGapOut, encodeHolidayOut, encodeLeaveOut, encodeLeavePatch, encodeLeaveRequestOut, encodeLeaveRequestsOut
-    , encodeLeaveType, encodeLeavesPatch, encodePreviewOut, encodePublishedRange, encodeRegistrarOut, encodeRequestDayOut
-    , encodeRosterOut, encodeShiftIn, encodeShiftOut, encodeShiftPatch, encodeShiftType, encodeStatusOut
-    , encodeStatusType, encodeViolationOut, encodeWorkloadOut
+    , encodeGapOut, encodeHolidayOut, encodeLeaveOut, encodeLeaveOverviewOut, encodeLeavePatch, encodeLeaveRequestOut
+    , encodeLeaveRequestsOut, encodeLeaveTallyOut, encodeLeaveType, encodeLeaveYearOut, encodeLeavesPatch, encodePreviewOut
+    , encodePublishedRange, encodeRegistrarOut, encodeRequestChecksOut, encodeRequestDayOut, encodeRequestRowOut, encodeRosterOut
+    , encodeShiftIn, encodeShiftOut, encodeShiftPatch, encodeShiftType, encodeStatusOut, encodeStatusType
+    , encodeViolationOut, encodeWaitingCountsOut, encodeWorkloadOut
     , decodeAwayOut, decodeChecksOut, decodeErrorOut, decodeFullCalendarHolidaySchema, decodeFullCalendarLeaveSchema, decodeFullCalendarShiftSchema
-    , decodeGapOut, decodeHolidayOut, decodeLeaveOut, decodeLeavePatch, decodeLeaveRequestOut, decodeLeaveRequestsOut
-    , decodeLeaveType, decodeLeavesPatch, decodePreviewOut, decodePublishedRange, decodeRegistrarOut, decodeRequestDayOut
-    , decodeRosterOut, decodeShiftIn, decodeShiftOut, decodeShiftPatch, decodeShiftType, decodeStatusOut
-    , decodeStatusType, decodeViolationOut, decodeWorkloadOut
+    , decodeGapOut, decodeHolidayOut, decodeLeaveOut, decodeLeaveOverviewOut, decodeLeavePatch, decodeLeaveRequestOut
+    , decodeLeaveRequestsOut, decodeLeaveTallyOut, decodeLeaveType, decodeLeaveYearOut, decodeLeavesPatch, decodePreviewOut
+    , decodePublishedRange, decodeRegistrarOut, decodeRequestChecksOut, decodeRequestDayOut, decodeRequestRowOut, decodeRosterOut
+    , decodeShiftIn, decodeShiftOut, decodeShiftPatch, decodeShiftType, decodeStatusOut, decodeStatusType
+    , decodeViolationOut, decodeWaitingCountsOut, decodeWorkloadOut
     )
 
 {-|
@@ -17,19 +19,21 @@ module Radscheduler.Json exposing
 ## Encoders
 
 @docs encodeAwayOut, encodeChecksOut, encodeErrorOut, encodeFullCalendarHolidaySchema, encodeFullCalendarLeaveSchema, encodeFullCalendarShiftSchema
-@docs encodeGapOut, encodeHolidayOut, encodeLeaveOut, encodeLeavePatch, encodeLeaveRequestOut, encodeLeaveRequestsOut
-@docs encodeLeaveType, encodeLeavesPatch, encodePreviewOut, encodePublishedRange, encodeRegistrarOut, encodeRequestDayOut
-@docs encodeRosterOut, encodeShiftIn, encodeShiftOut, encodeShiftPatch, encodeShiftType, encodeStatusOut
-@docs encodeStatusType, encodeViolationOut, encodeWorkloadOut
+@docs encodeGapOut, encodeHolidayOut, encodeLeaveOut, encodeLeaveOverviewOut, encodeLeavePatch, encodeLeaveRequestOut
+@docs encodeLeaveRequestsOut, encodeLeaveTallyOut, encodeLeaveType, encodeLeaveYearOut, encodeLeavesPatch, encodePreviewOut
+@docs encodePublishedRange, encodeRegistrarOut, encodeRequestChecksOut, encodeRequestDayOut, encodeRequestRowOut, encodeRosterOut
+@docs encodeShiftIn, encodeShiftOut, encodeShiftPatch, encodeShiftType, encodeStatusOut, encodeStatusType
+@docs encodeViolationOut, encodeWaitingCountsOut, encodeWorkloadOut
 
 
 ## Decoders
 
 @docs decodeAwayOut, decodeChecksOut, decodeErrorOut, decodeFullCalendarHolidaySchema, decodeFullCalendarLeaveSchema, decodeFullCalendarShiftSchema
-@docs decodeGapOut, decodeHolidayOut, decodeLeaveOut, decodeLeavePatch, decodeLeaveRequestOut, decodeLeaveRequestsOut
-@docs decodeLeaveType, decodeLeavesPatch, decodePreviewOut, decodePublishedRange, decodeRegistrarOut, decodeRequestDayOut
-@docs decodeRosterOut, decodeShiftIn, decodeShiftOut, decodeShiftPatch, decodeShiftType, decodeStatusOut
-@docs decodeStatusType, decodeViolationOut, decodeWorkloadOut
+@docs decodeGapOut, decodeHolidayOut, decodeLeaveOut, decodeLeaveOverviewOut, decodeLeavePatch, decodeLeaveRequestOut
+@docs decodeLeaveRequestsOut, decodeLeaveTallyOut, decodeLeaveType, decodeLeaveYearOut, decodeLeavesPatch, decodePreviewOut
+@docs decodePublishedRange, decodeRegistrarOut, decodeRequestChecksOut, decodeRequestDayOut, decodeRequestRowOut, decodeRosterOut
+@docs decodeShiftIn, decodeShiftOut, decodeShiftPatch, decodeShiftType, decodeStatusOut, decodeStatusType
+@docs decodeViolationOut, decodeWaitingCountsOut, decodeWorkloadOut
 
 -}
 
@@ -227,6 +231,15 @@ encodeLeaveOut rec =
         ]
 
 
+encodeLeaveOverviewOut : Radscheduler.Types.LeaveOverviewOut -> Json.Encode.Value
+encodeLeaveOverviewOut rec =
+    Json.Encode.object
+        [ ( "registrars", Json.Encode.list encodeRegistrarOut rec.registrars )
+        , ( "rows", Json.Encode.list encodeRequestRowOut rec.rows )
+        , ( "total", Json.Encode.int rec.total )
+        ]
+
+
 encodeLeavePatch : Radscheduler.Types.LeavePatch -> Json.Encode.Value
 encodeLeavePatch rec =
     Json.Encode.object
@@ -269,7 +282,15 @@ encodeLeavePatch rec =
 encodeLeaveRequestOut : Radscheduler.Types.LeaveRequestOut -> Json.Encode.Value
 encodeLeaveRequestOut rec =
     Json.Encode.object
-        [ ( "away", Json.Encode.list encodeAwayOut rec.away )
+        [ ( "asked"
+          , case rec.asked of
+                OpenApi.Common.Null ->
+                    Json.Encode.null
+
+                OpenApi.Common.Present value ->
+                    OpenApi.Common.encodeStringDateTime value
+          )
+        , ( "away", Json.Encode.list encodeAwayOut rec.away )
         , ( "dates"
           , Json.Encode.list OpenApi.Common.encodeStringDate rec.dates
           )
@@ -282,6 +303,7 @@ encodeLeaveRequestOut rec =
         , ( "registrar", Json.Encode.int rec.registrar )
         , ( "shifts", Json.Encode.list encodeShiftOut rec.shifts )
         , ( "violations", Json.Encode.list encodeViolationOut rec.violations )
+        , ( "years", Json.Encode.list encodeLeaveYearOut rec.years )
         ]
 
 
@@ -291,12 +313,33 @@ encodeLeaveRequestsOut rec =
         [ ( "holidays", Json.Encode.list encodeHolidayOut rec.holidays )
         , ( "registrars", Json.Encode.list encodeRegistrarOut rec.registrars )
         , ( "requests", Json.Encode.list encodeLeaveRequestOut rec.requests )
+        , ( "total", Json.Encode.int rec.total )
+        ]
+
+
+encodeLeaveTallyOut : Radscheduler.Types.LeaveTallyOut -> Json.Encode.Value
+encodeLeaveTallyOut rec =
+    Json.Encode.object
+        [ ( "approved", Json.Encode.float rec.approved )
+        , ( "request", Json.Encode.float rec.request )
+        , ( "type", encodeLeaveType rec.type_ )
+        , ( "waiting", Json.Encode.float rec.waiting )
         ]
 
 
 encodeLeaveType : Radscheduler.Types.LeaveType -> Json.Encode.Value
 encodeLeaveType rec =
     Json.Encode.string (Radscheduler.Types.leaveTypeToString rec)
+
+
+encodeLeaveYearOut : Radscheduler.Types.LeaveYearOut -> Json.Encode.Value
+encodeLeaveYearOut rec =
+    Json.Encode.object
+        [ ( "end", OpenApi.Common.encodeStringDate rec.end )
+        , ( "lead", Json.Encode.bool rec.lead )
+        , ( "start", OpenApi.Common.encodeStringDate rec.start )
+        , ( "types", Json.Encode.list encodeLeaveTallyOut rec.types )
+        ]
 
 
 encodeLeavesPatch : Radscheduler.Types.LeavesPatch -> Json.Encode.Value
@@ -385,6 +428,18 @@ encodeRegistrarOut rec =
         ]
 
 
+encodeRequestChecksOut : Radscheduler.Types.RequestChecksOut -> Json.Encode.Value
+encodeRequestChecksOut rec =
+    Json.Encode.object
+        [ ( "away", Json.Encode.float rec.away )
+        , ( "breaks", Json.Encode.int rec.breaks )
+        , ( "days", Json.Encode.int rec.days )
+        , ( "lost", Json.Encode.int rec.lost )
+        , ( "roster", Json.Encode.int rec.roster )
+        , ( "unrostered", Json.Encode.int rec.unrostered )
+        ]
+
+
 encodeRequestDayOut : Radscheduler.Types.RequestDayOut -> Json.Encode.Value
 encodeRequestDayOut rec =
     Json.Encode.object
@@ -397,6 +452,46 @@ encodeRequestDayOut rec =
         , ( "short"
           , Json.Encode.list (Json.Encode.list encodeShiftType) rec.short
           )
+        ]
+
+
+encodeRequestRowOut : Radscheduler.Types.RequestRowOut -> Json.Encode.Value
+encodeRequestRowOut rec =
+    Json.Encode.object
+        [ ( "asked"
+          , case rec.asked of
+                OpenApi.Common.Null ->
+                    Json.Encode.null
+
+                OpenApi.Common.Present value ->
+                    OpenApi.Common.encodeStringDateTime value
+          )
+        , ( "checks"
+          , case rec.checks of
+                OpenApi.Common.Null ->
+                    Json.Encode.null
+
+                OpenApi.Common.Present value ->
+                    encodeRequestChecksOut value
+          )
+        , ( "comment", Json.Encode.string rec.comment )
+        , ( "days", Json.Encode.float rec.days )
+        , ( "decided"
+          , case rec.decided of
+                OpenApi.Common.Null ->
+                    Json.Encode.null
+
+                OpenApi.Common.Present value ->
+                    OpenApi.Common.encodeStringDateTime value
+          )
+        , ( "end", OpenApi.Common.encodeStringDate rec.end )
+        , ( "key", Json.Encode.int rec.key )
+        , ( "leaves", Json.Encode.list encodeLeaveOut rec.leaves )
+        , ( "portion", Json.Encode.string rec.portion )
+        , ( "registrar", Json.Encode.int rec.registrar )
+        , ( "start", OpenApi.Common.encodeStringDate rec.start )
+        , ( "status", Json.Encode.string rec.status )
+        , ( "type", encodeLeaveType rec.type_ )
         ]
 
 
@@ -523,6 +618,21 @@ encodeViolationOut rec =
 
                 OpenApi.Common.Present value ->
                     Json.Encode.string value
+          )
+        ]
+
+
+encodeWaitingCountsOut : Radscheduler.Types.WaitingCountsOut -> Json.Encode.Value
+encodeWaitingCountsOut rec =
+    Json.Encode.object
+        [ ( "all", Json.Encode.int rec.all )
+        , ( "mine"
+          , case rec.mine of
+                OpenApi.Common.Null ->
+                    Json.Encode.null
+
+                OpenApi.Common.Present value ->
+                    Json.Encode.int value
           )
         ]
 
@@ -824,6 +934,23 @@ decodeLeaveOut =
             (Json.Decode.field "type" decodeLeaveType)
 
 
+decodeLeaveOverviewOut : Json.Decode.Decoder Radscheduler.Types.LeaveOverviewOut
+decodeLeaveOverviewOut =
+    Json.Decode.succeed
+        (\registrars rows total ->
+            { registrars = registrars, rows = rows, total = total }
+        )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "registrars"
+                (Json.Decode.list decodeRegistrarOut)
+            )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "rows" (Json.Decode.list decodeRequestRowOut))
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "total" Json.Decode.int)
+
+
 decodeLeavePatch : Json.Decode.Decoder Radscheduler.Types.LeavePatch
 decodeLeavePatch =
     Json.Decode.succeed
@@ -865,8 +992,9 @@ decodeLeavePatch =
 decodeLeaveRequestOut : Json.Decode.Decoder Radscheduler.Types.LeaveRequestOut
 decodeLeaveRequestOut =
     Json.Decode.succeed
-        (\away dates days existing_violations leaves other_leave registrar shifts violations ->
-            { away = away
+        (\asked away dates days existing_violations leaves other_leave registrar shifts violations years ->
+            { asked = asked
+            , away = away
             , dates = dates
             , days = days
             , existing_violations = existing_violations
@@ -875,8 +1003,20 @@ decodeLeaveRequestOut =
             , registrar = registrar
             , shifts = shifts
             , violations = violations
+            , years = years
             }
         )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "asked"
+                (Json.Decode.oneOf
+                    [ Json.Decode.map
+                        OpenApi.Common.Present
+                        OpenApi.Common.decodeStringDateTime
+                    , Json.Decode.null OpenApi.Common.Null
+                    ]
+                )
+            )
         |> OpenApi.Common.jsonDecodeAndMap
             (Json.Decode.field "away" (Json.Decode.list decodeAwayOut))
         |> OpenApi.Common.jsonDecodeAndMap
@@ -907,15 +1047,18 @@ decodeLeaveRequestOut =
                 "violations"
                 (Json.Decode.list decodeViolationOut)
             )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "years" (Json.Decode.list decodeLeaveYearOut))
 
 
 decodeLeaveRequestsOut : Json.Decode.Decoder Radscheduler.Types.LeaveRequestsOut
 decodeLeaveRequestsOut =
     Json.Decode.succeed
-        (\holidays registrars requests ->
+        (\holidays registrars requests total ->
             { holidays = holidays
             , registrars = registrars
             , requests = requests
+            , total = total
             }
         )
         |> OpenApi.Common.jsonDecodeAndMap
@@ -930,6 +1073,28 @@ decodeLeaveRequestsOut =
                 "requests"
                 (Json.Decode.list decodeLeaveRequestOut)
             )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "total" Json.Decode.int)
+
+
+decodeLeaveTallyOut : Json.Decode.Decoder Radscheduler.Types.LeaveTallyOut
+decodeLeaveTallyOut =
+    Json.Decode.succeed
+        (\approved request type_ waiting ->
+            { approved = approved
+            , request = request
+            , type_ = type_
+            , waiting = waiting
+            }
+        )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "approved" Json.Decode.float)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "request" Json.Decode.float)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "type" decodeLeaveType)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "waiting" Json.Decode.float)
 
 
 decodeLeaveType : Json.Decode.Decoder Radscheduler.Types.LeaveType
@@ -945,6 +1110,22 @@ decodeLeaveType =
                         (andThenUnpack ++ " is not a valid LeaveType")
         )
         Json.Decode.string
+
+
+decodeLeaveYearOut : Json.Decode.Decoder Radscheduler.Types.LeaveYearOut
+decodeLeaveYearOut =
+    Json.Decode.succeed
+        (\end lead start types ->
+            { end = end, lead = lead, start = start, types = types }
+        )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "end" OpenApi.Common.decodeStringDate)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "lead" Json.Decode.bool)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "start" OpenApi.Common.decodeStringDate)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "types" (Json.Decode.list decodeLeaveTallyOut))
 
 
 decodeLeavesPatch : Json.Decode.Decoder Radscheduler.Types.LeavesPatch
@@ -1066,6 +1247,32 @@ decodeRegistrarOut =
             )
 
 
+decodeRequestChecksOut : Json.Decode.Decoder Radscheduler.Types.RequestChecksOut
+decodeRequestChecksOut =
+    Json.Decode.succeed
+        (\away breaks days lost roster unrostered ->
+            { away = away
+            , breaks = breaks
+            , days = days
+            , lost = lost
+            , roster = roster
+            , unrostered = unrostered
+            }
+        )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "away" Json.Decode.float)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "breaks" Json.Decode.int)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "days" Json.Decode.int)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "lost" Json.Decode.int)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "roster" Json.Decode.int)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "unrostered" Json.Decode.int)
+
+
 decodeRequestDayOut : Json.Decode.Decoder Radscheduler.Types.RequestDayOut
 decodeRequestDayOut =
     Json.Decode.succeed
@@ -1093,6 +1300,80 @@ decodeRequestDayOut =
                 "short"
                 (Json.Decode.list (Json.Decode.list decodeShiftType))
             )
+
+
+decodeRequestRowOut : Json.Decode.Decoder Radscheduler.Types.RequestRowOut
+decodeRequestRowOut =
+    Json.Decode.succeed
+        (\asked checks comment days decided end key leaves portion registrar start status type_ ->
+            { asked = asked
+            , checks = checks
+            , comment = comment
+            , days = days
+            , decided = decided
+            , end = end
+            , key = key
+            , leaves = leaves
+            , portion = portion
+            , registrar = registrar
+            , start = start
+            , status = status
+            , type_ = type_
+            }
+        )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "asked"
+                (Json.Decode.oneOf
+                    [ Json.Decode.map
+                        OpenApi.Common.Present
+                        OpenApi.Common.decodeStringDateTime
+                    , Json.Decode.null OpenApi.Common.Null
+                    ]
+                )
+            )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "checks"
+                (Json.Decode.oneOf
+                    [ Json.Decode.map
+                        OpenApi.Common.Present
+                        decodeRequestChecksOut
+                    , Json.Decode.null OpenApi.Common.Null
+                    ]
+                )
+            )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "comment" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "days" Json.Decode.float)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "decided"
+                (Json.Decode.oneOf
+                    [ Json.Decode.map
+                        OpenApi.Common.Present
+                        OpenApi.Common.decodeStringDateTime
+                    , Json.Decode.null OpenApi.Common.Null
+                    ]
+                )
+            )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "end" OpenApi.Common.decodeStringDate)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "key" Json.Decode.int)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "leaves" (Json.Decode.list decodeLeaveOut))
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "portion" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "registrar" Json.Decode.int)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "start" OpenApi.Common.decodeStringDate)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "status" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "type" decodeLeaveType)
 
 
 decodeRosterOut : Json.Decode.Decoder Radscheduler.Types.RosterOut
@@ -1322,6 +1603,24 @@ decodeViolationOut =
                     [ Json.Decode.map
                         OpenApi.Common.Present
                         Json.Decode.string
+                    , Json.Decode.null OpenApi.Common.Null
+                    ]
+                )
+            )
+
+
+decodeWaitingCountsOut : Json.Decode.Decoder Radscheduler.Types.WaitingCountsOut
+decodeWaitingCountsOut =
+    Json.Decode.succeed (\all mine -> { all = all, mine = mine })
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "all" Json.Decode.int)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "mine"
+                (Json.Decode.oneOf
+                    [ Json.Decode.map
+                        OpenApi.Common.Present
+                        Json.Decode.int
                     , Json.Decode.null OpenApi.Common.Null
                     ]
                 )
