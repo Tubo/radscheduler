@@ -72,7 +72,7 @@ type alias Flags =
     , hiddenShiftTypes : List String
     , hiddenLeaveTypes : List String
 
-    -- The decisions on leave this user may make: "reg" (chief registrar) and "dot" (Director of Training).
+    -- The decisions on leave this user may make: "reg" (senior registrar) and "dot" (Director of Training).
     , leaveApprovers : List String
     }
 
@@ -2101,7 +2101,7 @@ describeChange model change =
             in
             case ( ( leaveChange.reg, leaveChange.dot ), ( leaveChange.microster, leaveChange.cancelled ) ) of
                 ( ( Just decision, _ ), _ ) ->
-                    decided "chief registrar" decision
+                    decided "senior registrar" decision
 
                 ( ( _, Just decision ), _ ) ->
                     decided "Director of Training" decision
@@ -3937,7 +3937,7 @@ viewLeaveSection model roster cell withShifts leave =
 
               else
                 text ""
-            , approvalGroup model leave "reg" "Chief registrar" (nullable leave.reg_approved) (decidedBy model leave.reg_decided_by leave.reg_decided_at) (\v -> change { noLeaveChange | reg = Just v })
+            , approvalGroup model leave "reg" "Senior registrar" (nullable leave.reg_approved) (decidedBy model leave.reg_decided_by leave.reg_decided_at) (\v -> change { noLeaveChange | reg = Just v })
             , approvalGroup model leave "dot" "Director of Training" (nullable leave.dot_approved) (decidedBy model leave.dot_decided_by leave.dot_decided_at) (\v -> change { noLeaveChange | dot = Just v })
             , div [ class "re-steps" ]
                 [ span [ classList [ ( "re-step", True ), ( "is-done", leave.printed ) ] ]

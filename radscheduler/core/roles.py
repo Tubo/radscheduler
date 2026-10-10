@@ -1,7 +1,7 @@
 """
-Who may decide leave. Two decisions are needed: the chief registrar's ("reg") and the Director of Training's
+Who may decide leave. Two decisions are needed: the senior registrar's ("reg") and the Director of Training's
 ("dot"). Roles come from groups: the Director of Training makes only their own decision, office staff only
-view and print, and other staff (the chief registrars) make both, recording the Director's on their behalf
+view and print, and other staff (the senior registrars) make both, recording the Director's on their behalf
 when asked.
 """
 

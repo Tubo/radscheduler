@@ -50,7 +50,7 @@ pytest --create-db                                        # after migration chan
 - **Domain** (`radscheduler/roster/`): roster rules, kept free of the ORM. It uses dataclasses (`roster/models.py`), which share names with the ORM models: `Registrar`, `Shift`, `Leave` and `Status`. Only use this layer for complex algorithms; simple rules belong in services.
   - `rules.check_roster`: checks each registrar's shifts, leave and statuses and returns `Violation`s, each with the clause it breaks. Rules are plain functions over shift times (`models.SHIFT_HOURS`); each contract (`rules.STONZ`, `rules.RDA`) is a tuple of the same rules with its own parameters and clause numbers bound, chosen by `Registrar.contract`, and `rules.DEPARTMENT` holds the department's own rules. `rules.DEPARTMENT_VARIANCES` records limits the department has agreed with the registrars and union to go past: a covered violation is still returned, with `variance` set to the reason, and the editor API returns those under `variances` instead of `violations`. Ordinary 8–5 weekdays aren't stored: `check_roster` infers them (`OrdinaryDay`) for its `period` on weekdays with no shift, leave or public holiday, so pass the period and shifts from either side of it. The Elm editor shows its results through `service.roster_violations` (`/api/editor/roster` and `/api/editor/roster/checks`); the old template editor doesn't use it. The agreement text is not in the repo.
   - `canterbury.canterbury_holidays`: the stat-day calendar.
-  - There is no automatic roster generation; the chief registrar builds rosters by hand in the editor.
+  - There is no automatic roster generation; the senior registrar builds rosters by hand in the editor.
 - **`core/domain_mapper.py`**: converts between ORM and domain objects using Django Ninja `ModelSchema` and `dacite`. Watch for the duplicate names when importing; the code uses `import ... as orm` and `as domain`.
 - **API**: Django Ninja (`core/api/`). `roster_calendar.py` feeds FullCalendar on the registrar calendar; `editor.py` is the staff-only API behind the Elm roster editor (session auth, so writes need the `X-CSRFToken` header). Operation ids are the view function names in camelCase, which become the Elm client's function names.
 - **iCal feeds**: `core/ical.py`, cached for 15 minutes in `config/urls.py`.
@@ -60,7 +60,7 @@ pytest --create-db                                        # after migration chan
 
 - `paper_forms/`: fills in the hospital's PDF leave forms (`paper_forms/forms/*.pdf`) with reportlab overlays and pypdf. Triggered from a Leave admin action.
 - `users/`: custom user model and django-allauth adapters.
-- `core/admin.py`: much of the chief registrar's workflow runs here (leave approvals, printing, status).
+- `core/admin.py`: much of the senior registrar's workflow runs here (leave approvals, printing, status).
 
 ### Roles
 

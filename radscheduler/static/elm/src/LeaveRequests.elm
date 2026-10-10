@@ -1,6 +1,6 @@
 port module LeaveRequests exposing (main)
 
-{-| Where the chief registrar and the Director of Training decide leave, in two steps.
+{-| Where the senior registrar and the Director of Training decide leave, in two steps.
 
 The overview lists every request of the registrars in training, a row each, filtered and sorted: where it
 stands, and for one still waiting, what its verdict turns on. Requests with nothing against them can be
@@ -8,7 +8,7 @@ approved together from there.
 
 Approval mode then reviews the requests the overview picked out, each beside the roster it affects: the
 registrar's own days around it, how many others are on leave, the cover the leave would lose, and the rule
-breaks it would cause. The chief registrar and the Director of Training each decide a whole request at once,
+breaks it would cause. The senior registrar and the Director of Training each decide a whole request at once,
 or day by day.
 
 The requests come from /api/editor/leave-requests, through the client generated from the API's OpenAPI
@@ -78,7 +78,7 @@ type alias Flags =
     , shiftTypes : List Choice
     , leaveTypes : List Choice
 
-    -- The decisions this user may make: "reg" (chief registrar) and "dot" (Director of Training).
+    -- The decisions this user may make: "reg" (senior registrar) and "dot" (Director of Training).
     , leaveApprovers : List String
 
     -- The page's query when it opened.
@@ -279,7 +279,7 @@ init value =
             ( { model | mode = Review, data = Failed ("The page didn't start: " ++ Decode.errorToString err) }, Cmd.none )
 
 
-{-| The decision a user makes first: the chief registrar's own, or the Director of Training's.
+{-| The decision a user makes first: the senior registrar's own, or the Director of Training's.
 -}
 primaryApprover : Flags -> Maybe String
 primaryApprover flags =
@@ -966,8 +966,8 @@ decide change model =
     )
 
 
-{-| "Approved 15 days of Junaid Burney's annual leave as chief registrar.", "Set Thu 28 Jan of Junaid Burney's
-annual leave back to waiting for the chief registrar."
+{-| "Approved 15 days of Junaid Burney's annual leave as senior registrar.", "Set Thu 28 Jan of Junaid Burney's
+annual leave back to waiting for the senior registrar."
 -}
 changeMessage : Model -> Change -> String
 changeMessage model change =
@@ -1261,7 +1261,7 @@ statusMessage status =
             "You've been signed out. Reload the page to sign in again."
 
         403 ->
-            "Your account can't make this decision; ask the chief registrar."
+            "Your account can't make this decision; ask the senior registrar."
 
         _ ->
             "Something went wrong on the server (" ++ String.fromInt status ++ "). Try again."
@@ -1290,10 +1290,28 @@ decisionOf approver leave =
 approverName : String -> String
 approverName approver =
     if approver == "reg" then
-        "chief registrar"
+        "senior registrar"
 
     else
         "Director of Training"
+
+
+{-| An approver's short name, for tight spots: "Sr reg" or "DoT".
+-}
+approverShort : String -> String
+approverShort approver =
+    if approver == "reg" then
+        "Sr reg"
+
+    else
+        "DoT"
+
+
+{-| An approver's short name with the full one on hover.
+-}
+approverAbbr : String -> Html msg
+approverAbbr approver =
+    abbr [ title (capitalise (approverName approver)) ] [ text (approverShort approver) ]
 
 
 {-| Leave that takes the registrar off the roster: not cancelled or declined.
@@ -1530,7 +1548,7 @@ heatStep count rostered =
 -- GRID FOCUS
 
 
-{-| A control in a request's roster: its row (0 chief registrar, 1 Director of Training, 2 on leave) and column
+{-| A control in a request's roster: its row (0 senior registrar, 1 Director of Training, 2 on leave) and column
 (two per day: approve, then decline; the day's count takes the first).
 -}
 type alias Spot =
@@ -2086,8 +2104,8 @@ viewTable model page =
                 , th [ scope "col" ] [ text "Leave" ]
                 , th [ scope "col", class "lr-col-num" ] [ text "Days" ]
                 , th [ scope "col" ] [ text "Asked" ]
-                , th [ scope "col" ] [ text "Chief registrar" ]
-                , th [ scope "col" ] [ text "Director of Training" ]
+                , th [ scope "col" ] [ approverAbbr "reg" ]
+                , th [ scope "col" ] [ approverAbbr "dot" ]
                 , th [ scope "col" ] [ text "Checks" ]
                 ]
             ]
@@ -2218,8 +2236,8 @@ viewRow model looks ready row =
                     [ span [ class "lr-rowsub", title notRecorded ] [ text "Not recorded" ] ]
             )
         , -- Named on a phone, where the table's head is hidden.
-          td [ class "lr-col-decision is-reg", attribute "data-label" "Chief registrar" ] [ viewRowDecision "reg" row ]
-        , td [ class "lr-col-decision is-dot", attribute "data-label" "Director of Training" ] [ viewRowDecision "dot" row ]
+          td [ class "lr-col-decision is-reg", attribute "data-label" (approverShort "reg") ] [ viewRowDecision "reg" row ]
+        , td [ class "lr-col-decision is-dot", attribute "data-label" (approverShort "dot") ] [ viewRowDecision "dot" row ]
         , td [ class "lr-col-checks" ] [ viewRowChecks model row ]
         ]
 
@@ -2491,16 +2509,16 @@ roleLine : Flags -> String
 roleLine flags =
     case ( List.member "reg" flags.leaveApprovers, List.member "dot" flags.leaveApprovers ) of
         ( True, True ) ->
-            "You decide as chief registrar, and can record the Director of Training's decisions for them."
+            "You decide as senior registrar, and can record the Director of Training's decisions for them."
 
         ( True, False ) ->
-            "You decide as chief registrar."
+            "You decide as senior registrar."
 
         ( False, True ) ->
-            "You decide as Director of Training. The chief registrar decides first; leave needs both approvals."
+            "You decide as Director of Training. The senior registrar decides first; leave needs both approvals."
 
         ( False, False ) ->
-            "You can see leave requests; the chief registrar and the Director of Training decide them."
+            "You can see leave requests; the senior registrar and the Director of Training decide them."
 
 
 viewHelp : Model -> Html Msg
@@ -2513,7 +2531,7 @@ viewHelp model =
         abbreviations =
             (model.flags.leaveTypes |> List.filter needsSaying |> List.map (\c -> c.short ++ " " ++ String.toLower (leaveName c)))
                 ++ (model.flags.shiftTypes |> List.filter needsSaying |> List.map (\c -> c.short ++ " " ++ String.toLower c.label))
-                ++ [ "RDO rostered day off" ]
+                ++ [ "RDO rostered day off", "Sr reg senior registrar", "DoT Director of Training" ]
 
         icon name label =
             span [ class "lr-help-icon" ] [ i [ class ("bi " ++ name), attribute "aria-hidden" "true" ] [], span [ class "visually-hidden" ] [ text label ] ]
@@ -2536,7 +2554,7 @@ viewHelp model =
         , div [ class "lr-help-panel" ]
             [ p [ class "lr-role" ] [ text (roleLine model.flags) ]
             , ul []
-                [ li [] [ text "Leave needs two approvals, the chief registrar's and the Director of Training's; either can decline it." ]
+                [ li [] [ text "Leave needs two approvals, the senior registrar's and the Director of Training's; either can decline it." ]
                 , li [] [ text "The overview lists the requests of registrars in training, filtered and sorted as you choose. Requests with nothing against them can be ticked and approved together; review the rest, with their roster, to decide them." ]
                 , li []
                     [ text "In review, approve or decline a whole request, or a single day with "
@@ -2663,7 +2681,7 @@ viewBody model =
 
 
 {-| The requests listed, in groups with a heading each: by month of their first day when in order of it, or
-for the Director of Training reviewing what waits on them, those the chief registrar has approved first.
+for the Director of Training reviewing what waits on them, those the senior registrar has approved first.
 -}
 groupsFor : Model -> T.LeaveRequestsOut -> List ( String, List T.LeaveRequestOut )
 groupsFor model data =
@@ -2682,7 +2700,7 @@ groupsFor model data =
             ( approved, unseen ) =
                 List.partition (\r -> List.all (\l -> not (isActive l) || decisionOf "reg" l == Just True) r.leaves) requests
         in
-        [ ( "Approved by the chief registrar", approved ), ( "Not yet decided by the chief registrar", unseen ) ]
+        [ ( "Approved by the senior registrar", approved ), ( "Not yet decided by the senior registrar", unseen ) ]
 
     else if not (LeaveFilters.sortByLeave model.filters) then
         [ ( LeaveFilters.sorts |> List.filter (Tuple.first >> (==) model.filters.sort) |> List.head |> Maybe.map Tuple.second |> Maybe.withDefault "Requests", requests ) ]
@@ -3636,7 +3654,7 @@ viewGrid model looks request =
                     waitingFor approver request
             in
             row
-                [ span [ class "lr-rowname" ] [ text who ]
+                [ span [ class "lr-rowname" ] [ approverAbbr approver ]
                 , if canChange && List.length waiting > 1 then
                     span [ class "lr-rowall" ]
                         [ button
@@ -3712,7 +3730,7 @@ viewGrid model looks request =
             [ markedRow [ text "Their roster" ]
                 (\date -> [ ( "has-break", not (List.isEmpty (breaksOn date)) ) ])
                 (\_ date -> viewOwnDay model request asked date ++ viewBreakTags (breaksOn date))
-            , decisionRow 0 "reg" "Chief registrar"
+            , decisionRow 0 "reg" "Senior registrar"
             , decisionRow 1 "dot" "Director of Training"
             , row [ span [ class "lr-rowname" ] [ text "On leave" ], span [ class "lr-rowsub" ] [ text (ofRoster ++ " on the roster") ] ]
                 (\i date -> [ viewAway model request key i date ])

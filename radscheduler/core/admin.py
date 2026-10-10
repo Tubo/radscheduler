@@ -310,11 +310,11 @@ class LeaveAdmin(admin.ModelAdmin):
         buffer = leaves_to_buffer(queryset)
         return FileResponse(buffer, as_attachment=False, filename="leaves.pdf")
 
-    @admin.action(description="Mark selected leaves as registrar approved")
+    @admin.action(description="Mark selected leaves as Sr reg approved")
     def mark_reg_approved(self, request, queryset):
         queryset.update(reg_approved=True, reg_decided_by=request.user, reg_decided_at=timezone.now())
 
-    @admin.action(description="Mark selected leaves as DOT approved")
+    @admin.action(description="Mark selected leaves as DoT approved")
     def mark_dot_approved(self, request, queryset):
         queryset.update(dot_approved=True, dot_decided_by=request.user, dot_decided_at=timezone.now())
 

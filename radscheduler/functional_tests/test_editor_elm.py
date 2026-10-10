@@ -214,11 +214,11 @@ def test_keyboard_moves_and_assigns(editor: Page, roster):
 def test_approve_leave_and_escape_back_to_the_day(editor: Page, roster):
     day = cell(editor, "2024-12-24", roster["will"])
     day.click()
-    approvals = menu(editor).get_by_role("group", name="Chief registrar")
+    approvals = menu(editor).get_by_role("group", name="Senior registrar")
     approvals.get_by_text("Approve").click()
     expect(approvals.get_by_role("radio", name="Approve")).to_be_checked()
     expect(approvals).to_contain_text("by ")
-    expect(menu(editor)).to_contain_text("Chief registrar approved · waiting on the Director of Training.")
+    expect(menu(editor)).to_contain_text("Senior registrar approved · waiting on the Director of Training.")
     roster["leave"].refresh_from_db()
     assert roster["leave"].reg_approved is True
     assert roster["leave"].reg_decided_by.username == "chief"

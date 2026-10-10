@@ -472,7 +472,7 @@ def delete_shift(request, shift_id: int):
 
 
 def check_leave_decisions(changes: dict, user) -> None:
-    """Refuse a decision the user may not make, e.g. the Director of Training's on the chief registrar's."""
+    """Refuse a decision the user may not make, e.g. the Director of Training's on the senior registrar's."""
     approvers = leave_approvers(user)
     for approver in ("reg", "dot"):
         if f"{approver}_approved" in changes and approver not in approvers:

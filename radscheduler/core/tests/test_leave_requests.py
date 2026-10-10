@@ -74,7 +74,7 @@ class TestLists:
         erika, will = juniors_db[0], juniors_db[1]
         later = ask(erika, 23, 24)
         sooner = ask(will, 16)
-        # Half decided: the chief registrar has approved one day
+        # Half decided: the senior registrar has approved one day
         later[0].decide("reg", True, admin_user)
         later[0].save()
 
@@ -242,7 +242,7 @@ class TestOverview:
             "declined": [will.user.username],
             "cancelled": [kelly.user.username],
             "waiting": [kelly.user.username],
-            # The chief registrar has decided Kelly's first day, but not her second
+            # The senior registrar has decided Kelly's first day, but not her second
             "mine": [kelly.user.username],
         }
         assert len(find_requests(Filters(status="any"))) == 4

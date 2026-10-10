@@ -67,15 +67,15 @@ def test_the_director_approves_a_whole_request_and_can_undo_it(page: Page, live_
     expect(request.get_by_role("table", name="Leave in 2024–25")).to_be_visible()
     expect(request.get_by_role("row", name="Annual")).to_contain_text("+2")
     expect(request.get_by_role("table", name="Roster around Erika Lee's leave")).to_be_visible()
-    # The chief registrar's decision is theirs to make: shown, not offered
-    expect(request.get_by_role("button", name="Approve Mon 16 Dec as Chief registrar")).to_have_count(0)
+    # The senior registrar's decision is theirs to make: shown, not offered
+    expect(request.get_by_role("button", name="Approve Mon 16 Dec as Senior registrar")).to_have_count(0)
 
     request.get_by_role("button", name="Approve Erika Lee's annual leave").click()
 
     wait_for(lambda: decisions(requests["days"], "dot") == [True, True], page)
     assert decisions(requests["days"], "reg") == [None, None]
     expect(request).to_contain_text("You approved all 2 days.")
-    expect(request).to_contain_text("Director of Training approved · waiting on the chief registrar.")
+    expect(request).to_contain_text("Director of Training approved · waiting on the senior registrar.")
     # Nothing is left waiting on the Director, so the navbar's count goes
     expect(page.locator(".navbar-count")).to_have_count(0)
 
@@ -84,19 +84,19 @@ def test_the_director_approves_a_whole_request_and_can_undo_it(page: Page, live_
     expect(request.get_by_role("button", name="Approve Erika Lee's annual leave")).to_be_visible()
 
 
-def test_the_chief_registrar_decides_day_by_day(page: Page, live_server, real_bundles, requests):
+def test_the_senior_registrar_decides_day_by_day(page: Page, live_server, real_bundles, requests):
     UserFactory(username="chief", is_staff=True, password="password")
     sign_in(page, live_server, "chief")
 
     page.goto(f"{live_server.url}/roster/leave/")
     open_shelf(page, ERIKAS)
     request = request_for(page, "Erika Lee")
-    request.get_by_role("button", name="Decline Tue 17 Dec as Chief registrar").click()
+    request.get_by_role("button", name="Decline Tue 17 Dec as Senior registrar").click()
 
     wait_for(lambda: decisions(requests["days"], "reg") == [None, False], page)
     expect(request).to_contain_text("1 day declined, 1 waiting")
     # A day's decision can be undone too
-    expect(page.get_by_text("Declined Tue 17 Dec of Erika Lee's annual leave as chief registrar.")).to_be_visible()
+    expect(page.get_by_text("Declined Tue 17 Dec of Erika Lee's annual leave as senior registrar.")).to_be_visible()
     # Only the day still waiting is left for the request's buttons
     expect(request.get_by_role("button", name="Approve the 1 waiting day of Erika Lee's annual leave")).to_be_visible()
 
@@ -129,7 +129,7 @@ def test_the_overview_filters_and_approves_requests_together(page: Page, live_se
 
     page.goto(f"{live_server.url}/roster/leave/")
     table = page.get_by_role("table")
-    # What waits on the chief registrar: Erika's leave, not Will's, which both have approved
+    # What waits on the senior registrar: Erika's leave, not Will's, which both have approved
     expect(table.get_by_role("button", name=ERIKAS, exact=True)).to_be_visible()
     expect(table).not_to_contain_text("Will Tane")
 
@@ -145,7 +145,7 @@ def test_the_overview_filters_and_approves_requests_together(page: Page, live_se
     page.get_by_role("checkbox", name=f"Tick {ERIKAS} to approve").check()
     page.get_by_role("button", name="Approve 1 request").click()
     wait_for(lambda: decisions(requests["days"], "reg") == [True, True], page)
-    expect(page.get_by_text("Approved 1 request (2 days) as chief registrar.")).to_be_visible()
+    expect(page.get_by_text("Approved 1 request (2 days) as senior registrar.")).to_be_visible()
 
     page.get_by_role("button", name="Undo").click()
     wait_for(lambda: decisions(requests["days"], "reg") == [None, None], page)

@@ -146,13 +146,18 @@ class Leave(models.Model):
     comment = models.TextField(blank=True)
     no_abutting_weekend = models.BooleanField(default=True)
 
-    reg_approved = models.BooleanField(null=True, blank=True)
-    dot_approved = models.BooleanField(null=True, blank=True)
+    # The senior registrar's ("Sr reg") and the Director of Training's ("DoT") decisions.
+    reg_approved = models.BooleanField("Sr reg approved", null=True, blank=True)
+    dot_approved = models.BooleanField("DoT approved", null=True, blank=True)
     # Who gave each decision and when; empty while it is waiting, and for decisions made before these were kept.
-    reg_decided_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    reg_decided_at = models.DateTimeField(null=True, blank=True)
-    dot_decided_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    dot_decided_at = models.DateTimeField(null=True, blank=True)
+    reg_decided_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="Sr reg decided by"
+    )
+    reg_decided_at = models.DateTimeField("Sr reg decided at", null=True, blank=True)
+    dot_decided_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="DoT decided by"
+    )
+    dot_decided_at = models.DateTimeField("DoT decided at", null=True, blank=True)
     printed = models.BooleanField(default=False)
     microster = models.BooleanField(default=False)
     cancelled = models.BooleanField(default=False)
@@ -171,7 +176,7 @@ class Leave(models.Model):
 
     def decide(self, approver: str, decision: bool | None, user: User | None) -> None:
         """
-        Record the chief registrar's ("reg") or the Director of Training's ("dot") decision, and who made it.
+        Record the senior registrar's ("reg") or the Director of Training's ("dot") decision, and who made it.
         A decision of None puts the leave back to waiting.
         """
         setattr(self, f"{approver}_approved", decision)

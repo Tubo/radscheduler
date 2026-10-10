@@ -97,7 +97,7 @@ class TestNavbar:
             assert [a.text.strip() for a in admin.select("a")] == ["Leave requests", "Admin site"]
 
     def test_leave_requests_count_those_waiting_on_you(self, app, admin_user, director, office_staff, juniors_db):
-        # One request of two days, and one approved by the chief registrar that waits only on the Director.
+        # One request of two days, and one approved by the senior registrar that waits only on the Director.
         Leave.objects.create(date=date(2024, 12, 16), type=LeaveType.ANNUAL, registrar=juniors_db[0])
         Leave.objects.create(date=date(2024, 12, 17), type=LeaveType.ANNUAL, registrar=juniors_db[0])
         Leave.objects.create(date=date(2025, 1, 6), type=LeaveType.ANNUAL, registrar=juniors_db[1], reg_approved=True)

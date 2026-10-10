@@ -10,7 +10,7 @@ module Leave exposing
     , portionLabel
     )
 
-{-| Where a day of leave stands between the chief registrar's and the Director of Training's decisions, and
+{-| Where a day of leave stands between the senior registrar's and the Director of Training's decisions, and
 the chip that shows it.
 -}
 
@@ -111,7 +111,7 @@ leaveStateName state =
             "waiting for approval"
 
 
-{-| Names who has decided and who is still to: "Chief registrar approved · waiting on the Director of Training."
+{-| Names who has decided and who is still to: "Senior registrar approved · waiting on the Director of Training."
 -}
 leaveStateSentence : T.LeaveOut -> String
 leaveStateSentence leave =
@@ -128,22 +128,22 @@ leaveStateSentence leave =
     else
         case ( reg, dot ) of
             ( Just True, Just True ) ->
-                "Approved by the chief registrar and the Director of Training."
+                "Approved by the senior registrar and the Director of Training."
 
             ( Just False, _ ) ->
-                "Declined by the chief registrar."
+                "Declined by the senior registrar."
 
             ( _, Just False ) ->
                 "Declined by the Director of Training."
 
             ( Just True, Nothing ) ->
-                "Chief registrar approved · waiting on the Director of Training."
+                "Senior registrar approved · waiting on the Director of Training."
 
             ( Nothing, Just True ) ->
-                "Director of Training approved · waiting on the chief registrar."
+                "Director of Training approved · waiting on the senior registrar."
 
             ( Nothing, Nothing ) ->
-                "Waiting on the chief registrar and the Director of Training."
+                "Waiting on the senior registrar and the Director of Training."
 
 
 portionLabel : T.LeaveOut -> String

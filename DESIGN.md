@@ -177,7 +177,7 @@ components:
 
 **Creative North Star: "The Duty Board"**
 
-Radscheduler is the department's whiteboard made trustworthy. The board's job is to be read at a glance by someone between cases, and to be rewritten all day by the chief registrar. Every mark on it means something: a filled chip is a shift, an outlined chip is leave, a red outline is a gap or a rule break with its clause beside it. Nothing on the board is decoration, and nothing that matters relies on colour alone.
+Radscheduler is the department's whiteboard made trustworthy. The board's job is to be read at a glance by someone between cases, and to be rewritten all day by the senior registrar. Every mark on it means something: a filled chip is a shift, an outlined chip is leave, a red outline is a gap or a rule break with its clause beside it. Nothing on the board is decoration, and nothing that matters relies on colour alone.
 
 It is dense but friendly. The roster editor packs three weeks of registrars onto one wide screen, so type is small (13–14px body, 11–12px chips) and controls share one compact size. Long editing sessions shouldn't feel harsh, though, so corners stay softly rounded, lines are hairline greys rather than black rules, hover feedback is a quiet tint, and popovers rise gently over 120ms. Registrars use the same pages on a phone, where the same chips and states read at full width.
 

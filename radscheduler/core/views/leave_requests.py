@@ -12,7 +12,7 @@ from radscheduler.core.views.editor import type_choices
 @require_GET
 def page(request):
     """
-    Leave requests waiting for the chief registrar's or the Director of Training's decision, each beside the
+    Leave requests waiting for the senior registrar's or the Director of Training's decision, each beside the
     roster it affects. An Elm page that loads them from /api/editor/leave-requests.
     """
     flags = {
