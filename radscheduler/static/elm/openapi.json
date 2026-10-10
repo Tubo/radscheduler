@@ -1095,6 +1095,27 @@
         "title": "RosterOut",
         "type": "object"
       },
+      "ShiftCountsOut": {
+        "properties": {
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/ShiftPeriodOut"
+            },
+            "title": "Periods",
+            "type": "array"
+          },
+          "registrar": {
+            "title": "Registrar",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "registrar",
+          "periods"
+        ],
+        "title": "ShiftCountsOut",
+        "type": "object"
+      },
       "ShiftIn": {
         "properties": {
           "date": {
@@ -1178,6 +1199,109 @@
           }
         },
         "title": "ShiftPatch",
+        "type": "object"
+      },
+      "ShiftPeriodOut": {
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "peers": {
+            "title": "Peers",
+            "type": "integer"
+          },
+          "shifts": {
+            "items": {
+              "$ref": "#/components/schemas/ShiftTallyOut"
+            },
+            "title": "Shifts",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "start",
+          "end",
+          "peers",
+          "shifts"
+        ],
+        "title": "ShiftPeriodOut",
+        "type": "object"
+      },
+      "ShiftTallyOut": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ShiftType"
+          }
+        },
+        "required": [
+          "type",
+          "count",
+          "mean",
+          "median",
+          "min",
+          "max"
+        ],
+        "title": "ShiftTallyOut",
         "type": "object"
       },
       "ShiftType": {
@@ -1977,6 +2101,41 @@
           }
         ],
         "summary": "Preview Published"
+      }
+    },
+    "/api/editor/registrars/{registrar_id}/shift-counts": {
+      "get": {
+        "description": "How many shifts a registrar has worked recently and over their training, for their name's popover.",
+        "operationId": "getShiftCounts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "registrar_id",
+            "required": true,
+            "schema": {
+              "title": "Registrar Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShiftCountsOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "StaffAuth": []
+          }
+        ],
+        "summary": "Get Shift Counts"
       }
     },
     "/api/editor/roster": {

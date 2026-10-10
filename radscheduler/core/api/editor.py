@@ -290,6 +290,34 @@ class WaitingCountsOut(Schema):
     all: int
 
 
+class ShiftTallyOut(Schema):
+    type: ShiftType
+    # The registrar's own count.
+    count: int
+    # Across their peers in the period; None when it has none.
+    mean: float | None
+    median: float | None
+    min: int | None
+    max: int | None
+
+
+class ShiftPeriodOut(Schema):
+    # "3 months", "6 months", the calendar year, or "Training"; both ends included.
+    name: str
+    start: date
+    end: date
+    # How many registrars the figures compare with: those in training throughout the period, or for
+    # "Training", those in training today, each over their own training so far.
+    peers: int
+    # The shift types the registrar or any of their peers worked in any of the periods, the same in each.
+    shifts: list[ShiftTallyOut]
+
+
+class ShiftCountsOut(Schema):
+    registrar: int
+    periods: list[ShiftPeriodOut]
+
+
 class ErrorOut(Schema):
     detail: str
 
@@ -410,6 +438,13 @@ def get_leave_request(request, key: int):
 def get_checks(request, week: date):
     """The rule breaks and workload alone, for refreshing them after a change."""
     return service.editor_checks(week)
+
+
+@router.get("/registrars/{registrar_id}/shift-counts", response=ShiftCountsOut)
+def get_shift_counts(request, registrar_id: int):
+    """How many shifts a registrar has worked recently and over their training, for their name's popover."""
+    registrar = get_object_or_404(Registrar, pk=registrar_id)
+    return service.shift_counts(registrar, timezone.localdate())
 
 
 @router.post("/shifts", response={201: ShiftOut})

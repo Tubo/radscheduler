@@ -4,7 +4,7 @@ The Elm roster editor, driven in a real browser. Needs the built bundles: run `p
 
 import os
 import re
-from datetime import date
+from datetime import date, timedelta
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
@@ -239,6 +239,32 @@ def test_approve_a_whole_leave_request(editor: Page, roster):
     menu(editor).get_by_role("group", name="Director of Training").get_by_text("Approve").click()
     expect(cell(editor, "2024-12-23", will)).to_have_attribute("aria-label", re.compile("approved by one"))
     assert all(Leave.objects.get(pk=leave.pk).dot_approved for leave in days)
+
+
+def test_a_name_shows_the_shifts_worked(editor: Page, roster):
+    erika = roster["erika"]
+    Shift.objects.create(date=date.today() - timedelta(days=7), type=ShiftType.NIGHT, registrar=erika)
+    Shift.objects.create(date=date.today() + timedelta(days=7), type=ShiftType.NIGHT, registrar=erika)  # not yet
+
+    name = editor.get_by_role("button", name="Erika Lee: shifts worked")
+    name.click()
+    expect(menu(editor)).to_contain_text("Shifts worked")
+    counts = menu(editor).get_by_role("table")
+
+    def row(label):
+        return counts.get_by_role("row", name=re.compile(f"^{label}"))
+
+    # 3 months, 6 months, this year, training; Will, with no shifts, is the other one compared.
+    expect(row("Long day")).to_have_text(re.compile(r"Long day\s*0\s*0\s*0\s*1$"))
+    expect(row(r"Average\W+Long day")).to_have_text(re.compile(r"0\s*0\s*0\s*0\.5$"))
+    expect(row("Night")).to_have_text(re.compile(r"Night\s*1\s*1\s*1\s*1$"))
+    expect(row(r"Average\W+Night")).to_have_text(re.compile(r"0\.5\s*0\.5\s*0\.5\s*0\.5$"))
+    expect(row(r"Min – max\W+Night")).to_have_text(re.compile(r"0–1\s*0–1\s*0–1\s*0–1$"))
+    expect(row("Compared with")).to_have_text(re.compile(r"2\s*2\s*2\s*2$"))
+
+    editor.keyboard.press("Escape")
+    expect(menu(editor)).to_have_count(0)
+    expect(name).to_be_focused()
 
 
 def test_filters_hide_shift_types(editor: Page, roster):

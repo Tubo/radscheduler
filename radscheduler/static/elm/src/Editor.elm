@@ -192,6 +192,7 @@ type Popover
     | KeyMenu Anchor
     | ProblemsMenu Anchor
     | ManyMenu Anchor String (List Change)
+    | RegistrarMenu Int Anchor (Maybe (Result ApiError T.ShiftCountsOut))
 
 
 {-| What a cell's menu is asking about, if anything.
@@ -222,6 +223,7 @@ type PopoverTarget
     | ForKey
     | ForProblems
     | ForMany String (List Change)
+    | ForRegistrar Int
 
 
 {-| A change to the roster. Each knows enough to describe itself and to be undone.
@@ -575,6 +577,7 @@ type Msg
     | SetPublishEnd String
     | PreviewDue ( String, String )
     | GotPreview ( String, String ) (Result ApiError T.PreviewOut)
+    | GotShiftCounts Int (Result ApiError T.ShiftCountsOut)
     | SavePublish
     | GotPublished (Result (OpenApi.Common.Error T.ErrorOut String) T.PublishedRange)
     | ClosePublish
@@ -839,8 +842,28 @@ updateModel msg model =
                 ForMany question changes ->
                     ( { model | popover = Just (ManyMenu anchor question changes) }, focusSoon "confirm-action" )
 
+                ForRegistrar registrar ->
+                    ( { model | popover = Just (RegistrarMenu registrar anchor Nothing) }
+                    , Cmd.batch
+                        [ focusSoon "popover-title"
+                        , Api.getShiftCounts { authorization = auth model, toMsg = GotShiftCounts registrar, params = { registrar_id = registrar } }
+                        ]
+                    )
+
         GotAnchor _ (Err _) ->
             ( model, Cmd.none )
+
+        GotShiftCounts registrar result ->
+            case model.popover of
+                Just (RegistrarMenu r anchor _) ->
+                    if r == registrar then
+                        ( { model | popover = Just (RegistrarMenu r anchor (Just result)) }, Cmd.none )
+
+                    else
+                        ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
         ClosePopover ->
             closePopover model
@@ -1709,6 +1732,9 @@ closePopover model =
 
         Just (ManyMenu _ _ _) ->
             ( closed, Maybe.map (cellId >> focusSoon) model.cursor |> Maybe.withDefault Cmd.none )
+
+        Just (RegistrarMenu registrar _ _) ->
+            ( closed, focusSoon (nameId registrar) )
 
         Nothing ->
             ( model, Cmd.none )
@@ -3121,7 +3147,15 @@ viewRow context data cursorDay openDay selFrom selTo errorDay savingDays =
     tr [ classList [ ( "is-cursor-row", cursorDay >= 0 ), ( "is-last-of-year", data.lastOfYear ) ] ]
         (th [ scope "row", class "re-name", title (registrar.name ++ " (" ++ registrar.username ++ ")") ]
             [ div [ class "re-nameline" ]
-                [ span [ class "re-username" ] [ text registrar.name ]
+                [ button
+                    [ type_ "button"
+                    , id (nameId registrar.id)
+                    , class "re-username"
+                    , attribute "aria-haspopup" "dialog"
+                    , attribute "aria-label" (registrar.name ++ ": shifts worked")
+                    , onClick (Open (ForRegistrar registrar.id) (nameId registrar.id))
+                    ]
+                    [ text registrar.name ]
                 , case nullable registrar.year of
                     Just year ->
                         span [ class "re-year" ]
@@ -3446,6 +3480,9 @@ viewPopover model =
 
         ( Just (KeyMenu anchor), _ ) ->
             popoverShell (Below anchor) listWidth "Key" [] WithClose (viewKey model)
+
+        ( Just (RegistrarMenu registrar anchor counts), _ ) ->
+            popoverShell (Beside anchor) menuWidth (registrarName model registrar) [] WithClose (viewShiftCounts model registrar counts)
 
         _ ->
             text ""
@@ -4322,6 +4359,107 @@ viewFilterGroup heading idPrefix choices hidden toMsg =
         )
 
 
+{-| A registrar's shifts worked, by type down the side and period across, from the newest period to their
+whole training. Under each type, how their peers' counts spread: average, median and range.
+-}
+viewShiftCounts : Model -> Int -> Maybe (Result ApiError T.ShiftCountsOut) -> List (Html Msg)
+viewShiftCounts model registrar counts =
+    case counts of
+        Nothing ->
+            [ p [ class "re-status" ] [ text "Loading…" ] ]
+
+        Just (Err error) ->
+            [ p [ class "re-note is-warning" ] [ text (apiError error) ]
+            , button [ type_ "button", class "re-btn", onClick (Open (ForRegistrar registrar) (nameId registrar)) ] [ text "Try again" ]
+            ]
+
+        Just (Ok { periods }) ->
+            let
+                tallyOf t period =
+                    period.shifts |> List.filter (\s -> T.shiftTypeToString s.type_ == t) |> List.head
+
+                types =
+                    model.flags.shiftTypes
+                        |> List.map .value
+                        |> List.filter (\t -> List.any (tallyOf t >> (/=) Nothing) periods)
+
+                -- A figure from a period's tally, or a dash when there's nobody to compare with.
+                figure t show period =
+                    case tallyOf t period |> Maybe.andThen show of
+                        Just value ->
+                            td [] [ text value ]
+
+                        Nothing ->
+                            td [ class "is-none" ] [ text "–" ]
+
+                group t =
+                    let
+                        label =
+                            (choiceFor model.flags.shiftTypes t).label
+
+                        stat name show =
+                            tr [ class "is-stat" ]
+                                (th [ scope "row" ] [ text name, span [ class "visually-hidden" ] [ text (", " ++ label) ] ]
+                                    :: List.map (figure t show) periods
+                                )
+                    in
+                    tbody []
+                        [ tr []
+                            (th [ scope "row" ] [ text label ]
+                                :: List.map
+                                    (\period ->
+                                        case tallyOf t period |> Maybe.map .count |> Maybe.withDefault 0 of
+                                            0 ->
+                                                td [ class "is-none" ] [ text "0" ]
+
+                                            n ->
+                                                td [] [ text (String.fromInt n) ]
+                                    )
+                                    periods
+                            )
+                        , stat "Average" (.mean >> nullable >> Maybe.map String.fromFloat)
+                        , stat "Median" (.median >> nullable >> Maybe.map String.fromFloat)
+                        , stat "Min – max"
+                            (\tally ->
+                                Maybe.map2 (\low high -> String.fromInt low ++ "–" ++ String.fromInt high) (nullable tally.min) (nullable tally.max)
+                            )
+                        ]
+
+                span_ period =
+                    fullDate period.start ++ " – " ++ fullDate period.end
+            in
+            [ section [ class "re-section" ]
+                [ h3 [ class "re-section-title", id "shift-counts-title" ] [ text "Shifts worked" ]
+                , if List.isEmpty types then
+                    p [ class "re-status" ] [ text "No shifts worked yet." ]
+
+                  else
+                    table [ class "re-tally", attribute "aria-labelledby" "shift-counts-title" ]
+                        (thead []
+                            [ tr []
+                                (th [ scope "col" ] [ span [ class "visually-hidden" ] [ text "Shift" ] ]
+                                    :: List.map (\period -> th [ scope "col", title (span_ period) ] [ text period.name ]) periods
+                                )
+                            ]
+                            :: List.map group types
+                            ++ [ tfoot []
+                                    [ tr [ class "is-stat" ]
+                                        (th [ scope "row", title "Registrars in training throughout the period; for training, those in training today" ] [ text "Compared with" ]
+                                            :: List.map (\period -> td [] [ text (String.fromInt period.peers) ]) periods
+                                        )
+                                    ]
+                               ]
+                        )
+                , p [ class "re-tally-note" ]
+                    [ text
+                        ("Up to today, with extra duties but not RDOs or sleep days. Compared with the registrars in training throughout each period, or for training, everyone in training today over their own training so far."
+                            ++ (List.reverse periods |> List.head |> Maybe.map (\training -> " This registrar's training: " ++ span_ training ++ ".") |> Maybe.withDefault "")
+                        )
+                    ]
+                ]
+            ]
+
+
 viewKey : Model -> List (Html Msg)
 viewKey model =
     [ section [ class "re-section" ]
@@ -4701,6 +4839,11 @@ coverId date =
 
 {-| The cover strip's cell for a day, which the day's cover menu opens beside.
 -}
+nameId : Int -> String
+nameId registrar =
+    "name-" ++ String.fromInt registrar
+
+
 coverDayId : Date -> String
 coverDayId date =
     "coverday-" ++ Date.toIsoString date

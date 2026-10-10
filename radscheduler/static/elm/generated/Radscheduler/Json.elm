@@ -3,14 +3,14 @@ module Radscheduler.Json exposing
     , encodeGapOut, encodeHolidayOut, encodeLeaveOut, encodeLeaveOverviewOut, encodeLeavePatch, encodeLeaveRequestOut
     , encodeLeaveRequestsOut, encodeLeaveTallyOut, encodeLeaveType, encodeLeaveYearOut, encodeLeavesPatch, encodePreviewOut
     , encodePublishedRange, encodeRegistrarOut, encodeRequestChecksOut, encodeRequestDayOut, encodeRequestRowOut, encodeRosterOut
-    , encodeShiftIn, encodeShiftOut, encodeShiftPatch, encodeShiftType, encodeStatusOut, encodeStatusType
-    , encodeViolationOut, encodeWaitingCountsOut, encodeWorkloadOut
+    , encodeShiftCountsOut, encodeShiftIn, encodeShiftOut, encodeShiftPatch, encodeShiftPeriodOut, encodeShiftTallyOut
+    , encodeShiftType, encodeStatusOut, encodeStatusType, encodeViolationOut, encodeWaitingCountsOut, encodeWorkloadOut
     , decodeAwayOut, decodeChecksOut, decodeErrorOut, decodeFullCalendarHolidaySchema, decodeFullCalendarLeaveSchema, decodeFullCalendarShiftSchema
     , decodeGapOut, decodeHolidayOut, decodeLeaveOut, decodeLeaveOverviewOut, decodeLeavePatch, decodeLeaveRequestOut
     , decodeLeaveRequestsOut, decodeLeaveTallyOut, decodeLeaveType, decodeLeaveYearOut, decodeLeavesPatch, decodePreviewOut
     , decodePublishedRange, decodeRegistrarOut, decodeRequestChecksOut, decodeRequestDayOut, decodeRequestRowOut, decodeRosterOut
-    , decodeShiftIn, decodeShiftOut, decodeShiftPatch, decodeShiftType, decodeStatusOut, decodeStatusType
-    , decodeViolationOut, decodeWaitingCountsOut, decodeWorkloadOut
+    , decodeShiftCountsOut, decodeShiftIn, decodeShiftOut, decodeShiftPatch, decodeShiftPeriodOut, decodeShiftTallyOut
+    , decodeShiftType, decodeStatusOut, decodeStatusType, decodeViolationOut, decodeWaitingCountsOut, decodeWorkloadOut
     )
 
 {-|
@@ -22,8 +22,8 @@ module Radscheduler.Json exposing
 @docs encodeGapOut, encodeHolidayOut, encodeLeaveOut, encodeLeaveOverviewOut, encodeLeavePatch, encodeLeaveRequestOut
 @docs encodeLeaveRequestsOut, encodeLeaveTallyOut, encodeLeaveType, encodeLeaveYearOut, encodeLeavesPatch, encodePreviewOut
 @docs encodePublishedRange, encodeRegistrarOut, encodeRequestChecksOut, encodeRequestDayOut, encodeRequestRowOut, encodeRosterOut
-@docs encodeShiftIn, encodeShiftOut, encodeShiftPatch, encodeShiftType, encodeStatusOut, encodeStatusType
-@docs encodeViolationOut, encodeWaitingCountsOut, encodeWorkloadOut
+@docs encodeShiftCountsOut, encodeShiftIn, encodeShiftOut, encodeShiftPatch, encodeShiftPeriodOut, encodeShiftTallyOut
+@docs encodeShiftType, encodeStatusOut, encodeStatusType, encodeViolationOut, encodeWaitingCountsOut, encodeWorkloadOut
 
 
 ## Decoders
@@ -32,8 +32,8 @@ module Radscheduler.Json exposing
 @docs decodeGapOut, decodeHolidayOut, decodeLeaveOut, decodeLeaveOverviewOut, decodeLeavePatch, decodeLeaveRequestOut
 @docs decodeLeaveRequestsOut, decodeLeaveTallyOut, decodeLeaveType, decodeLeaveYearOut, decodeLeavesPatch, decodePreviewOut
 @docs decodePublishedRange, decodeRegistrarOut, decodeRequestChecksOut, decodeRequestDayOut, decodeRequestRowOut, decodeRosterOut
-@docs decodeShiftIn, decodeShiftOut, decodeShiftPatch, decodeShiftType, decodeStatusOut, decodeStatusType
-@docs decodeViolationOut, decodeWaitingCountsOut, decodeWorkloadOut
+@docs decodeShiftCountsOut, decodeShiftIn, decodeShiftOut, decodeShiftPatch, decodeShiftPeriodOut, decodeShiftTallyOut
+@docs decodeShiftType, decodeStatusOut, decodeStatusType, decodeViolationOut, decodeWaitingCountsOut, decodeWorkloadOut
 
 -}
 
@@ -522,6 +522,14 @@ encodeRosterOut rec =
         ]
 
 
+encodeShiftCountsOut : Radscheduler.Types.ShiftCountsOut -> Json.Encode.Value
+encodeShiftCountsOut rec =
+    Json.Encode.object
+        [ ( "periods", Json.Encode.list encodeShiftPeriodOut rec.periods )
+        , ( "registrar", Json.Encode.int rec.registrar )
+        ]
+
+
 encodeShiftIn : Radscheduler.Types.ShiftIn -> Json.Encode.Value
 encodeShiftIn rec =
     Json.Encode.object
@@ -568,6 +576,57 @@ encodeShiftPatch rec =
                 rec.type_
             ]
         )
+
+
+encodeShiftPeriodOut : Radscheduler.Types.ShiftPeriodOut -> Json.Encode.Value
+encodeShiftPeriodOut rec =
+    Json.Encode.object
+        [ ( "end", OpenApi.Common.encodeStringDate rec.end )
+        , ( "name", Json.Encode.string rec.name )
+        , ( "peers", Json.Encode.int rec.peers )
+        , ( "shifts", Json.Encode.list encodeShiftTallyOut rec.shifts )
+        , ( "start", OpenApi.Common.encodeStringDate rec.start )
+        ]
+
+
+encodeShiftTallyOut : Radscheduler.Types.ShiftTallyOut -> Json.Encode.Value
+encodeShiftTallyOut rec =
+    Json.Encode.object
+        [ ( "count", Json.Encode.int rec.count )
+        , ( "max"
+          , case rec.max of
+                OpenApi.Common.Null ->
+                    Json.Encode.null
+
+                OpenApi.Common.Present value ->
+                    Json.Encode.int value
+          )
+        , ( "mean"
+          , case rec.mean of
+                OpenApi.Common.Null ->
+                    Json.Encode.null
+
+                OpenApi.Common.Present value ->
+                    Json.Encode.float value
+          )
+        , ( "median"
+          , case rec.median of
+                OpenApi.Common.Null ->
+                    Json.Encode.null
+
+                OpenApi.Common.Present value ->
+                    Json.Encode.float value
+          )
+        , ( "min"
+          , case rec.min of
+                OpenApi.Common.Null ->
+                    Json.Encode.null
+
+                OpenApi.Common.Present value ->
+                    Json.Encode.int value
+          )
+        , ( "type", encodeShiftType rec.type_ )
+        ]
 
 
 encodeShiftType : Radscheduler.Types.ShiftType -> Json.Encode.Value
@@ -1435,6 +1494,19 @@ decodeRosterOut =
             (Json.Decode.field "week" OpenApi.Common.decodeStringDate)
 
 
+decodeShiftCountsOut : Json.Decode.Decoder Radscheduler.Types.ShiftCountsOut
+decodeShiftCountsOut =
+    Json.Decode.succeed
+        (\periods registrar -> { periods = periods, registrar = registrar })
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "periods"
+                (Json.Decode.list decodeShiftPeriodOut)
+            )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "registrar" Json.Decode.int)
+
+
 decodeShiftIn : Json.Decode.Decoder Radscheduler.Types.ShiftIn
 decodeShiftIn =
     Json.Decode.succeed
@@ -1495,6 +1567,94 @@ decodeShiftPatch =
             (OpenApi.Common.decodeOptionalField "extra_duty" Json.Decode.bool)
         |> OpenApi.Common.jsonDecodeAndMap
             (OpenApi.Common.decodeOptionalField "type" decodeShiftType)
+
+
+decodeShiftPeriodOut : Json.Decode.Decoder Radscheduler.Types.ShiftPeriodOut
+decodeShiftPeriodOut =
+    Json.Decode.succeed
+        (\end name peers shifts start ->
+            { end = end
+            , name = name
+            , peers = peers
+            , shifts = shifts
+            , start = start
+            }
+        )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "end" OpenApi.Common.decodeStringDate)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "name" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "peers" Json.Decode.int)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "shifts"
+                (Json.Decode.list decodeShiftTallyOut)
+            )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "start" OpenApi.Common.decodeStringDate)
+
+
+decodeShiftTallyOut : Json.Decode.Decoder Radscheduler.Types.ShiftTallyOut
+decodeShiftTallyOut =
+    Json.Decode.succeed
+        (\count max mean median min type_ ->
+            { count = count
+            , max = max
+            , mean = mean
+            , median = median
+            , min = min
+            , type_ = type_
+            }
+        )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "count" Json.Decode.int)
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "max"
+                (Json.Decode.oneOf
+                    [ Json.Decode.map
+                        OpenApi.Common.Present
+                        Json.Decode.int
+                    , Json.Decode.null OpenApi.Common.Null
+                    ]
+                )
+            )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "mean"
+                (Json.Decode.oneOf
+                    [ Json.Decode.map
+                        OpenApi.Common.Present
+                        Json.Decode.float
+                    , Json.Decode.null OpenApi.Common.Null
+                    ]
+                )
+            )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "median"
+                (Json.Decode.oneOf
+                    [ Json.Decode.map
+                        OpenApi.Common.Present
+                        Json.Decode.float
+                    , Json.Decode.null OpenApi.Common.Null
+                    ]
+                )
+            )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field
+                "min"
+                (Json.Decode.oneOf
+                    [ Json.Decode.map
+                        OpenApi.Common.Present
+                        Json.Decode.int
+                    , Json.Decode.null OpenApi.Common.Null
+                    ]
+                )
+            )
+        |> OpenApi.Common.jsonDecodeAndMap
+            (Json.Decode.field "type" decodeShiftType)
 
 
 decodeShiftType : Json.Decode.Decoder Radscheduler.Types.ShiftType

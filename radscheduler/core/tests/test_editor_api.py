@@ -1,9 +1,12 @@
 from datetime import date
 
 import pytest
+from freezegun import freeze_time
 
-from radscheduler.core.models import Leave, Settings, Shift, Status
+from radscheduler.core import service
+from radscheduler.core.models import Leave, Registrar, Settings, Shift, Status
 from radscheduler.roster.models import LeaveType, ShiftType, StatusType
+from radscheduler.users.tests.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -406,3 +409,81 @@ class TestPublishPreview:
         assert preview.json["shifts_shown"] == 1  # the counts still cover the whole range
         assert preview.json["checked_to"] == "0003-01-01"  # 366 days on
         assert all(gap["date"] <= "0003-01-01" for gap in preview.json["gaps"])
+
+
+@freeze_time("2026-10-10")
+class TestShiftCounts:
+    def counts(self, app, staff, registrar):
+        periods = app.get(f"/api/editor/registrars/{registrar.pk}/shift-counts", user=staff).json["periods"]
+        return {p["name"]: {s["type"]: s["count"] for s in p["shifts"] if s["count"]} for p in periods}
+
+    def test_shifts_worked_over_each_period(self, app, staff, juniors_db):
+        registrar = juniors_db[0]
+        for day, shift_type in [
+            (date(2022, 6, 1), ShiftType.NIGHT),  # training only
+            (date(2026, 3, 2), ShiftType.LONG),  # this year
+            (date(2026, 6, 1), ShiftType.SWING),  # 6 months
+            (date(2026, 7, 11), ShiftType.NIGHT),  # 3 months, on its first day
+            (date(2026, 10, 10), ShiftType.NIGHT),  # today
+            (date(2026, 10, 11), ShiftType.NIGHT),  # rostered, not yet worked
+            (date(2026, 10, 9), ShiftType.SLEEP),  # a day off
+        ]:
+            Shift.objects.create(date=day, type=shift_type, registrar=registrar)
+        Shift.objects.create(date=date(2026, 10, 1), type=ShiftType.LONG, registrar=juniors_db[1])
+
+        assert self.counts(app, staff, registrar) == {
+            "3 months": {"NIGHT": 2},
+            "6 months": {"NIGHT": 2, "SWING": 1},
+            "2026": {"NIGHT": 2, "SWING": 1, "LONG": 1},
+            "Training": {"NIGHT": 3, "SWING": 1, "LONG": 1},
+        }
+
+    def test_periods_end_today_and_training_at_its_finish(self, app, staff, juniors_db):
+        registrar = juniors_db[0]
+        registrar.finish = date(2026, 8, 31)
+        registrar.save()
+        Shift.objects.create(date=date(2026, 9, 5), type=ShiftType.LONG, registrar=registrar)
+
+        periods = app.get(f"/api/editor/registrars/{registrar.pk}/shift-counts", user=staff).json["periods"]
+
+        assert [(p["start"], p["end"]) for p in periods] == [
+            ("2026-07-11", "2026-10-10"),
+            ("2026-04-11", "2026-10-10"),
+            ("2026-01-01", "2026-10-10"),
+            ("2022-01-01", "2026-08-31"),
+        ]
+        assert periods[3]["shifts"] == [
+            {"type": "LONG", "count": 0, "mean": 0, "median": 0, "min": 0, "max": 0}  # worked after it finished
+        ]
+
+    def test_compared_with_those_in_training_throughout(self, app, staff, juniors_db):
+        erika, will, _, _, edward = juniors_db
+        newcomer = Registrar.objects.create(user=UserFactory(username="new"), start=date(2026, 9, 1))
+        gone = Registrar.objects.create(
+            user=UserFactory(username="gone"), start=date(2020, 1, 1), finish=date(2026, 8, 1)
+        )
+        for registrar, nights in [(erika, 3), (will, 1), (edward, 2), (newcomer, 4), (gone, 9)]:
+            for n in range(nights):
+                Shift.objects.create(date=date(2026, 9, 10 + n), type=ShiftType.NIGHT, registrar=registrar)
+        Shift.objects.create(date=date(2026, 9, 1), type=ShiftType.LONG, registrar=will)
+
+        periods = app.get(f"/api/editor/registrars/{erika.pk}/shift-counts", user=staff).json["periods"]
+        recent, training = periods[0], periods[3]
+
+        # The five who started in 2022; the newcomer started too late and the one who's gone left too early.
+        assert recent["peers"] == 5
+        assert recent["shifts"] == [
+            {"type": "LONG", "count": 0, "mean": 0.2, "median": 0, "min": 0, "max": 1},
+            {"type": "NIGHT", "count": 3, "mean": 1.2, "median": 1, "min": 0, "max": 3},
+        ]
+        # Everyone in training today, the newcomer included.
+        assert training["peers"] == 6
+        assert training["shifts"][1] == {"type": "NIGHT", "count": 3, "mean": 1.7, "median": 1.5, "min": 0, "max": 4}
+
+    def test_registrars_cannot_see_them(self, app, juniors_db):
+        app.get(f"/api/editor/registrars/{juniors_db[0].pk}/shift-counts", user=juniors_db[1].user, status=401)
+
+
+def test_months_before_keeps_to_the_end_of_a_shorter_month():
+    assert service.months_before(date(2026, 5, 31), 3) == date(2026, 2, 28)
+    assert service.months_before(date(2026, 1, 15), 6) == date(2025, 7, 15)

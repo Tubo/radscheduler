@@ -1,7 +1,7 @@
 module Radscheduler.Api exposing
     ( addShift, changeLeave, changeLeaves, changeShift, deleteShift, getChecks
-    , getLeaveCounts, getLeaveOverview, getLeaveRequest, getLeaveRequests, getRoster, holidayEvents
-    , leaveEvents, previewPublished, setPublished, shiftEvents
+    , getLeaveCounts, getLeaveOverview, getLeaveRequest, getLeaveRequests, getRoster, getShiftCounts
+    , holidayEvents, leaveEvents, previewPublished, setPublished, shiftEvents
     )
 
 {-|
@@ -10,8 +10,8 @@ module Radscheduler.Api exposing
 ## Operations
 
 @docs addShift, changeLeave, changeLeaves, changeShift, deleteShift, getChecks
-@docs getLeaveCounts, getLeaveOverview, getLeaveRequest, getLeaveRequests, getRoster, holidayEvents
-@docs leaveEvents, previewPublished, setPublished, shiftEvents
+@docs getLeaveCounts, getLeaveOverview, getLeaveRequest, getLeaveRequests, getRoster, getShiftCounts
+@docs holidayEvents, leaveEvents, previewPublished, setPublished, shiftEvents
 
 -}
 
@@ -478,6 +478,44 @@ getRoster config =
             OpenApi.Common.expectJsonCustom
                 (Dict.fromList [])
                 Radscheduler.Json.decodeRosterOut
+                config.toMsg
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| Get Shift Counts
+
+How many shifts a registrar has worked recently and over their training, for their name's popover.
+
+-}
+getShiftCounts :
+    { authorization : { x_csrftoken : String }
+    , toMsg :
+        Result (OpenApi.Common.Error e String) Radscheduler.Types.ShiftCountsOut
+        -> msg
+    , params : { registrar_id : Int }
+    }
+    -> Cmd msg
+getShiftCounts config =
+    Http.request
+        { url =
+            Url.Builder.absolute
+                [ "api"
+                , "editor"
+                , "registrars"
+                , String.fromInt config.params.registrar_id
+                , "shift-counts"
+                ]
+                []
+        , method = "GET"
+        , headers =
+            [ Http.header "X-CSRFToken" config.authorization.x_csrftoken ]
+        , expect =
+            OpenApi.Common.expectJsonCustom
+                (Dict.fromList [])
+                Radscheduler.Json.decodeShiftCountsOut
                 config.toMsg
         , body = Http.emptyBody
         , timeout = Nothing

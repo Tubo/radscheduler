@@ -703,10 +703,23 @@
   line-height: 1.2;
 }
 
+// A name opens the registrar's shift counts: plain text until the pointer is on it.
 .re-username {
   min-width: 0;
+  padding: 0;
   overflow: hidden;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   text-overflow: ellipsis;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--re-accent);
+    text-decoration: underline;
+  }
 }
 
 .re-year {
@@ -1158,6 +1171,75 @@ tfoot .re-corner {
 }
 
 .re-meta {
+  margin: 0.5rem 0 0;
+  color: var(--re-muted);
+  font-size: 0.75rem;
+}
+
+// Counts by type down the side and period across, the numbers lined up.
+.re-tally {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+
+  th,
+  td {
+    padding: 0.25rem 0 0.25rem 0.5rem;
+    border-bottom: 1px solid var(--re-line);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  th:first-child {
+    width: 6.5rem;
+    padding-left: 0;
+    text-align: left;
+  }
+
+  thead th {
+    color: var(--re-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    vertical-align: bottom;
+  }
+
+  tbody th {
+    font-weight: 500;
+  }
+
+  .is-none {
+    color: var(--re-muted);
+  }
+
+  // A type's own count, then its peers' figures beneath it, smaller and without lines between them.
+  tbody > tr:not(:last-child) > * {
+    border-bottom: 0;
+  }
+
+  .is-stat > * {
+    padding-block: 0;
+    color: var(--re-muted);
+    font-size: 0.75rem;
+    font-weight: 400;
+  }
+
+  tbody .is-stat > th {
+    padding-left: 0.75rem;
+  }
+
+  tbody .is-stat:last-child > * {
+    padding-bottom: 0.25rem;
+  }
+
+  tfoot > tr > * {
+    padding-top: 0.25rem;
+    border-bottom: 0;
+  }
+}
+
+.re-tally-note {
   margin: 0.5rem 0 0;
   color: var(--re-muted);
   font-size: 0.75rem;

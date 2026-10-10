@@ -1,4 +1,6 @@
-from collections import defaultdict
+import calendar
+import statistics
+from collections import Counter, defaultdict
 from collections.abc import Iterable
 from datetime import date, timedelta
 
@@ -8,7 +10,7 @@ from django.db.models.functions import Now
 from radscheduler.core import domain_mapper
 from radscheduler.core.models import Leave, Registrar, Settings, Shift, Status
 from radscheduler.roster import canterbury_holidays, rules
-from radscheduler.roster.models import DetailedShiftType, ShiftType, Weekday
+from radscheduler.roster.models import SHIFT_HOURS, DetailedShiftType, ShiftType, Weekday
 from radscheduler.roster.utils import daterange
 
 # The department's cover: what each day needs filled. Each requirement lists the shift types that meet it.
@@ -178,6 +180,89 @@ def workload(end: date) -> list[dict]:
     for shift in shifts.only("date", "type", "registrar_id"):
         loads[shift.registrar_id] += shift_load(shift)
     return [{"registrar": pk, "load": round(load / 10, 1)} for pk, load in sorted(loads.items())]
+
+
+def months_before(day: date, months: int) -> date:
+    """The same day `months` months earlier, or the end of that month when it is shorter."""
+    year, month = divmod(day.year * 12 + day.month - 1 - months, 12)
+    return date(year, month + 1, min(day.day, calendar.monthrange(year, month + 1)[1]))
+
+
+def shift_counts(registrar: Registrar, today: date) -> dict:
+    """
+    How many periods of duty `registrar` has worked up to `today`, by shift type: over the past 3 and 6
+    months, this calendar year, and their whole training. RDO and sleep days are days off, so don't count;
+    extra duties do.
+
+    Each count comes with the average, median and range of their peers' counts: the registrars in training
+    throughout the period, or for their whole training, those in training today, each over their own training
+    so far. Either way the registrar is one of them if they qualify.
+    """
+    training_end = min(today, registrar.finish) if registrar.finish else today
+    everyone = list(Registrar.objects.all())
+
+    def in_training(r: Registrar, start: date, end: date) -> bool:
+        return r.start <= start and (r.finish is None or r.finish >= end)
+
+    # Each period's name and span, and whose shifts it compares over which days.
+    periods = [
+        (name, start, today, [(r.pk, start, today) for r in everyone if in_training(r, start, today)])
+        for name, start in [
+            ("3 months", months_before(today, 3) + timedelta(days=1)),
+            ("6 months", months_before(today, 6) + timedelta(days=1)),
+            (str(today.year), date(today.year, 1, 1)),
+        ]
+    ]
+    periods.append(
+        (
+            "Training",
+            registrar.start,
+            training_end,
+            [(r.pk, r.start, today) for r in everyone if in_training(r, today, today)],
+        )
+    )
+
+    windows = [(registrar.pk, start, end) for _, start, end, _ in periods]
+    windows += [window for *_, peers in periods for window in peers]
+    worked = defaultdict(list)
+    for pk, day, shift_type in Shift.objects.filter(
+        registrar_id__in={pk for pk, _, _ in windows},
+        type__in=list(SHIFT_HOURS),
+        date__range=[min(start for _, start, _ in windows), today],
+    ).values_list("registrar_id", "date", "type"):
+        worked[pk].append((day, shift_type))
+
+    def tally(pk: int, start: date, end: date) -> Counter:
+        return Counter(shift_type for day, shift_type in worked[pk] if start <= day <= end)
+
+    # Each period's own count and peers' counts, then every type worked in any of them listed in all, so a
+    # period nobody worked a type in shows zeros rather than nothing.
+    tallies = [
+        (tally(registrar.pk, start, end), [tally(*window) for window in peers]) for _, start, end, peers in periods
+    ]
+    types = [t for t in SHIFT_HOURS if any(own[t] or any(c[t] for c in theirs) for own, theirs in tallies)]
+
+    def describe(period, own, theirs):
+        name, start, end, peers = period
+        shifts = []
+        for shift_type in types:
+            counts = [counter[shift_type] for counter in theirs]
+            shifts.append(
+                {
+                    "type": shift_type,
+                    "count": own[shift_type],
+                    "mean": round(statistics.mean(counts), 1) if counts else None,
+                    "median": statistics.median(counts) if counts else None,
+                    "min": min(counts, default=None),
+                    "max": max(counts, default=None),
+                }
+            )
+        return {"name": name, "start": start, "end": end, "peers": len(peers), "shifts": shifts}
+
+    return {
+        "registrar": registrar.pk,
+        "periods": [describe(period, own, theirs) for period, (own, theirs) in zip(periods, tallies, strict=True)],
+    }
 
 
 def cover_rule(day: date) -> list[list[str]]:

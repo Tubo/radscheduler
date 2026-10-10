@@ -2,8 +2,9 @@ module Radscheduler.Types exposing
     ( AwayOut, ChecksOut, ErrorOut, FullCalendarHolidaySchema, FullCalendarLeaveSchema, FullCalendarShiftSchema
     , GapOut, HolidayOut, LeaveOut, LeaveOverviewOut, LeavePatch, LeaveRequestOut
     , LeaveRequestsOut, LeaveTallyOut, LeaveYearOut, LeavesPatch, PreviewOut, PublishedRange
-    , RegistrarOut, RequestChecksOut, RequestDayOut, RequestRowOut, RosterOut, ShiftIn
-    , ShiftOut, ShiftPatch, StatusOut, ViolationOut, WaitingCountsOut, WorkloadOut
+    , RegistrarOut, RequestChecksOut, RequestDayOut, RequestRowOut, RosterOut, ShiftCountsOut
+    , ShiftIn, ShiftOut, ShiftPatch, ShiftPeriodOut, ShiftTallyOut, StatusOut
+    , ViolationOut, WaitingCountsOut, WorkloadOut
     , LeaveType(..), ShiftType(..), StatusType(..), leaveTypeFromString, leaveTypeToString, leaveTypeVariants
     , shiftTypeFromString, shiftTypeToString, shiftTypeVariants, statusTypeFromString, statusTypeToString, statusTypeVariants
     )
@@ -16,8 +17,9 @@ module Radscheduler.Types exposing
 @docs AwayOut, ChecksOut, ErrorOut, FullCalendarHolidaySchema, FullCalendarLeaveSchema, FullCalendarShiftSchema
 @docs GapOut, HolidayOut, LeaveOut, LeaveOverviewOut, LeavePatch, LeaveRequestOut
 @docs LeaveRequestsOut, LeaveTallyOut, LeaveYearOut, LeavesPatch, PreviewOut, PublishedRange
-@docs RegistrarOut, RequestChecksOut, RequestDayOut, RequestRowOut, RosterOut, ShiftIn
-@docs ShiftOut, ShiftPatch, StatusOut, ViolationOut, WaitingCountsOut, WorkloadOut
+@docs RegistrarOut, RequestChecksOut, RequestDayOut, RequestRowOut, RosterOut, ShiftCountsOut
+@docs ShiftIn, ShiftOut, ShiftPatch, ShiftPeriodOut, ShiftTallyOut, StatusOut
+@docs ViolationOut, WaitingCountsOut, WorkloadOut
 
 
 ## Enum
@@ -248,6 +250,10 @@ type alias RosterOut =
     }
 
 
+type alias ShiftCountsOut =
+    { periods : List ShiftPeriodOut, registrar : Int }
+
+
 type alias ShiftIn =
     { date : Date.Date
     , extra_duty : Maybe Bool
@@ -267,6 +273,25 @@ type alias ShiftOut =
 
 type alias ShiftPatch =
     { extra_duty : Maybe Bool, type_ : Maybe ShiftType }
+
+
+type alias ShiftPeriodOut =
+    { end : Date.Date
+    , name : String
+    , peers : Int
+    , shifts : List ShiftTallyOut
+    , start : Date.Date
+    }
+
+
+type alias ShiftTallyOut =
+    { count : Int
+    , max : OpenApi.Common.Nullable Int
+    , mean : OpenApi.Common.Nullable Float
+    , median : OpenApi.Common.Nullable Float
+    , min : OpenApi.Common.Nullable Int
+    , type_ : ShiftType
+    }
 
 
 type alias StatusOut =
