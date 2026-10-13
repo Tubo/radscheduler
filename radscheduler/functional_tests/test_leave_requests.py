@@ -158,3 +158,23 @@ def test_the_overview_filters_and_approves_requests_together(page: Page, live_se
 
     page.get_by_role("button", name="Undo").click()
     wait_for(lambda: decisions(requests["days"], "reg") == [None, None], page)
+
+
+def test_escape_closes_names_over_a_request_before_focus_reaches_them(page: Page, live_server, real_bundles, requests):
+    # On a slow machine Escape can come before focus has moved into the names; it must still close only them.
+    UserFactory(username="chief", is_staff=True, password="password")
+    sign_in(page, live_server, "chief")
+    page.goto(f"{live_server.url}/roster/leave/")
+    open_shelf(page, ERIKAS)
+    request = request_for(page, "Erika Lee")
+
+    monday = request.get_by_role(
+        "button", name="2 on leave of 2 on the roster, 1 still waiting on Mon 16 Dec. Show who."
+    )
+    monday.click()
+    expect(page.get_by_role("dialog", name="Mon 16 Dec")).to_be_visible()
+    monday.focus()
+    page.keyboard.press("Escape")
+
+    expect(page.get_by_role("dialog", name="Mon 16 Dec")).to_have_count(0)
+    expect(monday).to_be_visible()

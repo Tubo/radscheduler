@@ -687,7 +687,11 @@ update msg model =
                         ( { model | shelf = Just ( key, Failed ("Couldn't load this request. " ++ errorMessage err) ) }, Cmd.none )
 
         EscapeRequest key ->
-            if model.mode == Overview && Maybe.map Tuple.first model.shelf == Just key then
+            -- A pop open over the request closes first, even before focus has reached it.
+            if isJust model.pop then
+                closePop model
+
+            else if model.mode == Overview && Maybe.map Tuple.first model.shelf == Just key then
                 ( { model | shelf = Nothing }, Task.attempt (\_ -> NoOp) (Dom.focus (rowId key)) )
 
             else
@@ -1100,7 +1104,11 @@ shortcut key model =
         in
         case ( key, index, model.inRequest ) of
             ( "Escape", _, _ ) ->
-                update CloseReview model
+                if isJust model.pop then
+                    closePop model
+
+                else
+                    update CloseReview model
 
             ( _, Just i, False ) ->
                 go i
@@ -1207,6 +1215,16 @@ requestKeyDecoder key =
         (Decode.field "ctrlKey" Decode.bool)
         (Decode.field "metaKey" Decode.bool)
         (Decode.field "altKey" Decode.bool)
+
+
+isJust : Maybe a -> Bool
+isJust maybe =
+    case maybe of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
 
 
 when : Bool -> a -> Maybe a
