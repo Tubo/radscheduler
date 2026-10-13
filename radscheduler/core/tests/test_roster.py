@@ -322,3 +322,19 @@ class TestPage:
         page = app.get(reverse("home"), {"from": "2026-11-16"}).html
 
         assert page.select_one(".rb-monthtitle").text == "November 2026"
+
+    def test_a_registrar_can_follow_themselves_from_the_department_roster(self, app, team):
+        rachel = team["rachel"]
+        Shift.objects.create(date=TODAY, type=ShiftType.SWING, registrar=rachel)
+
+        page = app.get(reverse("home"), {"view": "dept"}, user=rachel.user).html
+        following = app.get(reverse("home"), {"view": "dept", "follow": rachel.pk}, user=rachel.user).html
+
+        me = page.select_one(".rb-me")
+        assert (me["name"], me["value"], me["aria-pressed"]) == ("follow", str(rachel.pk), "false")
+        assert following.select_one(".rb-me")["aria-pressed"] == "true"
+        assert " ".join(following.select_one(".rb-following-text").text.split()) == "Following you:"
+        assert [a["aria-keyshortcuts"] for a in page.select(".rb-view")] == ["m", "m"]
+
+    def test_only_a_registrar_has_a_me_button(self, app, admin_user):
+        assert app.get(reverse("home"), user=admin_user).html.select_one(".rb-me") is None

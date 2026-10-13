@@ -139,7 +139,8 @@
 {% block content %}
   <div class="roster-board is-{{ view }}"
        id="rb"
-       data-follow="{{ follow|default_if_none:'' }}">
+       data-follow="{{ follow|default_if_none:'' }}"
+       data-me="{{ registrar.pk|default_if_none:'' }}">
     {# Following a registrar: written here and, as it changes, by roster.js. #}
     <style id="rb-follow-css">
       {{ follow_css|safe }}
@@ -157,9 +158,13 @@
           <nav class="rb-views" aria-label="Whose roster">
             <a class="rb-view{% if view == 'mine' %} is-on{% endif %}"
                href="?{{ mine_query }}"
+               aria-keyshortcuts="m"
+               title="Just your days (m)"
                {% if view == 'mine' %}aria-current="page"{% endif %}>Mine</a>
             <a class="rb-view{% if view == 'dept' %} is-on{% endif %}"
                href="?{{ dept_query }}"
+               aria-keyshortcuts="m"
+               title="Everyone's days (m)"
                {% if view == 'dept' %}aria-current="page"{% endif %}>Department</a>
           </nav>
         {% endif %}
@@ -205,22 +210,34 @@
                 up-scroll="false">
             <input type="hidden" name="view" value="dept" />
             <input type="hidden" name="month" value="{{ roster.month|date:'Y-m' }}" />
-            <label class="rb-field">
-              <span class="rb-field-label">Follow</span>
-              <select class="re-input rb-person{% if follow %} is-narrowing{% endif %}"
-                      name="follow">
-                <option value="">Anyone, or click a name</option>
-                {% regroup people by year as by_year %}
-                {% for group in by_year %}
-                  <optgroup label="Year {{ group.grouper }}">
-                    {% for person in group.list %}
-                      <option value="{{ person.id }}"
-                              {% if person.id == follow %}selected{% endif %}>{{ person.name }}</option>
-                    {% endfor %}
-                  </optgroup>
-                {% endfor %}
-              </select>
-            </label>
+            <div class="rb-field">
+              <label class="rb-field-label" for="rb-person">Follow</label>
+              <span class="re-joined">
+                <select id="rb-person"
+                        class="re-input rb-person{% if follow %} is-narrowing{% endif %}"
+                        name="follow">
+                  <option value="">Anyone, or click a name</option>
+                  {% regroup people by year as by_year %}
+                  {% for group in by_year %}
+                    <optgroup label="Year {{ group.grouper }}">
+                      {% for person in group.list %}
+                        <option value="{{ person.id }}"
+                                {% if person.id == follow %}selected{% endif %}>{{ person.name }}</option>
+                      {% endfor %}
+                    </optgroup>
+                  {% endfor %}
+                </select>
+                {% if registrar %}
+                  {# Without JavaScript this submits the form, its follow coming after the select's. #}
+                  <button class="re-btn rb-me{% if follow == registrar.pk %} is-on{% endif %}"
+                          type="submit"
+                          name="follow"
+                          value="{{ registrar.pk }}"
+                          aria-pressed="{% if follow == registrar.pk %}true{% else %}false{% endif %}"
+                          title="Follow yourself across the month">Me</button>
+                {% endif %}
+              </span>
+            </div>
             {% if years %}
               <div class="rb-field"
                    role="radiogroup"
@@ -296,11 +313,11 @@
                 <span class="rb-key-day is-unpublished"></span> Not published yet: may still change
               </li>
             </ul>
-            {% if view != "mine" %}
-              <p class="rb-key-note">
-                Point at a name to see them across the month; click it to follow them. <kbd>[</kbd> and <kbd>]</kbd> change month.
-              </p>
-            {% endif %}
+            <p class="rb-key-note">
+              {% if view != "mine" %}Point at a name to see them across the month; click it to follow them.{% endif %}
+              <kbd>[</kbd> and <kbd>]</kbd> change month, <kbd>t</kbd> goes to today
+              {% if registrar %}and <kbd>m</kbd> switches between Mine and Department{% endif %}.
+            </p>
           </div>
         </details>
       </div>
@@ -367,7 +384,7 @@
       {% if view == "dept" %}
         <p class="rb-following{% if followed %} is-on{% endif %}">
           {% if followed %}
-            <span class="rb-following-text" aria-live="polite">Following <strong id="rb-following-name">{{ followed.name }}</strong>:</span>
+            <span class="rb-following-text" aria-live="polite">Following <strong id="rb-following-name">{% if registrar and followed.id == registrar.pk %}you{% else %}{{ followed.name }}{% endif %}</strong>:</span>
             <span class="rb-following-count">{{ follow_summary }}</span>
             <a class="re-btn re-btn--quiet rb-unfollow" href="?{{ follow_query }}">Stop following</a>
           {% else %}

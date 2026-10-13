@@ -68,6 +68,8 @@ up.compiler('.roster-board', (board) => {
   let filtersOpen = false;
 
   const followed = () => board.dataset.follow || '';
+  // The signed-in registrar, for the Me button.
+  const me = board.dataset.me || '';
 
   function paint() {
     style.textContent = followCss(followed(), preview);
@@ -110,6 +112,7 @@ up.compiler('.roster-board', (board) => {
   }
 
   function nameOf(follow) {
+    if (follow === me) return 'you';
     return (
       board.querySelector(`${CHIP}[data-r="${follow}"]`)?.dataset.name ||
       board.querySelector(`.rb-person option[value="${follow}"]`)
@@ -173,6 +176,11 @@ up.compiler('.roster-board', (board) => {
       picker.value = follow;
       picker.classList.toggle('is-narrowing', !!follow);
     }
+    const mine = board.querySelector('.rb-me');
+    if (mine) {
+      mine.classList.toggle('is-on', !!me && follow === me);
+      mine.setAttribute('aria-pressed', String(!!me && follow === me));
+    }
     for (const link of board.querySelectorAll('a.rb-keep')) {
       link.href = withParam(link.href, 'follow', follow);
     }
@@ -183,7 +191,55 @@ up.compiler('.roster-board', (board) => {
       Object.assign(input, { type: 'hidden', name: 'follow', value: follow });
       goto.prepend(input);
     }
+    unfoldToFit();
     rove();
+  }
+
+  // On a wide screen the month fills the window, so a day often has room for its days off and leave: those
+  // that fit are drawn in full, and the rest stay folded into their line. Measured all at once, then written.
+  function unfoldToFit() {
+    for (const day of board.querySelectorAll('.rb-day.is-unfolded')) {
+      day.classList.remove('is-unfolded');
+    }
+    if (NARROW.matches) return;
+    const fits = [];
+    for (const day of board.querySelectorAll('.rb-day')) {
+      const fold = day.querySelector(':scope > .rb-fold');
+      if (!fold) continue;
+      const hidden = [
+        ...day.querySelectorAll('.rb-chips .rb-chip.is-folded'),
+      ].filter((chip) => !isVisible(chip));
+      if (!hidden.length) continue;
+      const sample = [...day.querySelectorAll('.rb-chips .rb-chip')].find(
+        isVisible,
+      );
+      const chipHeight = (sample?.getBoundingClientRect().height || 20) + 2;
+      const parts = [...day.children].filter(isVisible);
+      const bottom = parts.at(-1).getBoundingClientRect().bottom;
+      const room =
+        day.getBoundingClientRect().bottom -
+        parseFloat(getComputedStyle(day).paddingBottom) -
+        bottom +
+        fold.getBoundingClientRect().height;
+      if (hidden.length * chipHeight <= room) fits.push(day);
+    }
+    for (const day of fits) day.classList.add('is-unfolded');
+  }
+
+  // The month fills the window below the page's head.
+  function fitToWindow() {
+    const top = board.getBoundingClientRect().top + window.scrollY;
+    board.style.setProperty('--rb-top', `${top}px`);
+  }
+
+  let resizing = null;
+  function onResize() {
+    clearTimeout(resizing);
+    resizing = setTimeout(() => {
+      fitToWindow();
+      unfoldToFit();
+      rove();
+    }, 100);
   }
 
   // The board is one stop for Tab; arrow keys move between chips: up and down within a day, left and right
@@ -239,13 +295,14 @@ up.compiler('.roster-board', (board) => {
     moveTo(chip, to);
   }
 
-  // [ and ] step a month, t goes to today.
+  // [ and ] step a month, t goes to today, m switches between Mine and Department.
   function onPageKey(event) {
     if (typing(event)) return;
     const link = {
       '[': '.rb-prev[href]',
       ']': '.rb-next[href]',
       t: '.rb-today',
+      m: '.rb-view:not(.is-on)',
     }[event.key];
     if (!link) return;
     const target = board.querySelector(link);
@@ -278,6 +335,12 @@ up.compiler('.roster-board', (board) => {
       return;
     event.preventDefault();
     setFollow(chip.dataset.r === followed() ? '' : chip.dataset.r);
+  }
+
+  function onMe(event) {
+    if (!event.target.closest('.rb-me') || !me) return;
+    event.preventDefault();
+    setFollow(followed() === me ? '' : me);
   }
 
   function onChange(event) {
@@ -342,6 +405,7 @@ up.compiler('.roster-board', (board) => {
     if (!board.contains(event.target) || event.target === board) return;
     showFilters();
     describe(false);
+    unfoldToFit();
     rove();
   }
 
@@ -351,15 +415,19 @@ up.compiler('.roster-board', (board) => {
   board.addEventListener('focusout', letGo);
   board.addEventListener('click', onClick);
   board.addEventListener('click', onFilterToggle);
+  board.addEventListener('click', onMe);
   board.addEventListener('change', onChange);
   board.addEventListener('keydown', onKeydown);
   board.addEventListener('keydown', onEscape);
   board.addEventListener('toggle', onToggle, true);
   document.addEventListener('click', onDocumentClick);
   document.addEventListener('keydown', onPageKey);
+  window.addEventListener('resize', onResize);
   const offInserted = up.on('up:fragment:inserted', onInserted);
 
   paint();
+  fitToWindow();
+  unfoldToFit();
   rove();
 
   // A phone opens at today, under the month's name.
@@ -374,6 +442,8 @@ up.compiler('.roster-board', (board) => {
     clearTimeout(lingering);
     document.removeEventListener('click', onDocumentClick);
     document.removeEventListener('keydown', onPageKey);
+    window.removeEventListener('resize', onResize);
+    clearTimeout(resizing);
     offInserted();
   };
 });

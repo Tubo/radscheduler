@@ -164,6 +164,19 @@
   display: none;
 }
 
+// Following yourself: the Me button joined to the Follow picker, blue while it's on.
+.rb-me {
+  padding-inline: 0.75rem;
+
+  &.is-on {
+    position: relative;
+    z-index: 1;
+    border-color: var(--re-accent);
+    background: var(--re-accent-tint);
+    color: var(--re-accent-deep);
+  }
+}
+
 .rb-count {
   min-width: 1.125rem;
   padding: 0 0.3125rem;
@@ -606,6 +619,11 @@ a.rb-chip:hover {
     justify-content: space-between;
   }
 
+  .rb-field > .re-joined {
+    display: flex;
+    flex: 1;
+  }
+
   .rb-person {
     flex: 1;
     max-width: none;
@@ -756,9 +774,38 @@ a.rb-chip:hover {
 }
 
 // From 48rem: a calendar month, a week to a row of seven columns, under a header of weekdays that stays in view.
+// The month fills the window below the navbar (roster.js measures --rb-top), its weeks sharing what is left.
 @media (min-width: 48rem) {
   .roster-board {
     --rb-chip-display: block;
+
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100dvh - var(--rb-top, 3rem));
+    padding-bottom: 0.75rem;
+  }
+
+  .rb-main,
+  .rb-weeks,
+  .rb-monthblock {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+  }
+
+  .rb-week {
+    flex: 1 0 auto;
+  }
+
+  // A day with room for its days off and leave draws them, and drops the line they were folded into.
+  .rb-day.is-unfolded {
+    .rb-chip.re-chip.is-folded {
+      display: block;
+    }
+
+    > .rb-fold {
+      display: none;
+    }
   }
 
   .rb-start,

@@ -3,6 +3,7 @@ The roster that opens the app, in a real browser: following a registrar across a
 on a phone the list running on month to month. Needs the built bundles: run `pnpm build` first.
 """
 
+import re
 from datetime import date, timedelta
 from urllib.parse import parse_qsl, urlsplit
 
@@ -52,7 +53,8 @@ def follow_style(page: Page) -> str:
 
 
 def test_office_staff_follow_one_registrar_across_the_month(page: Page, live_server, real_bundles, roster):
-    page.set_viewport_size({"width": 1440, "height": 900})
+    # A short window: the month can't stretch, so busy days stay folded.
+    page.set_viewport_size({"width": 1440, "height": 500})
     page.goto(f"{live_server.url}/?view=dept")
     swings = page.locator(".rb-chips .rb-chip", has_text="Rachel H.")
     busy = page.locator(".rb-day:not(.is-outside)").nth(9)
@@ -81,6 +83,14 @@ def test_office_staff_follow_one_registrar_across_the_month(page: Page, live_ser
     expect(page.locator(".rb-following")).to_contain_text("Following Kate Hart:")
     expect(page.locator(".rb-following-count")).to_have_text(f"1 day of leave in {roster['month']:%B}")
 
+    # In a tall window the month fills it, and a day with room draws its days off and leave in full.
+    page.get_by_role("link", name="Stop following").click()
+    page.set_viewport_size({"width": 1440, "height": 1400})
+    expect(busy).to_have_class(re.compile(r"\bis-unfolded\b"))
+    expect(busy.locator(".rb-chips .rb-chip", has_text="Kate H.")).to_be_visible()
+    expect(busy.locator(".rb-fold-summary")).to_be_hidden()
+    busy.locator(".rb-chips .rb-chip", has_text="Kate H.").click()
+
     # ] steps a month, still following them.
     page.keyboard.press("]")
     next_month = add_months(roster["month"], 1)
@@ -108,3 +118,18 @@ def test_a_registrar_on_a_phone_opens_at_today_and_scrolls_on_to_next_month(
         page.wait_for_timeout(300)
     expect(page.locator(".rb-monthblock")).to_have_count(2)
     expect(page.locator("#rb-end")).to_contain_text("That's the published roster")
+
+
+def test_a_registrar_follows_themselves_and_switches_views_with_m(page: Page, live_server, real_bundles, roster):
+    page.set_viewport_size({"width": 1440, "height": 900})
+    sign_in(page, live_server, "rachel")
+    page.goto(f"{live_server.url}/?view=dept")
+
+    page.get_by_role("button", name="Me").click()
+    expect(page.get_by_role("button", name="Me")).to_have_attribute("aria-pressed", "true")
+    expect(page.locator(".rb-following")).to_contain_text("Following you:")
+
+    page.keyboard.press("m")
+    expect(page.get_by_role("heading", level=1)).to_have_text("My roster")
+    page.keyboard.press("m")
+    expect(page.get_by_role("heading", level=1)).to_have_text("Roster")
