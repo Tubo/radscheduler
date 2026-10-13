@@ -305,10 +305,10 @@
   font-weight: 500;
 }
 
-// A request in two bands. The decision (who, what, the verdict and the buttons) sits beside its roster, about
-// as tall; under both, what to weigh it against (the rule breaks and the leave they've had) runs as a row.
-// Narrow, the three stack in the same order, which is also the DOM's and so the keyboard's. With the roster
-// hidden (the Director of Training's first view), the context takes its place beside the decision.
+// A request in two columns. Down the side, the decision (who, what, the verdict and the buttons), then what to
+// weigh it against (the rule breaks and the leave they've had), always in that order; beside them, the roster.
+// Narrow, the three stack in the DOM's order, which is also the keyboard's: decision, roster, context. With the
+// roster hidden (the Director of Training's first view), the context takes its place beside the decision.
 
 .lr-request {
   display: grid;
@@ -333,11 +333,31 @@
 
 @media (min-width: 72rem) {
   .lr-request {
+    grid-template-rows: auto 1fr;
     grid-template-columns: minmax(19rem, 24rem) minmax(0, 1fr);
-    grid-template-areas: 'decision strip' 'context context';
+    grid-template-areas: 'decision strip' 'context strip';
 
     &:not(.has-roster) {
+      grid-template-rows: auto;
       grid-template-areas: 'decision context';
+    }
+
+    // Under the decision, one thing after another.
+    &.has-roster .lr-context {
+      flex-direction: column;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      padding-top: 1rem;
+      border-top: 1px solid var(--re-line);
+
+      > * {
+        flex: none;
+        max-width: none;
+      }
+    }
+
+    .lr-main {
+      align-self: start;
     }
   }
 }
@@ -376,6 +396,24 @@
   > .lr-links {
     margin-top: 0.25rem;
   }
+}
+
+// A heading with a way to more beside it: earlier years, the rule breaks already on the roster.
+.lr-headrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 0.75rem;
+  margin: 0 0 0.25rem;
+
+  h4 {
+    margin: 0;
+  }
+}
+
+.lr-headlink {
+  font-size: 0.75rem;
 }
 
 .lr-main {
@@ -508,6 +546,12 @@
   font-weight: 500;
 }
 
+// The request's buttons, and the sentence that replaces them once decided, take the same height.
+.lr-decide .lr-actions {
+  align-items: center;
+  min-height: 2rem;
+}
+
 .lr-status {
   margin: 0;
   color: var(--re-muted);
@@ -524,85 +568,58 @@
   flex: 1 1 24rem;
   max-width: 40rem;
 
-  h4,
-  summary {
-    margin: 0 0 0.125rem;
+  h4 {
     font-weight: 500;
   }
-
-  summary {
-    width: fit-content;
-    cursor: pointer;
-  }
 }
 
-.lr-existing {
-  margin-top: 0.375rem;
-
-  summary {
-    padding-block: 0.25rem;
-  }
-
-  .re-clause {
-    border-color: var(--re-line-strong);
-    color: var(--re-muted);
-  }
+// The rule breaks already on the roster, in their pop: not this leave's doing, so quieter.
+.lr-pop .re-rulelist .re-clause {
+  border-color: var(--re-line-strong);
+  color: var(--re-muted);
 }
 
-// Their leave by year: the request weighed against what they've had. A quiet table per year, side by side
-// when there's room, the request's own days in blue (with a +) and waiting days in ochre, the column heads
-// naming each.
+// Their leave by year: the request weighed against what they've had, in one quiet table. Types down the side,
+// years across to the one the request falls in, which a rule sets apart; the request's own days in blue (with
+// a +), and an ochre hourglass where some days are still waiting.
 .lr-years {
-  display: flex;
-  flex: 1 1 24rem;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.75rem 1.25rem;
+  // As wide as its table, so the key sits at the table's edge; a long history scrolls inside it.
+  width: fit-content;
+  min-width: 0;
+  max-width: 100%;
 
-  > * {
-    flex: 0 1 26rem;
-    min-width: 0;
-  }
-
-  h4,
-  summary {
-    margin: 0 0 0.25rem;
+  h4 {
     font-weight: 500;
-  }
-
-  summary {
-    width: fit-content;
-    padding-block: 0.25rem;
-    cursor: pointer;
   }
 }
 
-.lr-year-span {
-  margin-left: 0.375rem;
-  font-weight: 400;
+.lr-tally-key {
+  color: var(--re-muted);
+  font-size: 0.6875rem;
+  white-space: nowrap;
 }
 
 .lr-tally-scroll {
   overflow-x: auto;
 }
 
-// Fixed columns, so the numbers line up from one year to the next.
 .lr-tally {
-  width: 100%;
-  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
 
+  // Each year as wide as its numbers, but no narrower than its head, so a short history stays compact.
   th,
   td {
-    padding: 0.25rem 0 0.25rem 0.5rem;
+    min-width: 3.25rem;
+    padding: 0.25rem 0.5rem;
     border-bottom: 1px solid var(--re-line);
     text-align: right;
     white-space: nowrap;
   }
 
   th:first-child {
+    width: 6.5rem;
     padding-left: 0;
     text-align: left;
   }
@@ -612,11 +629,6 @@
     font-size: 0.6875rem;
     font-weight: 600;
     vertical-align: bottom;
-    white-space: normal;
-  }
-
-  thead th:first-child {
-    width: 6rem;
   }
 
   tbody th {
@@ -627,16 +639,16 @@
     color: var(--re-muted);
   }
 
-  .is-waiting {
-    color: var(--re-wait);
+  // The year the request falls in: set apart by a rule, its head in ink and its days in full weight.
+  .is-first-lead {
+    border-left: 1px solid var(--re-line-strong);
   }
 
-  .is-request {
-    color: var(--re-accent);
-    font-weight: 600;
+  thead .is-lead {
+    color: var(--re-ink);
   }
 
-  .is-total {
+  tbody .is-lead {
     font-weight: 600;
   }
 
@@ -646,8 +658,20 @@
   }
 }
 
-.lr-earlier .lr-tally {
-  margin-top: 0.25rem;
+.lr-tally-wait {
+  margin-left: 2px;
+  color: var(--re-wait);
+  font-size: 0.6875rem;
+}
+
+.lr-tally-asked {
+  margin-left: 0.25rem;
+  color: var(--re-accent);
+  font-weight: 600;
+}
+
+.lr-tally-key .lr-tally-asked {
+  margin: 0;
 }
 
 // The strip of roster: the request's days and two either side, one column each. It is the positioning
@@ -749,32 +773,6 @@
   font-weight: 400;
 }
 
-// Every waiting day for one approver at once, from the row's label.
-.lr-rowall {
-  display: flex;
-  gap: 4px;
-  margin-top: 4px;
-}
-
-.lr-mini {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  min-height: 1.5rem;
-  padding: 1px 6px;
-  border: 1px solid var(--re-line-strong);
-  border-radius: 4px;
-  background: #fff;
-  color: var(--re-off-ink);
-  font-size: 0.6875rem;
-  font-weight: 500;
-
-  &:hover {
-    border-color: var(--re-muted);
-    color: var(--re-ink);
-  }
-}
-
 .lr-weekday,
 .lr-daydate,
 .lr-holiday {
@@ -858,31 +856,29 @@
   }
 }
 
+// A decision someone else makes, or one not open to change: a mark the size of a toggle, who made it on hover.
 .lr-state {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
   color: var(--re-muted);
-  font-size: 0.75rem;
-  white-space: nowrap;
-
-  .bi {
-    margin-right: 2px;
-  }
 
   &.is-approved {
+    background: var(--re-ok-bg);
     color: var(--re-ok);
   }
 
   &.is-declined {
+    background: var(--re-bad-bg);
     color: var(--re-bad);
   }
-}
 
-.lr-by {
-  display: block;
-  overflow: hidden;
-  color: var(--re-muted);
-  font-size: 0.6875rem;
-  text-overflow: ellipsis;
+  &.is-waiting {
+    border: 1px dashed var(--re-line-strong);
+  }
 }
 
 // The clauses of the rule breaks on a day, under its chips.
@@ -1020,21 +1016,59 @@
   color: var(--re-wait);
 }
 
-// Who is on leave on a day: this request, then the others approved and waiting.
-.lr-daynames {
-  margin-top: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  background: var(--re-panel);
-  font-size: 0.8125rem;
+// A pop over the page, opened from a request: who is on leave on a day, earlier years, the rule breaks already on
+// the roster, the other approver's decision. The editor's popover, with a close button in its corner.
+.lr-pop-head {
+  padding-right: 2.5rem;
+}
 
-  p,
-  dl {
-    margin: 0.125rem 0 0;
+.lr-pop-line {
+  margin: 0.125rem 0 0;
+  color: var(--re-muted);
+  font-size: 0.8125rem;
+}
+
+.lr-pop-body {
+  padding-block: 0.5rem 0.625rem;
+  font-size: 0.8125rem;
+}
+
+.lr-pop-close {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: none;
+  color: var(--re-muted);
+
+  &:hover {
+    background: var(--re-panel);
+    color: var(--re-ink);
   }
+}
+
+.lr-pop-none {
+  margin: 0;
+  color: var(--re-muted);
+}
+
+.lr-pop-actions {
+  padding-block: 0.125rem;
+}
+
+// Who else is on leave that day: approved, then waiting, a name a line.
+.lr-daynames {
+  margin: 0;
 
   dt {
     color: var(--re-muted);
+    font-size: 0.75rem;
     font-weight: 500;
   }
 
@@ -1042,20 +1076,19 @@
     margin: 0;
   }
 
-  // Kept in the page while empty, so the names are announced when they appear.
-  &.is-empty {
+  ul {
     margin: 0;
     padding: 0;
+    list-style: none;
+  }
+
+  li {
+    padding: 1px 0;
   }
 }
 
-.lr-daygroup {
-  display: flex;
-  gap: 0.5rem;
-
-  dt {
-    flex: 0 0 6.5rem;
-  }
+.lr-daygroup + .lr-daygroup {
+  margin-top: 0.5rem;
 }
 
 // The marks named in "How this page works", as they look in the roster.
@@ -1087,14 +1120,6 @@
   .lr-toasts {
     right: 1rem;
     left: auto;
-  }
-}
-
-// Touch: room for a finger on the small controls the roster can spare it for.
-@media (pointer: coarse) {
-  .lr-mini {
-    min-height: 2rem;
-    padding-inline: 8px;
   }
 }
 

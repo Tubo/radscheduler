@@ -37,6 +37,11 @@ def open_shelf(page: Page, what: str):
     page.get_by_role("button", name=what, exact=True).click()
 
 
+def row_for(page: Page, what: str):
+    """A request's row in the overview, which says where each approver stands."""
+    return page.locator(".lr-row").filter(has=page.get_by_role("button", name=what, exact=True))
+
+
 ERIKAS = "Erika Lee's annual leave, Mon 16 – Tue 17 Dec 2024"
 
 
@@ -62,9 +67,9 @@ def test_the_director_approves_a_whole_request_and_can_undo_it(page: Page, live_
     open_shelf(page, ERIKAS)
     request = request_for(page, "Erika Lee")
     expect(request).to_contain_text("Annual leave · Mon 16 – Tue 17 Dec 2024 · 2 days")
-    # The verdict, the leave Erika has had this year, and opened from the overview, her roster at once
-    expect(request).to_contain_text("Up to 2 of 2 on leave")
-    expect(request.get_by_role("table", name="Leave in 2024–25")).to_be_visible()
+    # The leave Erika has had by year, this request's days among them, and opened from the overview, her roster
+    # at once
+    expect(request.get_by_role("table", name="Their leave by year")).to_be_visible()
     expect(request.get_by_role("row", name="Annual")).to_contain_text("+2")
     expect(request.get_by_role("table", name="Roster around Erika Lee's leave")).to_be_visible()
     # The senior registrar's decision is theirs to make: shown, not offered
@@ -75,7 +80,8 @@ def test_the_director_approves_a_whole_request_and_can_undo_it(page: Page, live_
     wait_for(lambda: decisions(requests["days"], "dot") == [True, True], page)
     assert decisions(requests["days"], "reg") == [None, None]
     expect(request).to_contain_text("You approved all 2 days.")
-    expect(request).to_contain_text("Director of Training approved · waiting on the senior registrar.")
+    expect(row_for(page, ERIKAS).locator(".lr-col-decision.is-dot")).to_contain_text("Approved")
+    expect(row_for(page, ERIKAS).locator(".lr-col-decision.is-reg")).to_contain_text("Waiting")
     # Nothing is left waiting on the Director, so the navbar's count goes
     expect(page.locator(".navbar-count")).to_have_count(0)
 
@@ -94,19 +100,22 @@ def test_the_senior_registrar_decides_day_by_day(page: Page, live_server, real_b
     request.get_by_role("button", name="Decline Tue 17 Dec as Senior registrar").click()
 
     wait_for(lambda: decisions(requests["days"], "reg") == [None, False], page)
-    expect(request).to_contain_text("1 day declined, 1 waiting")
+    expect(row_for(page, ERIKAS).locator(".lr-col-decision.is-reg")).to_contain_text("1 declined, 1 waiting")
     # A day's decision can be undone too
     expect(page.get_by_text("Declined Tue 17 Dec of Erika Lee's annual leave as senior registrar.")).to_be_visible()
     # Only the day still waiting is left for the request's buttons
     expect(request.get_by_role("button", name="Approve the 1 waiting day of Erika Lee's annual leave")).to_be_visible()
 
-    # Who else is away: Erika herself and Will on the Monday
+    # Who else is away on the Monday, over the roster: Will, beside Erika herself
     monday = "2 on leave of 2 on the roster, 1 still waiting on Mon 16 Dec. Show who."
     request.get_by_role("button", name=monday).click()
-    names = request.locator(".lr-daynames")
-    expect(names).to_contain_text("Mon 16 Dec")
-    expect(names.locator(".lr-daygroup", has_text="This request")).to_contain_text("Erika Lee")
+    names = page.get_by_role("dialog", name="Mon 16 Dec")
+    expect(names).to_contain_text("2 of 2 on leave, Erika Lee among them")
     expect(names.locator(".lr-daygroup", has_text="Approved")).to_contain_text("Will Tane (Edu)")
+    # Escape closes the names, not the shelf, and goes back to the day
+    page.keyboard.press("Escape")
+    expect(names).to_have_count(0)
+    expect(request.get_by_role("button", name=monday)).to_be_focused()
 
     # In approval mode, j moves to the request, and with focus in it a approves what is waiting there
     page.get_by_role("button", name="Review it").click()

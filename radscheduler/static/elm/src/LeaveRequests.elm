@@ -29,7 +29,7 @@ import Date exposing (Date)
 import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (on, onCheck, onClick, onInput, preventDefaultOn, stopPropagationOn)
+import Html.Events exposing (on, onCheck, onClick, onFocus, onInput, preventDefaultOn, stopPropagationOn)
 import Json.Decode as Decode exposing (Decoder)
 import Leave exposing (LeaveState(..), leaveChipClass, leaveChipContent, leaveIcon, leaveState, leaveStateClass, leaveStateName, leaveStateSentence, portionLabel)
 import LeaveFilters exposing (Filters)
@@ -173,8 +173,8 @@ type alias Model =
     -- Requests whose roster is shown, for the Director of Training, who sees a verdict first.
     , expanded : Set Int
 
-    -- The day whose names are shown under a request: the request's key and the day (Rata Die).
-    , openDay : Maybe ( Int, Int )
+    -- What is open over the page from a request, if anything.
+    , pop : Maybe Pop
 
     -- The control in each request's roster that Tab stops at, the request that last had focus, and whether
     -- focus is in it still.
@@ -190,6 +190,35 @@ type alias Model =
 
 type alias ApiError =
     OpenApi.Common.Error Never String
+
+
+{-| Something a request opens over the page rather than into itself, so the request keeps its size: who is on
+leave on a day, or the rule breaks already on the roster. With the control that opened it, which gets focus
+back, and where that sits on screen.
+-}
+type alias Pop =
+    { key : Int
+    , what : PopWhat
+    , opener : String
+    , anchor : Anchor
+    }
+
+
+type PopWhat
+    = DayNames Int
+    | OnRoster
+
+
+{-| Where the control that opened a pop sits in the viewport.
+-}
+type alias Anchor =
+    { left : Float
+    , right : Float
+    , top : Float
+    , bottom : Float
+    , viewportWidth : Float
+    , viewportHeight : Float
+    }
 
 
 flagsDecoder : Decoder Flags
@@ -245,7 +274,7 @@ emptyModel flags =
     , told = Nothing
     , changing = Set.empty
     , expanded = Set.empty
-    , openDay = Nothing
+    , pop = Nothing
     , gridFocus = Dict.empty
     , current = Nothing
     , inRequest = False
@@ -381,7 +410,7 @@ loadReview model =
         asked =
             model.asked + 1
     in
-    ( { model | data = Loading, asked = asked, openDay = Nothing, failed = Dict.empty, changing = Set.empty, current = Nothing }
+    ( { model | data = Loading, asked = asked, pop = Nothing, failed = Dict.empty, changing = Set.empty, current = Nothing }
     , Api.getLeaveRequests
         { authorization = { x_csrftoken = model.flags.csrfToken }
         , toMsg = Got asked
@@ -464,7 +493,11 @@ type Msg
     | StartChange Int
     | EndChange Int
     | ToggleRoster Int
-    | ToggleDay Int Int
+      -- Open (or close) a pop from a request, by the id of the control opening it.
+    | OpenPop Int PopWhat String
+    | GotPop Int PopWhat String (Result Dom.Error Dom.Element)
+    | ClosePop
+    | Focus String
     | FocusSpot Int Spot
     | MoveSpot Int Spot
     | EnterRequest Int
@@ -606,10 +639,10 @@ update msg model =
 
         ToggleShelf key ->
             if Maybe.map Tuple.first model.shelf == Just key then
-                ( { model | shelf = Nothing }, Cmd.none )
+                ( { model | shelf = Nothing, pop = Nothing }, Cmd.none )
 
             else
-                update (LoadShelf key) model
+                update (LoadShelf key) { model | pop = Nothing }
 
         LoadShelf key ->
             let
@@ -841,17 +874,43 @@ update msg model =
         ToggleRoster key ->
             ( { model | expanded = toggle key model.expanded }, Cmd.none )
 
-        ToggleDay key d ->
-            ( { model
-                | openDay =
-                    if model.openDay == Just ( key, d ) then
-                        Nothing
+        OpenPop key what opener ->
+            if Maybe.map (\p -> ( p.key, p.what )) model.pop == Just ( key, what ) then
+                closePop model
 
-                    else
-                        Just ( key, d )
-              }
-            , Cmd.none
-            )
+            else
+                ( model, Task.attempt (GotPop key what opener) (Dom.getElement opener) )
+
+        GotPop key what opener result ->
+            case result of
+                Ok element ->
+                    ( { model
+                        | pop =
+                            Just
+                                { key = key
+                                , what = what
+                                , opener = opener
+                                , anchor =
+                                    { left = element.element.x - element.viewport.x
+                                    , right = element.element.x - element.viewport.x + element.element.width
+                                    , top = element.element.y - element.viewport.y
+                                    , bottom = element.element.y - element.viewport.y + element.element.height
+                                    , viewportWidth = element.viewport.width
+                                    , viewportHeight = element.viewport.height
+                                    }
+                                }
+                      }
+                    , focusSoon "lr-pop-title"
+                    )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
+        ClosePop ->
+            closePop model
+
+        Focus elementId ->
+            ( model, Task.attempt (\_ -> NoOp) (Dom.focus elementId) )
 
         FocusSpot key spot ->
             ( { model | gridFocus = Dict.insert key spot model.gridFocus, current = Just key }, Cmd.none )
@@ -900,6 +959,25 @@ update msg model =
 
         NoOp ->
             ( model, Cmd.none )
+
+
+{-| Close the pop, and give focus back to what opened it.
+-}
+closePop : Model -> ( Model, Cmd Msg )
+closePop model =
+    case model.pop of
+        Just pop ->
+            ( { model | pop = Nothing }, focusSoon pop.opener )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+{-| Focus an element drawn by this update, once it is in the page.
+-}
+focusSoon : String -> Cmd Msg
+focusSoon elementId =
+    Process.sleep 30 |> Task.andThen (\_ -> Dom.focus elementId) |> Task.attempt (\_ -> NoOp)
 
 
 {-| Keep decisions to undo for a few seconds, under a message saying what they did.
@@ -1000,36 +1078,41 @@ changeMessage model change =
 -}
 shortcut : String -> Model -> ( Model, Cmd Msg )
 shortcut key model =
-    let
-        keys =
-            listedKeys model
+    if model.pop /= Nothing then
+        -- The pop open over the page has the keys.
+        ( model, Cmd.none )
 
-        index =
-            model.current |> Maybe.andThen (\k -> indexOf k keys)
+    else
+        let
+            keys =
+                listedKeys model
 
-        go i =
-            case List.head (List.drop i keys) of
-                Just k ->
-                    ( { model | current = Just k }, goTo k )
+            index =
+                model.current |> Maybe.andThen (\k -> indexOf k keys)
 
-                Nothing ->
-                    ( model, Cmd.none )
-    in
-    case ( key, index, model.inRequest ) of
-        ( "Escape", _, _ ) ->
-            update CloseReview model
+            go i =
+                case List.head (List.drop i keys) of
+                    Just k ->
+                        ( { model | current = Just k }, goTo k )
 
-        ( _, Just i, False ) ->
-            go i
+                    Nothing ->
+                        ( model, Cmd.none )
+        in
+        case ( key, index, model.inRequest ) of
+            ( "Escape", _, _ ) ->
+                update CloseReview model
 
-        ( "j", _, _ ) ->
-            go (Maybe.map ((+) 1) index |> Maybe.withDefault 0)
+            ( _, Just i, False ) ->
+                go i
 
-        ( "k", _, _ ) ->
-            go (Maybe.map (\i -> Basics.max 0 (i - 1)) index |> Maybe.withDefault 0)
+            ( "j", _, _ ) ->
+                go (Maybe.map ((+) 1) index |> Maybe.withDefault 0)
 
-        _ ->
-            ( model, Cmd.none )
+            ( "k", _, _ ) ->
+                go (Maybe.map (\i -> Basics.max 0 (i - 1)) index |> Maybe.withDefault 0)
+
+            _ ->
+                ( model, Cmd.none )
 
 
 {-| Focus a request and scroll it to the top of the list's pane.
@@ -1729,7 +1812,115 @@ view model =
                 ]
             ]
         , div [ class "re-toasts lr-toasts", attribute "aria-live" "polite" ] [ viewToast model.undos ]
+        , viewPop model
         ]
+
+
+{-| The pop open over the page, if any: a heading, a line under it, and what it holds.
+-}
+viewPop : Model -> Html Msg
+viewPop model =
+    case model.pop |> Maybe.andThen (\pop -> requestFor model pop.key |> Maybe.map (Tuple.pair pop)) of
+        Just ( pop, ( looks, request ) ) ->
+            let
+                ( heading, line, ( width, content ) ) =
+                    case pop.what of
+                        DayNames d ->
+                            ( Date.format "EEE d MMM" (Date.fromRataDie d)
+                            , formatDays (awayOn request d)
+                                ++ (case dayInfo request d |> Maybe.map .registrars of
+                                        Just n ->
+                                            " of " ++ String.fromInt n
+
+                                        Nothing ->
+                                            ""
+                                   )
+                                ++ " on leave"
+                                ++ (if List.any (\l -> Date.toRataDie l.date == d && isActive l) request.leaves then
+                                        ", " ++ registrarName looks request.registrar ++ " among them"
+
+                                    else
+                                        ""
+                                   )
+                            , ( 320, viewDayNames model looks request d )
+                            )
+
+                        OnRoster ->
+                            ( plural (List.length request.existing_violations) "rule break" "rule breaks" ++ " on their roster"
+                            , "Already there, whatever is decided"
+                            , ( 400, [ ul [ class "re-rulelist" ] (List.map viewRule request.existing_violations) ] )
+                            )
+
+                anchor =
+                    pop.anchor
+
+                below =
+                    (anchor.top + anchor.bottom) / 2 < anchor.viewportHeight / 2
+
+                shown =
+                    Basics.min width (anchor.viewportWidth - 16)
+            in
+            div []
+                [ div [ class "re-backdrop", onClick ClosePop ] []
+                , div
+                    ([ class "re-popover lr-pop"
+                     , id "lr-pop"
+                     , attribute "role" "dialog"
+                     , attribute "aria-modal" "true"
+                     , attribute "aria-labelledby" "lr-pop-title"
+                     , style "width" (px shown)
+                     , style "left" (px (clamp 8 (anchor.viewportWidth - shown - 8) anchor.left))
+                     , stopPropagationOn "keydown" escapeDecoder
+                     ]
+                        ++ (if below then
+                                [ style "top" (px (anchor.bottom + 4)), style "max-height" (px (anchor.viewportHeight - anchor.bottom - 16)) ]
+
+                            else
+                                [ style "bottom" (px (anchor.viewportHeight - anchor.top + 4)), style "max-height" (px (anchor.top - 16)) ]
+                           )
+                    )
+                    -- Focus stays inside: the sentinels at either end send it back round.
+                    [ span [ tabindex 0, onFocus (Focus "lr-pop-close") ] []
+                    , div [ class "re-popover-head lr-pop-head" ]
+                        [ h2 [ id "lr-pop-title", class "re-popover-title", tabindex -1 ] [ text heading ]
+                        , p [ class "lr-pop-line" ] [ text line ]
+                        ]
+                    , div [ class "re-popover-body lr-pop-body" ] content
+                    , button
+                        [ type_ "button"
+                        , id "lr-pop-close"
+                        , class "lr-pop-close"
+                        , attribute "aria-label" "Close"
+                        , title "Close (Esc)"
+                        , onClick ClosePop
+                        ]
+                        [ i [ class "bi bi-x-lg", attribute "aria-hidden" "true" ] [] ]
+                    , span [ tabindex 0, onFocus (Focus "lr-pop-title") ] []
+                    ]
+                ]
+
+        Nothing ->
+            text ""
+
+
+{-| Escape closes the pop, and goes no further: not closing the shelf, or approval mode, behind it.
+-}
+escapeDecoder : Decoder ( Msg, Bool )
+escapeDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                if key == "Escape" then
+                    Decode.succeed ( ClosePop, True )
+
+                else
+                    Decode.fail "not Escape"
+            )
+
+
+px : Float -> String
+px n =
+    String.fromFloat n ++ "px"
 
 
 viewToolbar : Model -> Html Msg
@@ -2561,7 +2752,7 @@ viewHelp model =
                     , icon "bi-check-lg" "approve"
                     , text " and "
                     , icon "bi-x-lg" "decline"
-                    , text " in its column; pressing a day's decision again sets it back to waiting. The request's buttons only change the days still waiting for you. Every decision can be undone for a few seconds."
+                    , text " in its column; pressing a day's decision again sets it back to waiting. The request's buttons only change the days still waiting for you. Hover a decision for who made it and when. Every decision can be undone for a few seconds."
                     ]
                 , li [ class "lr-help-marks" ]
                     [ text "Their roster: "
@@ -2823,7 +3014,12 @@ viewRequest model looks request =
                     )
                 ]
             , p [ class "lr-meta" ] [ text (askedLine model.zone request) ]
-            , viewHolidayNote looks request
+            , if showRoster then
+                -- The roster's column names it.
+                text ""
+
+              else
+                viewHolidayNote looks request
             , if List.isEmpty comments then
                 text ""
 
@@ -2832,7 +3028,12 @@ viewRequest model looks request =
                     [ i [ class "bi bi-chat-left-quote", attribute "aria-hidden" "true" ] []
                     , div [] (List.map (\c -> p [] [ text c ]) comments)
                     ]
-            , viewVerdict model looks request
+            , if model.mode == Overview then
+                -- A shelf's row has its checks; the roster beside it shows the days.
+                text ""
+
+              else
+                viewVerdict model looks request
             , viewDecide model looks request
             , case Dict.get key model.failed of
                 Just ( message, _ ) ->
@@ -2889,14 +3090,13 @@ viewRequest model looks request =
                     , on "scroll" (scrolledDecoder key)
                     ]
                     [ viewGrid model looks request ]
-                , viewDayNames model looks request
                 ]
 
           else
             text ""
 
         -- After the roster: what to weigh it against, the rule breaks and the leave they've had.
-        , div [ class "lr-context" ] [ viewBreaks request, viewYears model request ]
+        , div [ class "lr-context" ] [ viewBreaks model request, viewYears model request ]
         ]
 
 
@@ -3095,46 +3295,65 @@ viewVerdict model _ request =
                 Nothing ->
                     "Nothing left to give"
 
+        -- What was found, and, when nothing was, saying so.
         cover =
-            if noneRostered then
-                "not rostered yet"
+            case lost of
+                [] ->
+                    Nothing
 
-            else
-                case lost of
-                    [] ->
-                        "no cover lost"
+                [ one ] ->
+                    Just (one ++ " lost")
 
-                    [ one ] ->
-                        one ++ " lost"
-
-                    _ ->
-                        "cover lost on " ++ plural (List.length lost) "shift" "shifts"
+                _ ->
+                    Just ("cover lost on " ++ plural (List.length lost) "shift" "shifts")
 
         breaks =
-            case ( List.length request.violations, noneRostered ) of
-                ( 0, True ) ->
-                    "cover and rule breaks unchecked"
+            case List.length request.violations of
+                0 ->
+                    Nothing
 
-                ( 0, False ) ->
-                    "no rule breaks caused"
+                n ->
+                    Just (plural n "rule break" "rule breaks" ++ " caused")
 
-                ( n, _ ) ->
-                    plural n "rule break" "rule breaks" ++ " caused"
+        unchecked =
+            if noneRostered then
+                Just "not rostered yet"
 
-        partly =
-            if noneRostered || List.isEmpty unrostered then
-                []
+            else if List.isEmpty unrostered then
+                Nothing
 
             else
-                [ String.fromInt (List.length unrostered) ++ " of " ++ plural (List.length asked) "day" "days" ++ " not rostered yet" ]
+                Just (String.fromInt (List.length unrostered) ++ " of " ++ plural (List.length asked) "day" "days" ++ " not rostered yet")
+
+        found =
+            List.filterMap identity [ cover, breaks, unchecked ]
 
         parts =
-            [ away, cover, breaks ] ++ partly
+            away
+                :: (if List.isEmpty found && not busy then
+                        [ "nothing against it" ]
 
-        clauses =
-            request.violations |> List.map (\v -> nullable v.clause |> Maybe.withDefault "Department rule") |> unique
+                    else
+                        found
+                   )
+
+        -- In full on hover, the checks that found nothing too.
+        checked =
+            if noneRostered then
+                [ "cover and rule breaks can't be checked until it's rostered" ]
+
+            else
+                [ Maybe.withDefault "no cover lost" cover
+                , Maybe.withDefault "no rule breaks caused" breaks
+                ]
+                    ++ (if List.isEmpty unrostered then
+                            []
+
+                        else
+                            [ "the days not rostered yet unchecked" ]
+                       )
     in
-    p [ class ("lr-verdict " ++ level) ]
+    p [ class ("lr-verdict " ++ level), title (capitalise (String.join " · " (away :: checked)) ++ ".") ]
         [ i [ class ("bi " ++ icon), attribute "aria-hidden" "true" ] []
         , span []
             -- Each part ends with its separator, so a line never starts with one.
@@ -3142,20 +3361,14 @@ viewVerdict model _ request =
                 |> List.indexedMap
                     (\index part ->
                         span [ class "lr-verdict-part" ]
-                            (text
+                            [ text
                                 (if index < List.length parts - 1 then
                                     part ++ " ·"
 
                                  else
                                     part
                                 )
-                                :: (if part == breaks && not (List.isEmpty clauses) then
-                                        List.map (\c -> span [ class "re-clause" ] [ text c ]) clauses
-
-                                    else
-                                        []
-                                   )
-                            )
+                            ]
                     )
                 |> List.intersperse (text " ")
             )
@@ -3282,8 +3495,10 @@ viewDecide model looks request =
                 in
                 if Set.member key model.settled && not (Set.member key model.changing) then
                     [ p [ class "lr-mine" ] [ text (mineSummary approver request) ]
-                    , button [ type_ "button", class "re-btn", id (requestId key ++ "-start-change"), onClick (StartChange key) ]
-                        [ i [ class "bi bi-pencil", attribute "aria-hidden" "true" ] [], text "Change decision" ]
+                    , div [ class "lr-actions" ]
+                        [ button [ type_ "button", class "re-btn", id (requestId key ++ "-start-change"), onClick (StartChange key) ]
+                            [ i [ class "bi bi-pencil", attribute "aria-hidden" "true" ] [], text "Change decision" ]
+                        ]
                     ]
 
                 else if Set.member key model.settled then
@@ -3306,17 +3521,7 @@ viewDecide model looks request =
                                     []
                                 )
                     in
-                    [ p [ class "lr-mine" ]
-                        [ text
-                            (mineSummary approver request
-                                ++ (if showsRoster model key then
-                                        " Change a day in its column, or all at once."
-
-                                    else
-                                        ""
-                                   )
-                            )
-                        ]
+                    [ p [ class "lr-mine" ] [ text (mineSummary approver request) ]
                     , div [ class "lr-actions" ]
                         (List.filterMap identity [ approveAll, declineAll ]
                             ++ [ button
@@ -3334,18 +3539,7 @@ viewDecide model looks request =
                     ]
 
                 else if List.isEmpty waiting then
-                    [ p [ class "lr-mine" ]
-                        [ text
-                            (mineSummary approver request
-                                ++ (if showsRoster model key then
-                                        " Change a day in its column."
-
-                                    else
-                                        ""
-                                   )
-                            )
-                        ]
-                    ]
+                    [ div [ class "lr-actions" ] [ p [ class "lr-mine" ] [ text (mineSummary approver request) ] ] ]
 
                 else
                     [ div [ class "lr-actions" ]
@@ -3367,7 +3561,13 @@ viewDecide model looks request =
             Nothing ->
                 []
          )
-            ++ [ p [ class "lr-status", attribute "aria-live" "polite" ] [ text status ] ]
+            ++ (if model.mode == Overview then
+                    -- A shelf's row says where each approver stands already.
+                    []
+
+                else
+                    [ p [ class "lr-status", attribute "aria-live" "polite" ] [ text status ] ]
+               )
         )
 
 
@@ -3441,174 +3641,186 @@ mixedStatus leaves =
         |> String.join ", "
 
 
-{-| The rule breaks this leave would cause, and, folded away, those already on their roster.
+{-| The rule breaks this leave would cause, and a way to those already on their roster.
 -}
-viewBreaks : T.LeaveRequestOut -> Html Msg
-viewBreaks request =
+viewBreaks : Model -> T.LeaveRequestOut -> Html Msg
+viewBreaks model request =
     let
-        rule v =
-            li []
-                [ span [ class "re-clause" ] [ text (nullable v.clause |> Maybe.withDefault "Department rule") ]
-                , text v.message
-                ]
+        key =
+            requestKey request
+
+        opener =
+            requestId key ++ "-existing"
+
+        existing =
+            List.length request.existing_violations
+
+        onRoster label =
+            if existing == 0 then
+                text ""
+
+            else
+                button
+                    [ type_ "button"
+                    , class "re-btn re-btn--quiet lr-headlink"
+                    , id opener
+                    , attribute "aria-haspopup" "dialog"
+                    , attribute "aria-expanded" (boolString (Maybe.map (\p -> ( p.key, p.what )) model.pop == Just ( key, OnRoster )))
+                    , title "Rule breaks on their roster already, whatever is decided"
+                    , onClick (OpenPop key OnRoster opener)
+                    ]
+                    [ text label ]
     in
-    if List.isEmpty request.violations && List.isEmpty request.existing_violations then
+    if List.isEmpty request.violations && existing == 0 then
         text ""
+
+    else if List.isEmpty request.violations then
+        div [ class "lr-breaks" ] [ onRoster (plural existing "rule break" "rule breaks" ++ " already on their roster") ]
 
     else
         div [ class "lr-breaks" ]
-            [ if List.isEmpty request.violations then
-                text ""
-
-              else
-                div []
-                    [ h4 [ class "re-label" ] [ text ("Caused by this leave: " ++ plural (List.length request.violations) "rule break" "rule breaks") ]
-                    , ul [ class "re-rulelist" ] (List.map rule request.violations)
-                    ]
-            , if List.isEmpty request.existing_violations then
-                text ""
-
-              else
-                details [ class "lr-existing" ]
-                    [ summary [ class "re-label" ] [ text (plural (List.length request.existing_violations) "rule break" "rule breaks" ++ " already on their roster") ]
-                    , ul [ class "re-rulelist" ] (List.map rule request.existing_violations)
-                    ]
+            [ div [ class "lr-headrow" ]
+                [ h4 [ class "re-label" ] [ text "Rule breaks this leave causes" ]
+                , onRoster ("+" ++ String.fromInt existing ++ " on their roster")
+                ]
+            , ul [ class "re-rulelist" ] (List.map viewRule request.violations)
             ]
 
 
-{-| The registrar's leave by year and type, to weigh the request against what they've had: the year it
-falls in (or both, across the start of one) in full, and earlier years behind a disclosure.
+viewRule : T.ViolationOut -> Html Msg
+viewRule v =
+    li []
+        [ span [ class "re-clause" ] [ text (nullable v.clause |> Maybe.withDefault "Department rule") ]
+        , text v.message
+        ]
+
+
+{-| The registrar's leave by type and year, to weigh the request against what they've had, in one table: types
+down the side, leave years across from the earliest with leave to the one the request falls in (or both,
+across the start of one), each the days not declined. In the request's year, its own days follow in blue, and
+a mark says some days are still waiting.
 -}
 viewYears : Model -> T.LeaveRequestOut -> Html Msg
 viewYears model request =
     let
-        ( lead, earlier ) =
-            List.partition .lead request.years
+        byYear =
+            Dict.fromList (List.map (\y -> ( Date.year y.start, y )) request.years)
+
+        starts =
+            Dict.keys byYear
+
+        -- Every year from the first to the last, those with no leave too.
+        years =
+            case ( List.minimum starts, List.maximum starts ) of
+                ( Just first, Just last ) ->
+                    List.range first last
+
+                _ ->
+                    []
+
+        types =
+            model.flags.leaveTypes
+                |> List.filter (\t -> List.any (.types >> List.any (\y -> T.leaveTypeToString y.type_ == t.value)) request.years)
+
+        tallyFor t year =
+            Dict.get year byYear
+                |> Maybe.andThen (.types >> List.filter (\y -> T.leaveTypeToString y.type_ == t.value) >> List.head)
+
+        isLead year =
+            Dict.get year byYear |> Maybe.map .lead |> Maybe.withDefault False
+
+        firstLead =
+            List.head (List.filter isLead years)
+
+        columnClasses year =
+            [ ( "is-lead", isLead year ), ( "is-first-lead", firstLead == Just year ) ]
+
+        cell t year =
+            case tallyFor t year of
+                Just tally ->
+                    let
+                        had =
+                            tally.approved + tally.waiting
+
+                        spelled =
+                            [ ( tally.approved, "approved" ), ( tally.waiting, "still waiting" ), ( tally.request, "this request" ) ]
+                                |> List.filter (\( n, _ ) -> n > 0)
+                                |> List.map (\( n, what ) -> formatDays n ++ " " ++ what)
+                                |> String.join ", "
+                    in
+                    td [ classList (columnClasses year), title spelled ]
+                        [ if had > 0 then
+                            text (formatDays had)
+
+                          else
+                            text ""
+                        , if tally.waiting > 0 then
+                            span [ class "lr-tally-wait" ]
+                                [ i [ class "bi bi-hourglass-split", attribute "aria-hidden" "true" ] []
+                                , span [ class "visually-hidden" ] [ text (", " ++ formatDays tally.waiting ++ " still waiting") ]
+                                ]
+
+                          else
+                            text ""
+                        , if tally.request > 0 then
+                            span [ class "lr-tally-asked" ]
+                                [ text ("+" ++ formatDays tally.request)
+                                , span [ class "visually-hidden" ] [ text " this request" ]
+                                ]
+
+                          else
+                            text ""
+                        ]
+
+                Nothing ->
+                    td [ classList (( "is-none", True ) :: columnClasses year) ] [ text "–" ]
+
+        yearHead year =
+            let
+                start =
+                    leaveYearStart year
+
+                end =
+                    Date.add Date.Days -1 (leaveYearStart (year + 1))
+            in
+            th [ scope "col", classList (columnClasses year), title (Date.format "d MMM y" start ++ " – " ++ Date.format "d MMM y" end) ]
+                [ text (String.right 2 (String.fromInt year) ++ "–" ++ String.right 2 (String.fromInt (year + 1))) ]
+
+        asked t =
+            List.any (\year -> tallyFor t year |> Maybe.map (\y -> y.request > 0) |> Maybe.withDefault False) years
     in
-    if List.isEmpty request.years then
+    if List.isEmpty types then
         text ""
 
     else
-        section [ class "lr-years", attribute "aria-label" "Their leave by year" ]
-            (List.map (viewLeadYear model) lead
-                ++ [ if List.isEmpty earlier then
-                        text ""
-
-                     else
-                        viewEarlierYears model earlier
-                   ]
-            )
-
-
-viewLeadYear : Model -> T.LeaveYearOut -> Html Msg
-viewLeadYear model year =
-    let
-        headingId =
-            "lr-year-" ++ Date.toIsoString year.start ++ "-" ++ String.fromInt (Date.toRataDie year.end)
-
-        cell kind n =
-            if n == 0 then
-                td [ class "is-none" ] [ text "–" ]
-
-            else
-                td [ class kind ] [ text (formatDays n) ]
-
-        row tally =
-            tr [ classList [ ( "is-asked", tally.request > 0 ) ] ]
-                [ th [ scope "row" ] [ text (leaveTypeLabel model tally.type_) ]
-                , cell "" tally.approved
-                , cell "is-waiting" tally.waiting
-                , if tally.request == 0 then
-                    td [ class "is-none" ] [ text "–" ]
-
-                  else
-                    td [ class "is-request" ] [ text ("+" ++ formatDays tally.request) ]
-                , td [ class "is-total" ] [ text (formatDays (tally.approved + tally.waiting + tally.request)) ]
+        section [ class "lr-years", attribute "aria-labelledby" (requestId (requestKey request) ++ "-years") ]
+            [ div [ class "lr-headrow" ]
+                [ h4 [ class "re-label", id (requestId (requestKey request) ++ "-years"), title "Leave years run from the first Monday of February. Each year counts the days not declined." ]
+                    [ text "Their leave by year" ]
+                , span [ class "lr-tally-key", attribute "aria-hidden" "true" ]
+                    [ span [ class "lr-tally-asked" ] [ text "+" ], text " this request · ", i [ class "bi bi-hourglass-split lr-tally-wait" ] [], text " some waiting" ]
                 ]
-    in
-    div [ class "lr-year-block" ]
-        [ h4 [ class "re-label", id headingId ]
-            [ text ("Leave in " ++ leaveYearName year)
-            , span [ class "lr-year-span" ] [ text (Date.format "d MMM y" year.start ++ " – " ++ Date.format "d MMM y" year.end) ]
-            ]
-        , if List.isEmpty year.types then
-            p [ class "lr-status" ] [ text "None this year." ]
-
-          else
-            table [ class "lr-tally", attribute "aria-labelledby" headingId ]
-                [ thead []
-                    [ tr []
-                        [ th [ scope "col" ] [ span [ class "visually-hidden" ] [ text "Type" ] ]
-                        , th [ scope "col" ] [ text "Approved" ]
-                        , th [ scope "col" ] [ text "Waiting" ]
-                        , th [ scope "col" ] [ text "This request" ]
-                        , th [ scope "col", title "Approved, waiting and this request together" ] [ text "Total" ]
-                        ]
-                    ]
-                , tbody [] (List.map row year.types)
-                ]
-        ]
-
-
-{-| Earlier years, types down the side as in the year above, the days in each year that weren't declined.
--}
-viewEarlierYears : Model -> List T.LeaveYearOut -> Html Msg
-viewEarlierYears model years =
-    let
-        types =
-            model.flags.leaveTypes
-                |> List.map .value
-                |> List.filter (\t -> List.any (.types >> List.any (\y -> T.leaveTypeToString y.type_ == t)) years)
-
-        days t year =
-            year.types
-                |> List.filter (\y -> T.leaveTypeToString y.type_ == t)
-                |> List.map (\y -> y.approved + y.waiting + y.request)
-                |> List.sum
-    in
-    details [ class "lr-earlier" ]
-        [ summary [ class "re-label" ] [ text "Earlier years" ]
-        , div [ class "lr-tally-scroll" ]
-            [ table [ class "lr-tally" ]
-                [ thead []
-                    [ tr []
-                        (th [ scope "col" ] [ span [ class "visually-hidden" ] [ text "Type" ] ]
-                            :: List.map (\y -> th [ scope "col", title (Date.format "d MMM y" y.start ++ " – " ++ Date.format "d MMM y" y.end) ] [ text (leaveYearName y) ]) years
+            , div [ class "lr-tally-scroll" ]
+                [ table [ class "lr-tally lr-history", attribute "aria-labelledby" (requestId (requestKey request) ++ "-years") ]
+                    [ thead [] [ tr [] (th [ scope "col" ] [ span [ class "visually-hidden" ] [ text "Type" ] ] :: List.map yearHead years) ]
+                    , tbody []
+                        (List.map
+                            (\t ->
+                                tr [ classList [ ( "is-asked", asked t ) ] ]
+                                    (th [ scope "row" ] [ text t.label ] :: List.map (cell t) years)
+                            )
+                            types
                         )
                     ]
-                , tbody []
-                    (types
-                        |> List.map
-                            (\t ->
-                                tr []
-                                    (th [ scope "row" ] [ text (choiceFor model.flags.leaveTypes t).label ]
-                                        :: List.map
-                                            (\y ->
-                                                if days t y == 0 then
-                                                    td [ class "is-none" ] [ text "–" ]
-
-                                                else
-                                                    td [] [ text (formatDays (days t y)) ]
-                                            )
-                                            years
-                                    )
-                            )
-                    )
                 ]
             ]
-        ]
 
 
-{-| "2026–27": a leave year runs from February to the next January.
+{-| The first Monday of February of a year, when its leave year starts.
 -}
-leaveYearName : T.LeaveYearOut -> String
-leaveYearName year =
-    String.fromInt (Date.year year.start) ++ "–" ++ String.right 2 (String.fromInt (Date.year year.end))
-
-
-leaveTypeLabel : Model -> T.LeaveType -> String
-leaveTypeLabel model leaveType =
-    (choiceFor model.flags.leaveTypes (T.leaveTypeToString leaveType)).label
+leaveYearStart : Int -> Date
+leaveYearStart year =
+    Date.ceiling Date.Monday (Date.fromCalendarDate year Time.Feb 1)
 
 
 viewGrid : Model -> Lookups -> T.LeaveRequestOut -> Html Msg
@@ -3649,35 +3861,9 @@ viewGrid model looks request =
             let
                 canChange =
                     List.member approver model.flags.leaveApprovers && editable model key
-
-                waiting =
-                    waitingFor approver request
             in
             row
-                [ span [ class "lr-rowname" ] [ approverAbbr approver ]
-                , if canChange && List.length waiting > 1 then
-                    span [ class "lr-rowall" ]
-                        [ button
-                            [ type_ "button"
-                            , class "lr-mini"
-                            , attribute "aria-label" ("Approve every waiting day as " ++ who)
-                            , title ("Approve every waiting day as " ++ who)
-                            , onClick (Decide False { key = key, approver = approver, leaves = waiting, decision = Just True })
-                            ]
-                            [ i [ class "bi bi-check-lg", attribute "aria-hidden" "true" ] [], text "all" ]
-                        , button
-                            [ type_ "button"
-                            , class "lr-mini"
-                            , attribute "aria-label" ("Decline every waiting day as " ++ who)
-                            , title ("Decline every waiting day as " ++ who)
-                            , onClick (Decide False { key = key, approver = approver, leaves = waiting, decision = Just False })
-                            ]
-                            [ i [ class "bi bi-x-lg", attribute "aria-hidden" "true" ] [], text "all" ]
-                        ]
-
-                  else
-                    text ""
-                ]
+                [ span [ class "lr-rowname" ] [ approverAbbr approver ] ]
                 (\i date ->
                     case Dict.get (Date.toRataDie date) asked of
                         Just leave ->
@@ -3732,7 +3918,7 @@ viewGrid model looks request =
                 (\_ date -> viewOwnDay model request asked date ++ viewBreakTags (breaksOn date))
             , decisionRow 0 "reg" "Senior registrar"
             , decisionRow 1 "dot" "Director of Training"
-            , row [ span [ class "lr-rowname" ] [ text "On leave" ], span [ class "lr-rowsub" ] [ text (ofRoster ++ " on the roster") ] ]
+            , row [ span [ class "lr-rowname", title (capitalise ofRoster ++ " on the roster each day") ] [ text "On leave" ], span [ class "lr-rowsub" ] [ text ofRoster ] ]
                 (\i date -> [ viewAway model request key i date ])
             , viewCoverRow model looks request
             ]
@@ -3878,7 +4064,19 @@ viewDecision model request row index approver who canChange leave =
                  , class ("lr-toggle " ++ variant)
                  , classList [ ( "is-on", on_ ) ]
                  , attribute "aria-pressed" (boolString on_)
-                 , attribute "aria-label" (verb ++ " " ++ Date.format "EEE d MMM" leave.date ++ " as " ++ who)
+                 , attribute "aria-label"
+                    (verb
+                        ++ " "
+                        ++ Date.format "EEE d MMM" leave.date
+                        ++ " as "
+                        ++ who
+                        ++ (if on_ then
+                                " (" ++ by ++ ")"
+
+                            else
+                                ""
+                           )
+                    )
                  , title
                     (if on_ then
                         by ++ ". Press again to set it back to waiting."
@@ -3906,36 +4104,29 @@ viewDecision model request row index approver who canChange leave =
                 [ i [ class ("bi " ++ icon), attribute "aria-hidden" "true" ] [] ]
     in
     if canChange && not leave.cancelled then
-        div []
-            [ div [ class "lr-decision", classList [ ( "is-saving", saving ) ] ]
-                [ toggleButton 0 (Just True) "bi-check-lg" "Approve" "is-approve"
-                , toggleButton 1 (Just False) "bi-x-lg" "Decline" "is-decline"
-                ]
-            , if current == Nothing || saving then
-                text ""
-
-              else
-                viewBy model.zone approver leave
+        div [ class "lr-decision", classList [ ( "is-saving", saving ) ] ]
+            [ toggleButton 0 (Just True) "bi-check-lg" "Approve" "is-approve"
+            , toggleButton 1 (Just False) "bi-x-lg" "Decline" "is-decline"
             ]
 
     else
-        case current of
-            Just True ->
-                span [ class "lr-state is-approved" ]
-                    [ i [ class "bi bi-check-lg", attribute "aria-hidden" "true" ] []
-                    , text "Approved"
-                    , viewBy model.zone approver leave
-                    ]
+        -- The decision as a mark the size of a toggle, so changing it takes no more room; who made it on hover.
+        let
+            ( kind, icon ) =
+                case current of
+                    Just True ->
+                        ( "is-approved", "bi-check-lg" )
 
-            Just False ->
-                span [ class "lr-state is-declined" ]
-                    [ i [ class "bi bi-x-lg", attribute "aria-hidden" "true" ] []
-                    , text "Declined"
-                    , viewBy model.zone approver leave
-                    ]
+                    Just False ->
+                        ( "is-declined", "bi-x-lg" )
 
-            Nothing ->
-                span [ class "lr-state" ] [ text "Waiting" ]
+                    Nothing ->
+                        ( "is-waiting", "bi-hourglass-split" )
+        in
+        span [ class ("lr-state " ++ kind), title by ]
+            [ i [ class ("bi " ++ icon), attribute "aria-hidden" "true" ] []
+            , span [ class "visually-hidden" ] [ text by ]
+            ]
 
 
 {-| "Approved by Az, 7 Oct 2026, 16:21"
@@ -3966,28 +4157,6 @@ decidedLine zone approver leave =
         ++ (at |> Maybe.map (\time -> ", " ++ dateTime zone time) |> Maybe.withDefault "")
 
 
-{-| Who decided and when, in a few words under the decision: "Az · 7 Oct".
--}
-viewBy : Time.Zone -> String -> T.LeaveOut -> Html Msg
-viewBy zone approver leave =
-    let
-        ( by, at ) =
-            if approver == "reg" then
-                ( nullable leave.reg_decided_by, nullable leave.reg_decided_at )
-
-            else
-                ( nullable leave.dot_decided_by, nullable leave.dot_decided_at )
-
-        parts =
-            List.filterMap identity [ by, Maybe.map (Date.fromPosix zone >> Date.format "d MMM") at ]
-    in
-    if List.isEmpty parts then
-        text ""
-
-    else
-        span [ class "lr-by", title (decidedLine zone approver leave) ] [ text (String.join " · " parts) ]
-
-
 {-| Everyone on leave that day, this request included, shaded by their share of the roster. Opens the names.
 -}
 viewAway : Model -> T.LeaveRequestOut -> Int -> Int -> Date -> Html Msg
@@ -4012,7 +4181,7 @@ viewAway model request key index date =
             dayInfo request d |> Maybe.map .registrars |> Maybe.withDefault 0
 
         open =
-            model.openDay == Just ( key, d )
+            Maybe.map (\p -> ( p.key, p.what )) model.pop == Just ( key, DayNames d )
 
         label =
             formatDays count
@@ -4036,11 +4205,11 @@ viewAway model request key index date =
         ([ type_ "button"
          , class ("lr-heat is-" ++ String.fromInt (heatStep count rostered))
          , classList [ ( "is-open", open ) ]
+         , attribute "aria-haspopup" "dialog"
          , attribute "aria-expanded" (boolString open)
-         , attribute "aria-controls" (requestId key ++ "-names")
          , attribute "aria-label" (label ++ ". Show who.")
          , title label
-         , onClick (ToggleDay key d)
+         , onClick (OpenPop key (DayNames d) (spotId key ( 2, index * 2 )))
          ]
             ++ spotAttributes model request ( 2, index * 2 )
         )
@@ -4049,74 +4218,49 @@ viewAway model request key index date =
         ]
 
 
-viewDayNames : Model -> Lookups -> T.LeaveRequestOut -> Html Msg
-viewDayNames model looks request =
+{-| Who is on leave on a day besides the registrar asking: approved, then still waiting.
+-}
+viewDayNames : Model -> Lookups -> T.LeaveRequestOut -> Int -> List (Html Msg)
+viewDayNames model looks request d =
     let
-        key =
-            requestKey request
-
-        content =
-            case model.openDay of
-                Just ( k, d ) ->
-                    if k /= key then
-                        []
+        leaveLabel type_ portion =
+            (choiceFor model.flags.leaveTypes (T.leaveTypeToString type_)).short
+                ++ (if portion == "ALL" then
+                        ""
 
                     else
-                        let
-                            leaveLabel type_ portion =
-                                (choiceFor model.flags.leaveTypes (T.leaveTypeToString type_)).short
-                                    ++ (if portion == "ALL" then
-                                            ""
+                        " " ++ String.toLower portion
+                   )
 
-                                        else
-                                            " " ++ String.toLower portion
-                                       )
+        others =
+            List.filter (\a -> Date.toRataDie a.date == d) request.away
 
-                            mine =
-                                List.filter (\l -> Date.toRataDie l.date == d && isActive l) request.leaves
+        group heading names =
+            if List.isEmpty names then
+                Nothing
 
-                            others =
-                                List.filter (\a -> Date.toRataDie a.date == d) request.away
-
-                            group heading names =
-                                if List.isEmpty names then
-                                    Nothing
-
-                                else
-                                    Just
-                                        (div [ class "lr-daygroup" ]
-                                            [ dt [] [ text heading ]
-                                            , dd [] [ text (String.join ", " names) ]
-                                            ]
-                                        )
-
-                            name a =
-                                registrarName looks a.registrar ++ " (" ++ leaveLabel a.type_ a.portion ++ ")"
-                        in
-                        [ strong [ class "lr-dayname" ] [ text (Date.format "EEE d MMM" (Date.fromRataDie d)) ]
-                        , if List.isEmpty mine && List.isEmpty others then
-                            p [] [ text "Nobody on leave." ]
-
-                          else
-                            dl []
-                                (List.filterMap identity
-                                    [ group "This request" (List.map (\_ -> registrarName looks request.registrar) mine)
-                                    , group "Approved" (others |> List.filter .approved |> List.map name)
-                                    , group "Waiting" (others |> List.filter (not << .approved) |> List.map name)
-                                    ]
-                                )
+            else
+                Just
+                    (div [ class "lr-daygroup" ]
+                        [ dt [] [ text heading ]
+                        , dd [] [ ul [] (List.map (\n -> li [] [ text n ]) names) ]
                         ]
+                    )
 
-                Nothing ->
-                    []
+        name a =
+            registrarName looks a.registrar ++ " (" ++ leaveLabel a.type_ a.portion ++ ")"
     in
-    div
-        [ class "lr-daynames"
-        , classList [ ( "is-empty", List.isEmpty content ) ]
-        , id (requestId key ++ "-names")
-        , attribute "aria-live" "polite"
+    if List.isEmpty others then
+        [ p [ class "lr-pop-none" ] [ text "Nobody else is on leave." ] ]
+
+    else
+        [ dl [ class "lr-daynames" ]
+            (List.filterMap identity
+                [ group "Approved" (others |> List.filter .approved |> List.map name)
+                , group "Waiting" (others |> List.filter (not << .approved) |> List.map name)
+                ]
+            )
         ]
-        content
 
 
 {-| The cover the leave would lose that day, and, quieter, the cover already short whatever happens.
