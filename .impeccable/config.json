@@ -16,6 +16,13 @@
         "files": ["radscheduler/static/css/leave_requests.scss"],
         "createdAt": "2026-10-08T18:28:32.272Z",
         "reason": "Claude's call: the 3px inset stripe marks the requested days' columns in a data-grid header, the same marker the roster editor uses for today (.re-date.is-today); it is not a card accent"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": ["radscheduler/static/css/roster.scss"],
+        "createdAt": "2026-10-13T17:05:01.676Z",
+        "reason": "Claude's call: L400 is the today marker on a roster day (3px inset top rule plus a 'Today' tag), the same convention already ignored for editor_elm.scss and leave_requests.scss; not a card side-tab"
       }
     ]
   }

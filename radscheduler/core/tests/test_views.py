@@ -67,7 +67,7 @@ class TestNavbar:
         resp = app.get(reverse("leave_page"), user=juniors_db[0].user)
 
         assert self.current_links(resp) == ["My leave"]
-        assert self.link_labels(resp) == ["Calendar", "My leave", "Extra duties"]
+        assert self.link_labels(resp) == ["Roster", "My leave", "Extra duties"]
         assert not resp.html.select("nav [aria-label='Admin']")
 
     def test_any_date_in_either_editor_marks_the_roster_editor(self, app, admin_user):
@@ -115,7 +115,7 @@ class TestNavbar:
         Settings.objects.create(publish_start_date=date(2024, 12, 2), publish_end_date=date(2025, 3, 2))
 
         with freeze_time("2026-10-09"):
-            status = app.get(reverse("home"), user=juniors_db[0].user).html.select_one("nav .navbar-status")
+            status = app.get(reverse("leave_page"), user=juniors_db[0].user).html.select_one("nav .navbar-status")
 
         assert " ".join(status.text.split()) == "Roster published to Sun 2 Mar 2025"
         assert status.select_one("time")["datetime"] == "2025-03-02"

@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% load partials nav_tags %}
+{% load render_bundle from webpack_loader %}
+
+{% block title %}
+  {% if view == "mine" %}
+    My roster
+  {% else %}
+    Roster
+  {% endif %}
+  · Radscheduler
+{% endblock title %}
+{% block css %}
+  {{ block.super }}
+  {% render_bundle 'roster' 'css' %}
+{% endblock css %}
+{% block javascript %}
+  {{ block.super }}
+  {% render_bundle 'roster' 'js' attrs='defer' %}
+{% endblock javascript %}
+{% comment %}
+  A shift or a day of leave. In the department's roster it is a link that follows its registrar across the
+  month (or stops following them); in a registrar's own roster it names only the type, as every chip is theirs.
+  A day off or leave folded into its day's line is drawn in the day too, hidden unless its registrar is followed.
+{% endcomment %}
+{% partialdef chip-class %}
+  re-chip rb-chip
+  {% if chip.kind == "leave" %}
+    re-leave is-{{ chip.state }}
+    {% if chip.portion == "AM" %}
+      is-am
+    {% elif chip.portion == "PM" %}
+      is-pm
+    {% endif %}
+  {% else %}
+    re-shift is-{{ chip.type|lower }}
+    {% if chip.extra %}is-extra{% endif %}
+  {% endif %}
+  {% if chip.folded and not in_fold %}is-folded{% endif %}
+{% endpartialdef chip-class %}
+{% partialdef chip-body %}
+  {% if chip.kind == "leave" %}
+    <i class="bi {% if chip.state == 'approved' %}bi-check-lg{% elif chip.state == 'partial' %}bi-hourglass-split{% else %}bi-question-lg{% endif %}"
+       aria-hidden="true"></i>
+  {% endif %}
+  <span class="rb-type">{% if view == "mine" %}{{ chip.type_label }}{% else %}{{ chip.label }}{% endif %}{% if chip.portion == "AM" %}·am{% elif chip.portion == "PM" %}·pm{% endif %}</span>
+  {% if view != "mine" %}{{ chip.name }}{% endif %}
+  {% if chip.extra %}<span class="visually-hidden">(extra duty)</span>{% endif %}
+  {% if chip.state == "pending" %}
+    <span class="visually-hidden">(waiting for approval)</span>
+  {% elif chip.state == "partial" %}
+    <span class="visually-hidden">(approved by one of two)</span>
+  {% endif %}
+{% endpartialdef chip-body %}
+{% partialdef chip %}
+  {% if view == "mine" %}
+    <span class="{% partial chip-class %}" title="{{ chip.title }}">{% partial chip-body %}</span>
+  {% else %}
+    <a class="{% partial chip-class %}" href="?{{ follow_query }}{% if chip.registrar != follow %}{% if follow_query %}&amp;{% endif %}follow={{ chip.registrar }}{% endif %}" title="{{ chip.title }}" data-r="{{ chip.registrar }}" data-kind="{{ chip.kind }}" data-name="{{ chip.full_name }}" {% if chip.registrar == follow %}aria-describedby="rb-following-name"{% endif %}>
+      {% partial chip-body %}
+    </a>
+  {% endif %}
+{% endpartialdef chip %}
+{% partialdef month %}
+  <section class="rb-monthblock"
+           data-month="{{ roster.month|date:'Y-m' }}"
+           data-label="{{ roster.month|date:'F' }}"
+           aria-labelledby="rb-m-{{ roster.month|date:'Y-m' }}">
+    <h2 class="rb-month" id="rb-m-{{ roster.month|date:'Y-m' }}">{{ roster.month|date:"F Y" }}</h2>
+    {% if roster.unpublished %}
+      <p class="rb-note">
+        Nothing is published for {{ roster.month|date:"F Y" }} yet.
+        {% if roster.published_to %}The roster runs to {{ roster.published_to|short_date }}.{% endif %}
+      </p>
+    {% else %}
+      {% for week in roster.weeks %}
+        <ol class="rb-week" aria-label="Week of {{ week.monday|short_date }}">
+          {% for day in week.days %}
+            <li class="rb-day{% if day.weekend %} is-weekend{% endif %}{% if day.holiday %} is-holiday{% endif %}{% if day.today %} is-today{% endif %}{% if not day.published %} is-unpublished{% endif %}{% if not day.chips %} is-empty{% endif %}{% if day.outside %} is-outside{% endif %}"
+                {% if day.today and not day.outside %}id="rb-today" aria-current="date"{% endif %}>
+              <h3 class="rb-date">
+                <span class="rb-wd">{{ day.date|date:"D" }}</span>
+                <span class="rb-dn">{{ day.date|date:"j" }}</span>
+                <span class="rb-mo{% if day.date.day != 1 %} visually-hidden{% endif %}">{{ day.date|date:"M" }}</span>
+              </h3>
+              {% if day.today or day.holiday or not day.published %}
+                <p class="rb-tags">
+                  {% if day.today %}<span class="re-tag re-tag--today">Today</span>{% endif %}
+                  {% if day.holiday %}<span class="re-tag re-tag--holiday">{{ day.holiday }}</span>{% endif %}
+                  {% if not day.published %}<span class="re-tag re-tag--unpublished">Not published</span>{% endif %}
+                </p>
+              {% endif %}
+              {% if day.chips %}
+                <div class="rb-chips">
+                  {% for chip in day.chips %}
+                    {% partial chip %}
+                  {% endfor %}
+                </div>
+              {% endif %}
+              {% if day.folded %}
+                <details class="rb-fold rb-pop">
+                  <summary class="rb-fold-summary">
+                    {% if day.off_count %}{{ day.off_count }} off{% endif %}
+                    {% if day.off_count and day.leave_count %}·{% endif %}
+                    {% if day.leave_count %}{{ day.leave_count }} on leave{% endif %}
+                    {% if day.waiting_count %}
+                      <i class="bi bi-hourglass-split rb-fold-waiting" aria-hidden="true"></i><span class="visually-hidden">({{ day.waiting_count }} waiting for approval)</span>
+                    {% endif %}
+                  </summary>
+                  <div class="rb-pop-body rb-fold-list">
+                    {% with in_fold=True %}
+                      {% for chip in day.folded %}
+                        {% partial chip %}
+                      {% endfor %}
+                    {% endwith %}
+                  </div>
+                </details>
+              {% endif %}
+              {% if day.mates %}
+                <div class="rb-mates">
+                  <span class="rb-mates-label">With</span>
+                  <ul aria-label="On call with you">
+                    {% for mate in day.mates %}
+                      <li title="{{ mate.title }}">
+                        <span class="rb-swatch is-{{ mate.type|lower }}" aria-hidden="true"></span>{{ mate.label }} {{ mate.name }}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ol>
+      {% endfor %}
+    {% endif %}
+  </section>
+{% endpartialdef month %}
+{% block content %}
+  <div class="roster-board is-{{ view }}"
+       id="rb"
+       data-follow="{{ follow|default_if_none:'' }}">
+    {# Following a registrar: written here and, as it changes, by roster.js. #}
+    <style id="rb-follow-css">
+      {{ follow_css|safe }}
+    </style>
+    <header class="rb-head">
+      <div class="rb-bar">
+        <h1 class="rb-title">
+          {% if view == "mine" %}
+            My roster
+          {% else %}
+            Roster
+          {% endif %}
+        </h1>
+        {% if registrar %}
+          <nav class="rb-views" aria-label="Whose roster">
+            <a class="rb-view{% if view == 'mine' %} is-on{% endif %}"
+               href="?{{ mine_query }}"
+               {% if view == 'mine' %}aria-current="page"{% endif %}>Mine</a>
+            <a class="rb-view{% if view == 'dept' %} is-on{% endif %}"
+               href="?{{ dept_query }}"
+               {% if view == 'dept' %}aria-current="page"{% endif %}>Department</a>
+          </nav>
+        {% endif %}
+        {% if roster.published_to %}
+          <p class="rb-published">
+            Published to <time datetime="{{ roster.published_to|date:'Y-m-d' }}">{{ roster.published_to|short_date }}</time>
+          </p>
+        {% endif %}
+      </div>
+      <div class="rb-tools">
+        {% if view == "mine" %}
+          <p class="rb-lead">
+            {% if next_on_call %}
+              {% if days_to_next == 0 %}
+                On call today: <strong>{{ next_on_call.get_type_display }}</strong>
+              {% else %}
+                Next on call: <strong>{{ next_on_call.get_type_display }}, {{ next_on_call.date|short_date }}</strong>
+                <span class="rb-lead-when">
+                  {% if days_to_next == 1 %}
+                    tomorrow
+                  {% else %}
+                    in {{ days_to_next }} days
+                  {% endif %}
+                </span>
+              {% endif %}
+            {% else %}
+              No more on-call shifts for you in the published roster.
+            {% endif %}
+          </p>
+        {% else %}
+          <button class="re-btn rb-filter-toggle"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="rb-filters">
+            <i class="bi bi-funnel" aria-hidden="true"></i>Filter
+            {% if filter_count %}<span class="rb-count">{{ filter_count }}</span>{% endif %}
+          </button>
+          <form class="rb-filters"
+                id="rb-filters"
+                method="get"
+                up-target="#rb-main, #rb-filters"
+                up-history="true"
+                up-scroll="false">
+            <input type="hidden" name="view" value="dept" />
+            <input type="hidden" name="month" value="{{ roster.month|date:'Y-m' }}" />
+            <label class="rb-field">
+              <span class="rb-field-label">Follow</span>
+              <select class="re-input rb-person{% if follow %} is-narrowing{% endif %}"
+                      name="follow">
+                <option value="">Anyone, or click a name</option>
+                {% regroup people by year as by_year %}
+                {% for group in by_year %}
+                  <optgroup label="Year {{ group.grouper }}">
+                    {% for person in group.list %}
+                      <option value="{{ person.id }}"
+                              {% if person.id == follow %}selected{% endif %}>{{ person.name }}</option>
+                    {% endfor %}
+                  </optgroup>
+                {% endfor %}
+              </select>
+            </label>
+            {% if years %}
+              <div class="rb-field"
+                   role="radiogroup"
+                   aria-labelledby="rb-year-label"
+                   up-autosubmit>
+                <span class="rb-field-label" id="rb-year-label">Year</span>
+                <div class="rb-seg">
+                  <label class="rb-seg-option">
+                    <input type="radio" name="year" value="" {% if not year %}checked{% endif %} />
+                    <span>All</span>
+                  </label>
+                  {% for each in years %}
+                    <label class="rb-seg-option">
+                      <input type="radio"
+                             name="year"
+                             value="{{ each }}"
+                             {% if each == year %}checked{% endif %} />
+                      <span>{{ each }}</span>
+                    </label>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
+            <label class="rb-field">
+              <span class="rb-field-label">Show</span>
+              <select class="re-input{% if show %} is-narrowing{% endif %}"
+                      name="show"
+                      up-autosubmit>
+                {% for value, label in show_choices %}
+                  <option value="{{ value }}" {% if value == show %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            {% if filter_count %}<a class="re-btn re-btn--quiet rb-clear" href="?{{ clear_query }}">Clear</a>{% endif %}
+            <button class="re-btn rb-apply" type="submit">Apply</button>
+          </form>
+        {% endif %}
+        <details class="rb-key rb-pop">
+          <summary class="re-btn re-btn--quiet">Key</summary>
+          <div class="rb-pop-body">
+            <ul class="rb-key-list">
+              {% for item in key %}
+                <li>
+                  <span class="re-chip re-shift is-{{ item.type|lower }}">{{ item.short }}</span>
+                  {{ item.label }}
+                  {% if item.hours %}<span class="rb-key-hours">{{ item.hours }}</span>{% endif %}
+                </li>
+              {% endfor %}
+              <li>
+                <span class="re-chip re-shift is-night is-extra">Night</span> Extra duty (folded corner)
+              </li>
+              <li>
+                <span class="re-chip re-leave is-approved"><i class="bi bi-check-lg" aria-hidden="true"></i>Annual</span> Leave, approved
+              </li>
+              <li>
+                <span class="re-chip re-leave is-pending"><i class="bi bi-question-lg" aria-hidden="true"></i>Annual</span> Leave, waiting for approval
+              </li>
+              <li>
+                <span class="re-chip re-leave is-partial"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Annual</span> Leave, approved by one of two
+              </li>
+              <li>
+                <span class="re-chip re-leave is-approved is-am"><i class="bi bi-check-lg" aria-hidden="true"></i>Annual·am</span> Half a day: morning (am) or afternoon (pm)
+              </li>
+              {% if view != "mine" %}
+                <li>
+                  <span class="rb-key-fold">2 off · 9 on leave</span> A busy day's days off and leave: open it for the names
+                </li>
+              {% endif %}
+              <li>
+                <span class="rb-key-day is-holiday"></span> Public holiday
+              </li>
+              <li>
+                <span class="rb-key-day is-unpublished"></span> Not published yet: may still change
+              </li>
+            </ul>
+            {% if view != "mine" %}
+              <p class="rb-key-note">
+                Point at a name to see them across the month; click it to follow them. <kbd>[</kbd> and <kbd>]</kbd> change month.
+              </p>
+            {% endif %}
+          </div>
+        </details>
+      </div>
+    </header>
+    <div id="rb-main" class="rb-main">
+      <nav class="rb-monthbar" aria-label="Months">
+        <span class="re-joined rb-step">
+          {% if prev_query %}
+            <a class="re-btn rb-prev rb-keep"
+               href="?{{ prev_query }}"
+               up-follow
+               up-target="#rb-main"
+               up-history="true"
+               up-scroll="false"
+               aria-keyshortcuts="["
+               title="Previous month ([)"><i class="bi bi-chevron-left" aria-hidden="true"></i><span class="visually-hidden">Previous month</span></a>
+          {% else %}
+            <span class="re-btn rb-prev is-disabled" aria-hidden="true"><i class="bi bi-chevron-left"></i></span>
+          {% endif %}
+          {% if next_query %}
+            <a class="re-btn rb-next rb-keep"
+               href="?{{ next_query }}"
+               up-follow
+               up-target="#rb-main"
+               up-history="true"
+               up-scroll="false"
+               aria-keyshortcuts="]"
+               title="Next month (])"><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="visually-hidden">Next month</span></a>
+          {% else %}
+            <span class="re-btn rb-next is-disabled" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+          {% endif %}
+        </span>
+        <p class="rb-monthtitle" aria-hidden="true">{{ roster.month|date:"F Y" }}</p>
+        {% if roster.month != this_month %}
+          <a class="re-btn rb-today rb-keep"
+             href="?{{ today_query }}"
+             up-follow
+             up-target="#rb-main"
+             up-history="true"
+             up-scroll="false">Today</a>
+        {% else %}
+          <a class="re-btn rb-today rb-today-here" href="#rb-today">Today</a>
+        {% endif %}
+        <form class="rb-goto"
+              method="get"
+              up-target="#rb-main"
+              up-history="true"
+              up-scroll="false">
+          <input type="hidden" name="view" value="{{ view }}" />
+          {% if follow %}<input type="hidden" name="follow" value="{{ follow }}" />{% endif %}
+          {% if year %}<input type="hidden" name="year" value="{{ year }}" />{% endif %}
+          {% if show %}<input type="hidden" name="show" value="{{ show }}" />{% endif %}
+          <label class="visually-hidden" for="rb-month-input">Go to month</label>
+          <span class="re-joined">
+            <input class="re-input"
+                   id="rb-month-input"
+                   type="month"
+                   name="month"
+                   value="{{ roster.month|date:'Y-m' }}" />
+            <button class="re-btn" type="submit">Go</button>
+          </span>
+        </form>
+      </nav>
+      {% if view == "dept" %}
+        <p class="rb-following{% if followed %} is-on{% endif %}">
+          {% if followed %}
+            <span class="rb-following-text" aria-live="polite">Following <strong id="rb-following-name">{{ followed.name }}</strong>:</span>
+            <span class="rb-following-count">{{ follow_summary }}</span>
+            <a class="re-btn re-btn--quiet rb-unfollow" href="?{{ follow_query }}">Stop following</a>
+          {% else %}
+            <span class="rb-following-text" aria-live="polite"></span>
+          {% endif %}
+        </p>
+      {% endif %}
+      {% if roster.empty and filter_count %}
+        <p class="rb-empty">
+          Nothing in {{ roster.month|date:"F" }} matches the filters. <a href="?{{ clear_query }}">Clear filters</a>
+        </p>
+      {% endif %}
+      <div class="rb-weekdays" aria-hidden="true">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+      <div id="rb-start" class="rb-start">
+        {% if prev_query %}
+          <a class="re-btn re-btn--quiet rb-earlier rb-keep"
+             href="?{{ prev_query }}">Show {{ roster.prev|date:"F" }}</a>
+        {% endif %}
+      </div>
+      <div id="rb-weeks" class="rb-weeks">{% partial month %}</div>
+      <div id="rb-end" class="rb-end">
+        {% if append_query %}
+          <a class="re-btn rb-later rb-keep" href="?{{ append_query }}">Show {{ roster.next|date:"F" }}</a>
+        {% elif roster.published_to and not roster.unpublished %}
+          <p class="rb-edge">
+            <i class="bi bi-flag" aria-hidden="true"></i>
+            That's the published roster: it runs to {{ roster.published_to|short_date }}. Later weeks aren't published yet.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock content %}

@@ -8,18 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@fullcalendar/bootstrap5':
-        specifier: ^6.1.21
-        version: 6.1.21(@fullcalendar/core@6.1.21)
-      '@fullcalendar/core':
-        specifier: ^6.1.21
-        version: 6.1.21
-      '@fullcalendar/daygrid':
-        specifier: ^6.1.21
-        version: 6.1.21(@fullcalendar/core@6.1.21)
-      '@fullcalendar/list':
-        specifier: ^6.1.21
-        version: 6.1.21(@fullcalendar/core@6.1.21)
       alpinejs:
         specifier: ^3.17.4
         version: 3.17.4
@@ -956,24 +944,6 @@ packages:
   '@discoveryjs/json-ext@1.1.0':
     resolution: {integrity: sha512-Xc3VhU02wqZ1HvHRJUwL09HkZSTvidqY5Ya0NXBSYOxAp+Ln9dcJr9fySI+CkONzP3PekQo9WdzCv0PGER/mOA==}
     engines: {node: '>=14.17.0'}
-
-  '@fullcalendar/bootstrap5@6.1.21':
-    resolution: {integrity: sha512-dbWHhZ7Ih6PeoFcmsEbrI1nwia1mksD8xp0hqPEzCNDS/Yd3MXM/XxQSPYLlQZPRpHJABc+HjBxIOmdq35ZwmA==}
-    peerDependencies:
-      '@fullcalendar/core': ~6.1.21
-
-  '@fullcalendar/core@6.1.21':
-    resolution: {integrity: sha512-t3u/+sqh3Iq7TWtUnVLcGDUE6OWZh0UD3c04bI/l7lSLAgAKr3kngBmhHiQD1QXpwC8ZN5iNqG7a7gOVixhSKQ==}
-
-  '@fullcalendar/daygrid@6.1.21':
-    resolution: {integrity: sha512-QYb1y40RGYLlOxKpYWg8O+7njEnKnFG8Tt7qjnubJGR35s1phQg67E+81y2TyAbbm59p2JFOCXGDk9t6KDujIA==}
-    peerDependencies:
-      '@fullcalendar/core': ~6.1.21
-
-  '@fullcalendar/list@6.1.21':
-    resolution: {integrity: sha512-2rpIhs5pJmV7jyk4oX4bckNqurt6iHcsweE3FDYDdNpmRukPrARnyQYcaVFNVw2bnBFeR/jQW/St2MlauxF3GQ==}
-    peerDependencies:
-      '@fullcalendar/core': ~6.1.21
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2519,9 +2489,6 @@ packages:
     resolution: {integrity: sha512-C+y9x90UElAddDZmV4qOx9W53B61PO7cIqWz2dQsWlwswuq4mr8NEwytdGKboYbQlGZ3awrkTeNvcZiZNHnQ8A==}
     engines: {node: '>=20'}
 
-  preact@10.12.1:
-    resolution: {integrity: sha512-l8386ixSsBdbreOAkqtrwqHwdvR35ID8c3rKPa8lCWuO86dBi32QWHV4vfsZK1utLLFMvw+Z5Ad4XLkZzchscg==}
-
   proxy-addr@2.0.8:
     resolution: {integrity: sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==}
     engines: {node: '>= 0.10'}
@@ -3901,22 +3868,6 @@ snapshots:
       postcss: 8.5.28
 
   '@discoveryjs/json-ext@1.1.0': {}
-
-  '@fullcalendar/bootstrap5@6.1.21(@fullcalendar/core@6.1.21)':
-    dependencies:
-      '@fullcalendar/core': 6.1.21
-
-  '@fullcalendar/core@6.1.21':
-    dependencies:
-      preact: 10.12.1
-
-  '@fullcalendar/daygrid@6.1.21(@fullcalendar/core@6.1.21)':
-    dependencies:
-      '@fullcalendar/core': 6.1.21
-
-  '@fullcalendar/list@6.1.21(@fullcalendar/core@6.1.21)':
-    dependencies:
-      '@fullcalendar/core': 6.1.21
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
@@ -5481,8 +5432,6 @@ snapshots:
       source-map-js: 1.2.2
 
   powershell-utils@0.2.1: {}
-
-  preact@10.12.1: {}
 
   proxy-addr@2.0.8:
     dependencies:

@@ -8,7 +8,7 @@ module.exports = {
   entry: {
     project: path.resolve(__dirname, '../radscheduler/static/js/project'),
     vendors: path.resolve(__dirname, '../radscheduler/static/js/vendors'),
-    calendar: path.resolve(__dirname, '../radscheduler/static/js/calendar'),
+    roster: path.resolve(__dirname, '../radscheduler/static/js/roster'),
     editor: path.resolve(__dirname, '../radscheduler/static/js/editor'),
     editor_elm: path.resolve(__dirname, '../radscheduler/static/js/editor_elm'),
     leave_requests: path.resolve(

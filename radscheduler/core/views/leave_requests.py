@@ -3,9 +3,9 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET
 
+from radscheduler.core.labels import type_choices
 from radscheduler.core.roles import leave_approvers
 from radscheduler.core.views.decorators import staff_required
-from radscheduler.core.views.editor import type_choices
 
 
 @staff_required

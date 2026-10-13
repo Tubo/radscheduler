@@ -15,7 +15,7 @@
     <a class="navbar-brand" href="{% url 'home' %}"><i class="bi bi-calendar-heart navbar-mark" aria-hidden="true"></i>Radscheduler</a>
     {% if request.user.is_authenticated %}
       <ul class="navbar-nav navbar-primary" up-nav>
-        {% nav_link "home" "Calendar" also="calendar" %}
+        {% nav_link "home" "Roster" also="calendar" alias="/ /?* /roster/ /roster/?*" %}
         {% nav_link "leave_page" "My leave" %}
         {% nav_link "extra_page" "Extra duties" %}
       </ul>
@@ -49,16 +49,18 @@
           </div>
         {% endif %}
         <div class="navbar-end">
-          {# What registrars can see: past this day the roster may still change. The editor shows it in its own toolbar. #}
-          {% if request.resolver_match.url_name != "editor_next" and request.resolver_match.url_name != "editor_next_by_date" %}
-            <p class="navbar-text navbar-status">
-              {% if status.published_to %}
-                {% translate "Roster published to" %} <time datetime="{{ status.published_to|date:'Y-m-d' }}">{{ status.published_to|short_date }}</time>
-              {% else %}
-                {% translate "Roster not published" %}
-              {% endif %}
-            </p>
-          {% endif %}
+          {# What registrars can see: past this day the roster may still change. The editor and the roster show it themselves. #}
+          {% with page_name=request.resolver_match.url_name %}
+            {% if page_name != "editor_next" and page_name != "editor_next_by_date" and page_name != "home" and page_name != "calendar" %}
+              <p class="navbar-text navbar-status">
+                {% if status.published_to %}
+                  {% translate "Roster published to" %} <time datetime="{{ status.published_to|date:'Y-m-d' }}">{{ status.published_to|short_date }}</time>
+                {% else %}
+                  {% translate "Roster not published" %}
+                {% endif %}
+              </p>
+            {% endif %}
+          {% endwith %}
           <ul class="navbar-nav navbar-group navbar-account" up-nav>
             {% is_own_profile as here %}
             {# A long username is cut short, with the whole of it on hover. #}

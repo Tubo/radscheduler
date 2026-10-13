@@ -11,6 +11,7 @@ import radscheduler.core.views.editor as editor_views
 import radscheduler.core.views.extra_duties as extra_duties_views
 import radscheduler.core.views.leave_requests as leave_requests_views
 import radscheduler.core.views.leaves as leaves_views
+import radscheduler.core.views.roster as roster_views
 from radscheduler.core.api import api
 
 admin.site.site_header = "Radscheduler"
@@ -41,7 +42,7 @@ editor_view_urls = [
 ]
 
 roster_view_urls = [
-    path("", TemplateView.as_view(template_name="roster/calendar.html"), name="calendar"),
+    path("", roster_views.page, name="calendar"),
     path("editor/", include(editor_view_urls)),
     path("leave/", leave_requests_views.page, name="leave_requests"),
 ]
@@ -78,7 +79,7 @@ ical_urls = [
 
 
 urlpatterns = [
-    path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
+    path("", roster_views.page, name="home"),
     path("about/", TemplateView.as_view(template_name="pages/about.html"), name="about"),
     # Django Admin, use {% url 'admin:index' %}
     path(settings.ADMIN_URL, admin.site.urls),

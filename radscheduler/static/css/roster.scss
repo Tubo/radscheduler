@@ -1,0 +1,861 @@
+// The roster page that opens the app, a month at a time. From 48rem it is a calendar: seven columns, a week to
+// a row, paged by month. On a phone each day is a line of its own, the date down the side, and the list runs
+// on into the next month as it scrolls. Colours, buttons, tags and chips come from editor_elm.scss, which this
+// page's bundle loads first.
+
+.roster-board {
+  --rb-date-col: 3rem;
+  --rb-chip-display: inline-block;
+  --rb-layer:
+    0 8px 20px rgba(15, 23, 42, 0.14), 0 1px 3px rgba(15, 23, 42, 0.08);
+
+  padding: 0 0.75rem 3rem;
+  font-size: 0.875rem;
+}
+
+// Links that look like buttons keep the buttons' plain label.
+.roster-board a.re-btn:not(.re-btn--quiet) {
+  text-decoration: none;
+}
+
+// The head: title, whose roster and how far it's published; under it one quiet row with the registrar's next
+// shift, or the department's filters, and the key.
+
+.rb-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem 0 0.5rem;
+}
+
+.rb-bar,
+.rb-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.rb-title {
+  margin: 0 0.25rem 0 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+// Mine or the department's, and the year: the leave requests page's tabs.
+.rb-views,
+.rb-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--re-line);
+  border-radius: 0.5rem;
+  background: var(--re-panel);
+}
+
+.rb-view,
+.rb-seg-option span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.75rem;
+  padding: 0.125rem 0.75rem;
+  border-radius: 0.375rem;
+  color: var(--re-muted);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--re-ink);
+  }
+}
+
+.rb-view.is-on,
+.rb-seg-option input:checked + span {
+  background: #fff;
+  color: var(--re-ink);
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.12);
+}
+
+.rb-published {
+  margin: 0 0 0 auto;
+  color: var(--re-muted);
+  white-space: nowrap;
+}
+
+.rb-lead {
+  margin: 0;
+  font-size: 1rem;
+
+  strong {
+    font-weight: 600;
+  }
+}
+
+.rb-lead-when {
+  color: var(--re-muted);
+}
+
+// Filters: one quiet row, each label beside its control. Grey at rest; only a choice that narrows the roster
+// takes the blue.
+
+.rb-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.rb-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+}
+
+.rb-field-label {
+  color: var(--re-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.rb-person {
+  max-width: 15rem;
+}
+
+.rb-seg-option {
+  position: relative;
+  margin: 0;
+
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  span {
+    min-width: 2rem;
+    padding-inline: 0.5rem;
+  }
+
+  input:focus-visible + span {
+    outline: 2px solid var(--re-accent);
+    outline-offset: 1px;
+  }
+
+  // A year picked: the one blue in the row.
+  input:checked:not([value='']) + span {
+    background: var(--re-accent-tint);
+    color: var(--re-accent-deep);
+    box-shadow: inset 0 0 0 1px var(--re-accent);
+  }
+}
+
+.re-input.is-narrowing {
+  border-color: var(--re-accent);
+  background-color: var(--re-accent-tint);
+  color: var(--re-accent-deep);
+}
+
+.rb-filter-toggle {
+  display: none;
+}
+
+.rb-count {
+  min-width: 1.125rem;
+  padding: 0 0.3125rem;
+  border-radius: 999px;
+  background: var(--re-accent-tint);
+  color: var(--re-accent-deep);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+// With JavaScript the filters apply as they change.
+.has-js .rb-apply {
+  display: none;
+}
+
+// Things that open over the page: the key, and a busy day's days off and leave.
+
+.rb-pop {
+  position: relative;
+
+  > summary {
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+}
+
+.rb-pop-body {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 13rem;
+  max-width: 20rem;
+  padding: 0.5rem;
+  border: 1px solid var(--re-line-strong);
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow: var(--rb-layer);
+}
+
+.rb-key {
+  margin-left: auto;
+
+  .rb-pop-body {
+    right: 0;
+    left: auto;
+    width: min(34rem, calc(100vw - 1.5rem));
+    max-width: none;
+    padding: 0.75rem;
+  }
+}
+
+.rb-key-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.375rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .re-chip {
+    flex: none;
+    min-width: 3.5rem;
+    margin: 0;
+  }
+}
+
+.rb-key-hours {
+  color: var(--re-muted);
+}
+
+.rb-key-day {
+  flex: none;
+  width: 3.5rem;
+  height: 1.25rem;
+  border: 1px solid var(--re-line);
+  border-radius: 4px;
+
+  &.is-holiday {
+    background: var(--re-holiday);
+  }
+
+  &.is-unpublished {
+    background: var(--re-unpublished), #fff;
+  }
+}
+
+.rb-key-fold {
+  flex: none;
+  min-width: 3.5rem;
+  color: var(--re-muted);
+  font-size: 0.75rem;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+}
+
+.rb-key-note {
+  margin: 0.625rem 0 0;
+  color: var(--re-muted);
+}
+
+// The month: its name beside the arrows, the way back to today and to any month.
+
+.rb-monthbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.25rem 0 0.5rem;
+}
+
+.rb-monthtitle {
+  min-width: 9.5rem;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.rb-step .re-btn {
+  padding-inline: 0.5rem;
+}
+
+.re-btn.is-disabled {
+  border-color: var(--re-line);
+  color: var(--re-line-strong);
+  cursor: default;
+}
+
+.rb-goto {
+  margin-left: auto;
+
+  input[type='month'] {
+    width: 10rem;
+  }
+}
+
+// Following a registrar: who, what of theirs the month holds, and the way to stop.
+
+.rb-following {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  margin: 0 0 0.5rem;
+
+  &:not(.is-on) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+}
+
+.rb-following-count {
+  color: var(--re-muted);
+}
+
+.rb-empty,
+.rb-note {
+  margin: 0 0 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--re-wait-line);
+  border-radius: 0.5rem;
+  background: var(--re-wait-bg);
+  color: var(--re-wait);
+}
+
+.rb-note {
+  margin-top: 0.5rem;
+  border-color: var(--re-line);
+  background: var(--re-panel);
+  color: var(--re-ink);
+}
+
+// The weeks
+
+.rb-weekdays {
+  display: none;
+}
+
+.rb-start,
+.rb-end {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 0;
+}
+
+.rb-start:empty,
+.rb-end:empty {
+  display: none;
+}
+
+.rb-later.up-active {
+  border-color: var(--re-line);
+  color: var(--re-muted);
+  pointer-events: none;
+}
+
+.rb-later.is-failed {
+  border-color: var(--re-bad-line);
+  color: var(--re-bad);
+}
+
+.rb-edge {
+  margin: 0;
+  color: var(--re-muted);
+  text-align: center;
+}
+
+.rb-month {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.rb-week {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rb-day {
+  position: relative;
+  min-width: 0;
+  background: #fff;
+
+  &.is-weekend {
+    background: var(--re-weekend);
+  }
+
+  &.is-holiday {
+    background: var(--re-holiday);
+  }
+
+  &.is-unpublished {
+    background-image: var(--re-unpublished);
+  }
+
+  // Today's date wears the editor's blue rule along its top.
+  &.is-today {
+    box-shadow: inset 0 3px 0 var(--re-accent);
+  }
+}
+
+.rb-date {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.rb-wd {
+  color: var(--re-muted);
+  font-size: 0.75rem;
+}
+
+.rb-dn,
+.rb-mo {
+  font-weight: 600;
+}
+
+.is-today .rb-dn {
+  color: var(--re-accent);
+}
+
+.rb-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.5rem;
+  margin: 0;
+
+  .re-tag {
+    display: inline;
+  }
+}
+
+// Chips here are the editor's, the type in bold before the name. No transitions: following and pointing
+// change many chips at once, and a fade across a whole month reads as a flash.
+.rb-chip.re-chip {
+  margin: 0;
+  padding: 3px 5px;
+  text-decoration: none;
+}
+
+a.rb-chip:hover {
+  text-decoration: none;
+}
+
+// Days off and leave folded into their day's line, until their registrar is followed.
+.rb-chip.re-chip.is-folded {
+  display: none;
+}
+
+.rb-type {
+  font-weight: 600;
+
+  .re-leave & {
+    font-weight: 500;
+  }
+}
+
+// A busy day's days off and leave: a quiet line that opens their names.
+.rb-fold-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 2px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: var(--re-muted);
+  font-size: 0.75rem;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--re-panel);
+    color: var(--re-ink);
+  }
+
+  .rb-fold[open] > & {
+    background: var(--re-panel);
+    color: var(--re-ink);
+  }
+}
+
+.rb-fold-waiting {
+  color: var(--re-wait);
+  font-size: 0.6875rem;
+}
+
+.rb-fold-list .rb-chip.re-chip {
+  display: block;
+}
+
+// On call with you: the type's colour as a small swatch, then the type and name in words.
+.rb-mates {
+  display: flex;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+  color: var(--re-muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.625rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    white-space: nowrap;
+  }
+}
+
+.rb-mates-label {
+  flex: none;
+  font-weight: 600;
+}
+
+.rb-swatch {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.25rem;
+  border-radius: 2px;
+  vertical-align: 0.05em;
+
+  &.is-long {
+    background: var(--re-long);
+  }
+
+  &.is-swing {
+    background: var(--re-swing);
+  }
+
+  &.is-night {
+    background: var(--re-night);
+  }
+
+  &.is-help {
+    background: var(--re-help);
+  }
+}
+
+// On a phone: a list of days running on from month to month, each month's name stuck to the top while its days
+// pass, the date down the side and the chips wrapping beside it. A day with nothing on it is one slim line.
+@media (max-width: 47.99rem) {
+  .rb-published,
+  .rb-monthtitle,
+  .rb-step {
+    display: none;
+  }
+
+  .rb-monthbar {
+    padding-top: 0;
+  }
+
+  .rb-goto {
+    margin-left: 0;
+  }
+
+  // The filters fold behind a button, whoever is looking.
+  .has-js .rb-filter-toggle {
+    display: inline-flex;
+  }
+
+  .has-js .rb-filters:not(.is-open) {
+    display: none;
+  }
+
+  .rb-filters {
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+  }
+
+  .rb-field {
+    justify-content: space-between;
+  }
+
+  .rb-person {
+    flex: 1;
+    max-width: none;
+  }
+
+  .rb-seg {
+    overflow-x: auto;
+  }
+
+  .rb-key .rb-pop-body {
+    position: fixed;
+    top: auto;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    max-height: 70dvh;
+    overflow-y: auto;
+  }
+
+  .rb-month {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    margin: 0.5rem -0.75rem 0;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--re-line-strong);
+    background: #fff;
+  }
+
+  .rb-day {
+    display: grid;
+    grid-template-columns: var(--rb-date-col) minmax(0, 1fr);
+    column-gap: 0.5rem;
+    padding: 0.5rem 0.25rem 0.5rem 0;
+    border-bottom: 1px solid var(--re-line);
+
+    > :not(.rb-date) {
+      grid-column: 2;
+    }
+
+    &.is-empty {
+      padding-block: 0.25rem;
+    }
+
+    // The days of the months either side belong to those months' lists.
+    &.is-outside {
+      display: none;
+    }
+
+    &.is-today {
+      scroll-margin-top: 3rem;
+    }
+  }
+
+  .rb-date {
+    grid-row: 1 / span 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .rb-dn {
+    font-size: 1.125rem;
+  }
+
+  .rb-mo {
+    font-size: 0.75rem;
+  }
+
+  .rb-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .rb-chip.re-chip {
+    padding: 5px 7px;
+    font-size: 0.8125rem;
+  }
+
+  .rb-tags + .rb-chips {
+    margin-top: 0.25rem;
+  }
+
+  .is-empty .rb-date {
+    flex-direction: row;
+    gap: 0.375rem;
+    align-items: baseline;
+    color: var(--re-muted);
+  }
+
+  .is-empty .rb-dn {
+    font-size: 0.875rem;
+  }
+
+  // A busy day's days off and leave open in place, under its chips.
+  .rb-fold-summary {
+    min-height: 1.75rem;
+    margin-top: 0.25rem;
+  }
+
+  .rb-fold .rb-pop-body {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-width: 0;
+    max-width: none;
+    margin-top: 0.25rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .rb-fold-list .rb-chip.re-chip {
+    display: inline-block;
+  }
+
+  // Following someone: a bar along the bottom of the screen, always in reach. Who and the way to stop on one
+  // line, what of theirs is loaded under it.
+  .rb-following.is-on {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 0.75rem;
+    position: fixed;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+    padding: 0.625rem 0.75rem calc(0.625rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--re-line-strong);
+    background: #fff;
+    box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.08);
+  }
+
+  .rb-following.is-on .rb-following-count {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    font-size: 0.8125rem;
+  }
+
+  .rb-following.is-on ~ .rb-end {
+    padding-bottom: 4.5rem;
+  }
+}
+
+// From 48rem: a calendar month, a week to a row of seven columns, under a header of weekdays that stays in view.
+@media (min-width: 48rem) {
+  .roster-board {
+    --rb-chip-display: block;
+  }
+
+  .rb-start,
+  .rb-later {
+    display: none;
+  }
+
+  .rb-weekdays {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    border-bottom: 1px solid var(--re-line-strong);
+    background: #fff;
+    color: var(--re-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+
+    span {
+      padding: 0.375rem 0.375rem 0.25rem;
+    }
+  }
+
+  // The month's name is in the bar above; the heading stays for screen readers.
+  .rb-month {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+  }
+
+  .rb-week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    border-left: 1px solid var(--re-line);
+  }
+
+  .rb-day {
+    min-height: 6.5rem;
+    padding: 0.3125rem 0.3125rem 0.375rem;
+    border-right: 1px solid var(--re-line);
+    border-bottom: 1px solid var(--re-line);
+
+    // The days either side of the month: there, but stepped back.
+    &.is-outside {
+      background-color: var(--re-panel);
+
+      .rb-date {
+        color: var(--re-muted);
+      }
+
+      .rb-dn {
+        font-weight: 400;
+      }
+    }
+
+    // A day's list opens to the left from the weekend columns, to stay on the page.
+    &:nth-child(n + 6) .rb-fold .rb-pop-body {
+      right: 0;
+      left: auto;
+    }
+  }
+
+  // The weekday is in the header above; the date keeps it for screen readers.
+  .rb-wd {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+  }
+
+  .rb-date {
+    margin-bottom: 0.1875rem;
+    font-size: 0.8125rem;
+  }
+
+  .rb-tags {
+    margin: -0.125rem 0 0.1875rem;
+  }
+
+  .rb-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .rb-chip.re-chip {
+    display: block;
+  }
+}
+
+// Unpoly moves focus to a month it has just loaded, for screen readers; the whole month needn't wear a ring.
+.rb-main:focus {
+  outline: none;
+}
