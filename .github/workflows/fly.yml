@@ -43,7 +43,14 @@ jobs:
       - run: pnpm build
       - run: ruff check .
       - run: ruff format --check .
-      - run: pytest -p no:sugar
+      # A Playwright trace of each browser test that fails, kept with the run.
+      - run: pytest -p no:sugar --tracing retain-on-failure --output test-results
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+          if-no-files-found: ignore
 
   deploy:
     name: Deploy app

@@ -119,8 +119,10 @@ def test_the_senior_registrar_decides_day_by_day(page: Page, live_server, real_b
 
     # In approval mode, j moves to the request, and with focus in it a approves what is waiting there
     page.get_by_role("button", name="Review it").click()
+    # The shelf's request is on the page until the next frame, and approval mode has none to move to until its
+    # requests load: wait for them, not for the request, before j
+    expect(page.get_by_text("Reviewing 1 request")).to_be_visible()
     request = request_for(page, "Erika Lee")
-    expect(request).to_be_visible()
     page.locator("h1").click()
     page.keyboard.press("j")
     expect(request).to_be_focused()
