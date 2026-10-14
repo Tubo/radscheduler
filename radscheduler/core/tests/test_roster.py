@@ -268,7 +268,7 @@ class TestPage:
 
         assert [c.text.split()[0] for c in page.select(".rb-chip")] == ["Annual"]
         assert "is-narrowing" in page.select_one("select[name=show]")["class"]
-        assert page.select_one(".rb-clear").text == "Clear"
+        assert page.select_one(".rb-clear").text.strip() == "Clear all"
         assert page.select_one(".rb-count").text == "1"
 
     def test_the_filters_are_grey_until_they_narrow_the_roster(self, app, team):
@@ -287,7 +287,7 @@ class TestPage:
         prev, next_ = page.select_one("a.rb-prev"), page.select_one("a.rb-next")
         assert "month=2026-09" in prev["href"] and "month=2026-11" in next_["href"]
         assert f"follow={team['ed'].pk}" in next_["href"] and "show=oncall" in next_["href"]
-        assert next_["up-target"] == "#rb-main"
+        assert next_["up-target"] == "#rb-main, #rb-tools"
         assert page.select_one(".rb-monthtitle").text == "October 2026"
 
     def test_on_a_phone_the_next_month_runs_on_under_this_one(self, app, team):
@@ -330,11 +330,52 @@ class TestPage:
         page = app.get(reverse("home"), {"view": "dept"}, user=rachel.user).html
         following = app.get(reverse("home"), {"view": "dept", "follow": rachel.pk}, user=rachel.user).html
 
+        # A link, not a submit button, so it never rides along when the filters submit themselves.
         me = page.select_one(".rb-me")
-        assert (me["name"], me["value"], me["aria-pressed"]) == ("follow", str(rachel.pk), "false")
+        assert (me.name, me["role"], me["aria-pressed"]) == ("a", "button", "false")
+        assert f"follow={rachel.pk}" in me["href"]
+        assert page.select_one("#rb-filters button[type=submit][name=follow]") is None
         assert following.select_one(".rb-me")["aria-pressed"] == "true"
+        assert "follow=" not in following.select_one(".rb-me")["href"]
         assert " ".join(following.select_one(".rb-following-text").text.split()) == "Following you:"
         assert [a["aria-keyshortcuts"] for a in page.select(".rb-view")] == ["m", "m"]
 
     def test_only_a_registrar_has_a_me_button(self, app, admin_user):
         assert app.get(reverse("home"), user=admin_user).html.select_one(".rb-me") is None
+
+    def test_the_filters_never_hide_the_registrar_being_followed(self, app, team):
+        Shift.objects.create(date=TODAY, type=ShiftType.SWING, registrar=team["rachel"])
+        Leave.objects.create(date=TODAY, type=LeaveType.ANNUAL, registrar=team["ed"])
+        Shift.objects.create(date=TODAY, type=ShiftType.NIGHT, registrar=team["ed"])
+        rachels_year = Registrar.objects.get(pk=team["rachel"].pk).year
+
+        page = app.get(
+            reverse("home"), {"view": "dept", "year": rachels_year, "show": "oncall", "follow": team["ed"].pk}
+        ).html
+
+        assert [" ".join(c.text.split()) for c in page.select(".rb-chips .rb-chip")] == [
+            "Swing Rachel B.",
+            "Night Ed H.",
+            "Annual Ed H. (waiting for approval)",
+        ]
+        assert page.select_one(".rb-following-count").text == "1 on call and 1 day of leave in October"
+
+    def test_a_year_narrows_whom_to_follow_keeping_whoever_is_followed(self, app, team):
+        rachels_year = Registrar.objects.get(pk=team["rachel"].pk).year
+
+        page = app.get(reverse("home"), {"view": "dept", "year": rachels_year, "follow": team["mo"].pk}).html
+
+        names = [o.text for o in page.select("#rb-person option") if o["value"]]
+        assert names == ["Rachel Brown", "Mo Gray"] or names == ["Mo Gray", "Rachel Brown"]
+
+    def test_clear_all_clears_following_too_and_months_carry_the_filters(self, app, team):
+        Shift.objects.create(date=date(2026, 12, 1), type=ShiftType.SWING, registrar=team["rachel"])
+
+        page = app.get(reverse("home"), {"view": "dept", "follow": team["ed"].pk, "show": "leave"}).html
+
+        clear = page.select_one(".rb-clear")["href"]
+        assert "follow=" not in clear and "show=" not in clear
+        assert page.select_one(".rb-count").text == "2"
+        # Months re-draw the filter row too, so its month is the one on show.
+        assert page.select_one("a.rb-next")["up-target"] == "#rb-main, #rb-tools"
+        assert page.select_one("#rb-tools")["data-filtered"] == ""

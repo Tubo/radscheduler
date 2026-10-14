@@ -174,7 +174,9 @@
           </p>
         {% endif %}
       </div>
-      <div class="rb-tools">
+      <div class="rb-tools"
+           id="rb-tools"
+           {% if year or show %} data-filtered{% endif %}>
         {% if view == "mine" %}
           <p class="rb-lead">
             {% if next_on_call %}
@@ -195,19 +197,19 @@
             {% endif %}
           </p>
         {% else %}
-          <button class="re-btn rb-filter-toggle"
-                  type="button"
-                  aria-expanded="false"
-                  aria-controls="rb-filters">
-            <i class="bi bi-funnel" aria-hidden="true"></i>Filter
-            {% if filter_count %}<span class="rb-count">{{ filter_count }}</span>{% endif %}
-          </button>
+          {# On a phone, with JavaScript, this opens as a sheet from the Filter button in the month bar. #}
           <form class="rb-filters"
                 id="rb-filters"
                 method="get"
-                up-target="#rb-main, #rb-filters"
+                aria-label="Filters"
+                up-target="#rb-main, #rb-tools"
                 up-history="true"
-                up-scroll="false">
+                up-scroll="false"
+                up-focus="keep">
+            <div class="rb-sheet-head">
+              <h2 class="rb-sheet-title">Filter</h2>
+              <button class="re-btn re-btn--primary rb-done" type="button">Done</button>
+            </div>
             <input type="hidden" name="view" value="dept" />
             <input type="hidden" name="month" value="{{ roster.month|date:'Y-m' }}" />
             <div class="rb-field">
@@ -228,13 +230,12 @@
                   {% endfor %}
                 </select>
                 {% if registrar %}
-                  {# Without JavaScript this submits the form, its follow coming after the select's. #}
-                  <button class="re-btn rb-me{% if follow == registrar.pk %} is-on{% endif %}"
-                          type="submit"
-                          name="follow"
-                          value="{{ registrar.pk }}"
-                          aria-pressed="{% if follow == registrar.pk %}true{% else %}false{% endif %}"
-                          title="Follow yourself across the month">Me</button>
+                  {# A link, not a submit button, so it never rides along when the form submits itself. #}
+                  <a class="re-btn rb-me{% if follow == registrar.pk %} is-on{% endif %}"
+                     href="?{{ me_query }}"
+                     role="button"
+                     aria-pressed="{% if follow == registrar.pk %}true{% else %}false{% endif %}"
+                     title="Follow yourself across the month">Me</a>
                 {% endif %}
               </span>
             </div>
@@ -246,12 +247,17 @@
                 <span class="rb-field-label" id="rb-year-label">Year</span>
                 <div class="rb-seg">
                   <label class="rb-seg-option">
-                    <input type="radio" name="year" value="" {% if not year %}checked{% endif %} />
+                    <input id="rb-year-all"
+                           type="radio"
+                           name="year"
+                           value=""
+                           {% if not year %}checked{% endif %} />
                     <span>All</span>
                   </label>
                   {% for each in years %}
                     <label class="rb-seg-option">
-                      <input type="radio"
+                      <input id="rb-year-{{ each }}"
+                             type="radio"
                              name="year"
                              value="{{ each }}"
                              {% if each == year %}checked{% endif %} />
@@ -261,75 +267,59 @@
                 </div>
               </div>
             {% endif %}
-            <label class="rb-field">
-              <span class="rb-field-label">Show</span>
-              <select class="re-input{% if show %} is-narrowing{% endif %}"
+            <div class="rb-field">
+              <label class="rb-field-label" for="rb-show">Show</label>
+              <select id="rb-show"
+                      class="re-input{% if show %} is-narrowing{% endif %}"
                       name="show"
                       up-autosubmit>
                 {% for value, label in show_choices %}
                   <option value="{{ value }}" {% if value == show %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
               </select>
-            </label>
-            {% if filter_count %}<a class="re-btn re-btn--quiet rb-clear" href="?{{ clear_query }}">Clear</a>{% endif %}
+            </div>
+            {% if filter_count %}
+              <a class="re-btn rb-clear"
+                 href="?{{ clear_query }}"
+                 up-follow
+                 up-target="#rb-main, #rb-tools"
+                 up-history="true"
+                 up-scroll="false"><i class="bi bi-x-lg" aria-hidden="true"></i>Clear all</a>
+            {% endif %}
             <button class="re-btn rb-apply" type="submit">Apply</button>
           </form>
+          {# Who is followed and what of theirs the month holds; on a phone, a bar along the bottom. #}
+          <p class="rb-following{% if followed %} is-on{% endif %}">
+            {% if followed %}
+              <span class="rb-following-text" aria-live="polite">Following <strong id="rb-following-name">{% if registrar and followed.id == registrar.pk %}you{% else %}{{ followed.name }}{% endif %}</strong>:</span>
+              <span class="rb-following-count">{{ follow_summary }}</span>
+              <a class="rb-unfollow"
+                 href="?{{ follow_query }}"
+                 aria-label="Stop following"><i class="bi bi-x-lg" aria-hidden="true"></i></a>
+            {% else %}
+              <span class="rb-following-text" aria-live="polite"></span>
+            {% endif %}
+          </p>
         {% endif %}
-        <details class="rb-key rb-pop">
-          <summary class="re-btn re-btn--quiet">Key</summary>
-          <div class="rb-pop-body">
-            <ul class="rb-key-list">
-              {% for item in key %}
-                <li>
-                  <span class="re-chip re-shift is-{{ item.type|lower }}">{{ item.short }}</span>
-                  {{ item.label }}
-                  {% if item.hours %}<span class="rb-key-hours">{{ item.hours }}</span>{% endif %}
-                </li>
-              {% endfor %}
-              <li>
-                <span class="re-chip re-shift is-night is-extra">Night</span> Extra duty (folded corner)
-              </li>
-              <li>
-                <span class="re-chip re-leave is-approved"><i class="bi bi-check-lg" aria-hidden="true"></i>Annual</span> Leave, approved
-              </li>
-              <li>
-                <span class="re-chip re-leave is-pending"><i class="bi bi-question-lg" aria-hidden="true"></i>Annual</span> Leave, waiting for approval
-              </li>
-              <li>
-                <span class="re-chip re-leave is-partial"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Annual</span> Leave, approved by one of two
-              </li>
-              <li>
-                <span class="re-chip re-leave is-approved is-am"><i class="bi bi-check-lg" aria-hidden="true"></i>Annual·am</span> Half a day: morning (am) or afternoon (pm)
-              </li>
-              {% if view != "mine" %}
-                <li>
-                  <span class="rb-key-fold">2 off · 9 on leave</span> A busy day's days off and leave: open it for the names
-                </li>
-              {% endif %}
-              <li>
-                <span class="rb-key-day is-holiday"></span> Public holiday
-              </li>
-              <li>
-                <span class="rb-key-day is-unpublished"></span> Not published yet: may still change
-              </li>
-            </ul>
-            <p class="rb-key-note">
-              {% if view != "mine" %}Point at a name to see them across the month; click it to follow them.{% endif %}
-              <kbd>[</kbd> and <kbd>]</kbd> change month, <kbd>t</kbd> goes to today
-              {% if registrar %}and <kbd>m</kbd> switches between Mine and Department{% endif %}.
-            </p>
-          </div>
-        </details>
       </div>
     </header>
     <div id="rb-main" class="rb-main">
       <nav class="rb-monthbar" aria-label="Months">
+        {% if view == "dept" %}
+          <button class="re-btn rb-filter-toggle"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="rb-filters">
+            <i class="bi bi-funnel" aria-hidden="true"></i>Filter
+            {% if filter_count %}<span class="rb-count" aria-label="{{ filter_count }} on">{{ filter_count }}</span>{% endif %}
+          </button>
+        {% endif %}
         <span class="re-joined rb-step">
           {% if prev_query %}
             <a class="re-btn rb-prev rb-keep"
                href="?{{ prev_query }}"
                up-follow
-               up-target="#rb-main"
+               up-target="#rb-main, #rb-tools"
                up-history="true"
                up-scroll="false"
                aria-keyshortcuts="["
@@ -341,7 +331,7 @@
             <a class="re-btn rb-next rb-keep"
                href="?{{ next_query }}"
                up-follow
-               up-target="#rb-main"
+               up-target="#rb-main, #rb-tools"
                up-history="true"
                up-scroll="false"
                aria-keyshortcuts="]"
@@ -355,46 +345,93 @@
           <a class="re-btn rb-today rb-keep"
              href="?{{ today_query }}"
              up-follow
-             up-target="#rb-main"
+             up-target="#rb-main, #rb-tools"
              up-history="true"
              up-scroll="false">Today</a>
         {% else %}
           <a class="re-btn rb-today rb-today-here" href="#rb-today">Today</a>
         {% endif %}
-        <form class="rb-goto"
-              method="get"
-              up-target="#rb-main"
-              up-history="true"
-              up-scroll="false">
-          <input type="hidden" name="view" value="{{ view }}" />
-          {% if follow %}<input type="hidden" name="follow" value="{{ follow }}" />{% endif %}
-          {% if year %}<input type="hidden" name="year" value="{{ year }}" />{% endif %}
-          {% if show %}<input type="hidden" name="show" value="{{ show }}" />{% endif %}
-          <label class="visually-hidden" for="rb-month-input">Go to month</label>
-          <span class="re-joined">
-            <input class="re-input"
-                   id="rb-month-input"
-                   type="month"
-                   name="month"
-                   value="{{ roster.month|date:'Y-m' }}" />
-            <button class="re-btn" type="submit">Go</button>
-          </span>
-        </form>
+        <div class="rb-monthbar-end">
+          <details class="rb-key rb-pop">
+            <summary class="re-btn">
+              <i class="bi bi-info-circle" aria-hidden="true"></i>Key
+            </summary>
+            <div class="rb-pop-body">
+              <div class="rb-sheet-head">
+                <h2 class="rb-sheet-title">Key</h2>
+                <button class="re-btn re-btn--primary rb-pop-close" type="button">Done</button>
+              </div>
+              <ul class="rb-key-list">
+                {% for item in key %}
+                  <li>
+                    <span class="re-chip re-shift is-{{ item.type|lower }}">{{ item.short }}</span>
+                    {{ item.label }}
+                    {% if item.hours %}<span class="rb-key-hours">{{ item.hours }}</span>{% endif %}
+                  </li>
+                {% endfor %}
+                <li>
+                  <span class="re-chip re-shift is-night is-extra">Night</span> Extra duty (folded corner)
+                </li>
+                <li>
+                  <span class="re-chip re-leave is-approved"><i class="bi bi-check-lg" aria-hidden="true"></i>Annual</span> Leave, approved
+                </li>
+                <li>
+                  <span class="re-chip re-leave is-pending"><i class="bi bi-question-lg" aria-hidden="true"></i>Annual</span> Leave, waiting for approval
+                </li>
+                <li>
+                  <span class="re-chip re-leave is-partial"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Annual</span> Leave, approved by one of two
+                </li>
+                <li>
+                  <span class="re-chip re-leave is-approved is-am"><i class="bi bi-check-lg" aria-hidden="true"></i>Annual·am</span> Half a day: morning (am) or afternoon (pm)
+                </li>
+                {% if view != "mine" %}
+                  <li>
+                    <span class="rb-key-fold">2 off · 9 on leave</span> A busy day's days off and leave: open it for the names
+                  </li>
+                  <li>
+                    <span class="rb-key-filter">Year 2</span> A filter that narrows the roster; Clear all undoes them
+                  </li>
+                {% endif %}
+                <li>
+                  <span class="rb-key-day is-holiday"></span> Public holiday
+                </li>
+                <li>
+                  <span class="rb-key-day is-unpublished"></span> Not published yet: may still change
+                </li>
+              </ul>
+              <p class="rb-key-note">
+                {% if view != "mine" %}
+                  <span class="rb-key-pointer">Point at a name to see them across the month; click it to follow them, whatever the filters.</span>
+                  <span class="rb-key-touch">Tap a name to follow them across the month, whatever the filters.</span>
+                {% endif %}
+                <span class="rb-key-keys"><kbd>[</kbd> and <kbd>]</kbd> change month, <kbd>t</kbd> goes to today{% if registrar %} and <kbd>m</kbd> switches between Mine and Department{% endif %}.</span>
+              </p>
+            </div>
+          </details>
+          <form class="rb-goto"
+                method="get"
+                up-target="#rb-main, #rb-tools"
+                up-history="true"
+                up-scroll="false">
+            <input type="hidden" name="view" value="{{ view }}" />
+            {% if follow %}<input type="hidden" name="follow" value="{{ follow }}" />{% endif %}
+            {% if year %}<input type="hidden" name="year" value="{{ year }}" />{% endif %}
+            {% if show %}<input type="hidden" name="show" value="{{ show }}" />{% endif %}
+            <label class="visually-hidden" for="rb-month-input">Go to month</label>
+            <span class="re-joined">
+              <input class="re-input"
+                     id="rb-month-input"
+                     type="month"
+                     name="month"
+                     value="{{ roster.month|date:'Y-m' }}" />
+              <button class="re-btn" type="submit">Go</button>
+            </span>
+          </form>
+        </div>
       </nav>
-      {% if view == "dept" %}
-        <p class="rb-following{% if followed %} is-on{% endif %}">
-          {% if followed %}
-            <span class="rb-following-text" aria-live="polite">Following <strong id="rb-following-name">{% if registrar and followed.id == registrar.pk %}you{% else %}{{ followed.name }}{% endif %}</strong>:</span>
-            <span class="rb-following-count">{{ follow_summary }}</span>
-            <a class="re-btn re-btn--quiet rb-unfollow" href="?{{ follow_query }}">Stop following</a>
-          {% else %}
-            <span class="rb-following-text" aria-live="polite"></span>
-          {% endif %}
-        </p>
-      {% endif %}
       {% if roster.empty and filter_count %}
         <p class="rb-empty">
-          Nothing in {{ roster.month|date:"F" }} matches the filters. <a href="?{{ clear_query }}">Clear filters</a>
+          Nothing in {{ roster.month|date:"F" }} matches the filters. <a href="?{{ clear_query }}">Clear all</a>
         </p>
       {% endif %}
       <div class="rb-weekdays" aria-hidden="true">
@@ -402,14 +439,13 @@
       </div>
       <div id="rb-start" class="rb-start">
         {% if prev_query %}
-          <a class="re-btn re-btn--quiet rb-earlier rb-keep"
-             href="?{{ prev_query }}">Show {{ roster.prev|date:"F" }}</a>
+          <a class="re-btn rb-more rb-earlier rb-keep" href="?{{ prev_query }}"><i class="bi bi-arrow-up" aria-hidden="true"></i>Show {{ roster.prev|date:"F" }}</a>
         {% endif %}
       </div>
       <div id="rb-weeks" class="rb-weeks">{% partial month %}</div>
       <div id="rb-end" class="rb-end">
         {% if append_query %}
-          <a class="re-btn rb-later rb-keep" href="?{{ append_query }}">Show {{ roster.next|date:"F" }}</a>
+          <a class="re-btn rb-more rb-later rb-keep" href="?{{ append_query }}"><i class="bi bi-arrow-down" aria-hidden="true"></i>Show {{ roster.next|date:"F" }}</a>
         {% elif roster.published_to and not roster.unpublished %}
           <p class="rb-edge">
             <i class="bi bi-flag" aria-hidden="true"></i>

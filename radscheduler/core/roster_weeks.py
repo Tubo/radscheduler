@@ -222,10 +222,17 @@ def has_shifts(**lookups) -> bool:
     return Shift.objects.filter(registrar__isnull=False, **lookups).exists()
 
 
-def build(month: date, today: date, mine: Registrar | None = None, filters: Filters = Filters()) -> dict:
+def build(
+    month: date,
+    today: date,
+    mine: Registrar | None = None,
+    filters: Filters = Filters(),
+    follow: int | None = None,
+) -> dict:
     """
     The weeks of `month`'s calendar. With `mine`, only that registrar's days; otherwise the department's,
-    narrowed by `filters`, each busy day's days off and leave folded into a line.
+    narrowed by `filters`, each busy day's days off and leave folded into a line. The registrar being followed
+    (`follow`) is never filtered out: whatever the filters, their month is all there.
     """
     month = first_of_month(month)
     last = month_end(month)
@@ -269,12 +276,12 @@ def build(month: date, today: date, mine: Registrar | None = None, filters: Filt
                 by_day.setdefault(shift.date, []).append(chip)
             elif chip.kind == "oncall":
                 mates_by_day.setdefault(shift.date, []).append(chip)
-        elif chip.kind in filters.show and (keep is None or chip.registrar in keep):
+        elif chip.registrar == follow or (chip.kind in filters.show and (keep is None or chip.registrar in keep)):
             by_day.setdefault(shift.date, []).append(chip)
-    if mine or "leave" in filters.show:
-        for leave in leaves:
-            if keep is None or leave.registrar_id in keep:
-                by_day.setdefault(leave.date, []).append(leave_chip(leave, names))
+    for leave in leaves:
+        shown = "leave" in filters.show and (keep is None or leave.registrar_id in keep)
+        if mine or shown or leave.registrar_id == follow:
+            by_day.setdefault(leave.date, []).append(leave_chip(leave, names))
 
     weeks = []
     week_start = start

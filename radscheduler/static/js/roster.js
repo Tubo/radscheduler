@@ -146,9 +146,13 @@ up.compiler('.roster-board', (board) => {
     counts.className = 'rb-following-count';
     counts.textContent = summary(follow);
     const stop = document.createElement('a');
-    stop.className = 're-btn re-btn--quiet rb-unfollow';
+    stop.className = 'rb-unfollow';
     stop.href = withParam(window.location.href, 'follow', '');
-    stop.textContent = 'Stop following';
+    stop.setAttribute('aria-label', 'Stop following');
+    const cross = document.createElement('i');
+    cross.className = 'bi bi-x-lg';
+    cross.setAttribute('aria-hidden', 'true');
+    stop.append(cross);
     line.replaceChildren(text, counts, stop);
   }
 
@@ -190,6 +194,17 @@ up.compiler('.roster-board', (board) => {
       const input = document.createElement('input');
       Object.assign(input, { type: 'hidden', name: 'follow', value: follow });
       goto.prepend(input);
+    }
+    // With a filter on, the followed registrar's hidden days are only on the server: fetch the month again.
+    if (board.querySelector('#rb-tools [data-filtered]')) {
+      up.render({
+        url: window.location.href,
+        target: '#rb-main, #rb-tools',
+        history: false,
+        scroll: false,
+        focus: 'keep',
+      });
+      return;
     }
     unfoldToFit();
     rove();
@@ -366,6 +381,14 @@ up.compiler('.roster-board', (board) => {
   }
 
   function onDocumentClick(event) {
+    if (
+      filtersOpen &&
+      NARROW.matches &&
+      !event.target.closest('.rb-filters, .rb-filter-toggle')
+    ) {
+      filtersOpen = false;
+      showFilters();
+    }
     if (!event.target.closest('.rb-pop')) {
       for (const pop of board.querySelectorAll('.rb-pop[open]')) {
         if (!(NARROW.matches && pop.matches('.rb-fold'))) pop.open = false;
@@ -375,6 +398,12 @@ up.compiler('.roster-board', (board) => {
 
   function onEscape(event) {
     if (event.key !== 'Escape') return;
+    if (filtersOpen && NARROW.matches) {
+      filtersOpen = false;
+      showFilters();
+      board.querySelector('.rb-filter-toggle')?.focus();
+      return;
+    }
     const pop =
       event.target.closest?.('.rb-pop[open]') ||
       board.querySelector('.rb-pop[open]');
@@ -384,12 +413,28 @@ up.compiler('.roster-board', (board) => {
     }
   }
 
-  // On a phone the filters fold behind a button.
+  // On a phone the filters open as a sheet from the Filter button, and Done closes it; so does Done on the key.
   function onFilterToggle(event) {
-    const button = event.target.closest('.rb-filter-toggle');
-    if (!button) return;
-    filtersOpen = !filtersOpen;
-    showFilters();
+    if (event.target.closest('.rb-filter-toggle')) {
+      filtersOpen = !filtersOpen;
+      showFilters();
+      if (filtersOpen) board.querySelector('.rb-filters select')?.focus();
+    } else if (event.target.closest('.rb-done')) {
+      filtersOpen = false;
+      showFilters();
+      board.querySelector('.rb-filter-toggle')?.focus();
+    } else if (event.target.closest('.rb-pop-close')) {
+      const pop = event.target.closest('.rb-pop');
+      pop.open = false;
+      pop.querySelector('summary').focus();
+    }
+  }
+
+  // The form sends every field; leave the empty ones out of the address.
+  function onSubmit(event) {
+    for (const name of ['follow', 'year', 'show']) {
+      if (event.params?.get(name) === '') event.params.delete(name);
+    }
   }
 
   function showFilters() {
@@ -415,6 +460,7 @@ up.compiler('.roster-board', (board) => {
   board.addEventListener('focusout', letGo);
   board.addEventListener('click', onClick);
   board.addEventListener('click', onFilterToggle);
+  board.addEventListener('up:form:submit', onSubmit);
   board.addEventListener('click', onMe);
   board.addEventListener('change', onChange);
   board.addEventListener('keydown', onKeydown);

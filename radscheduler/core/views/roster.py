@@ -100,7 +100,7 @@ def page(request):
         show = ""
     filters = roster_weeks.Filters(years=(year,) if year else (), show=roster_weeks.SHOW_CHOICES[show][1])
 
-    roster = roster_weeks.build(month, today, mine=mine, filters=filters)
+    roster = roster_weeks.build(month, today, mine=mine, filters=filters, follow=follow)
 
     # The query that keeps this page's choices, for links that change one of them.
     kept = {"view": view, "year": year, "show": show, "follow": follow, "month": f"{month:%Y-%m}"}
@@ -112,8 +112,10 @@ def page(request):
     def month_query(other: date | None) -> str | None:
         return other and query(month=f"{other:%Y-%m}")
 
-    people = [] if mine else roster_weeks.people()
-    followed = next((p for p in people if p["id"] == follow), None)
+    everyone = [] if mine else roster_weeks.people()
+    followed = next((p for p in everyone if p["id"] == follow), None)
+    # A year narrows whom to follow too, keeping whoever is followed.
+    people = [p for p in everyone if not year or p["year"] == year or p["id"] == follow]
     if follow and followed is None:
         followed = next(
             (
@@ -145,7 +147,7 @@ def page(request):
             "follow_summary": followed and follow_summary(roster, follow),
             "follow_css": follow_css(follow),
             "people": people,
-            "years": sorted({p["year"] for p in people if p["year"]}),
+            "years": sorted({p["year"] for p in everyone if p["year"]}),
             "next_on_call": next_shift,
             "days_to_next": next_shift and (next_shift.date - today).days,
             "key": roster_weeks.shift_key(),
@@ -158,7 +160,10 @@ def page(request):
             "follow_query": query(follow=None),
             "mine_query": urlencode({"view": "mine", "month": f"{month:%Y-%m}"}),
             "dept_query": urlencode({"view": "dept", "month": f"{month:%Y-%m}"}),
-            "filter_count": bool(year) + bool(show),
-            "clear_query": query(year=None, show=None),
+            # Following someone counts as a filter, and Clear all clears it too.
+            "filter_count": bool(year) + bool(show) + bool(follow),
+            "clear_query": query(year=None, show=None, follow=None),
+            # The Me button follows the registrar, or stops if they already are.
+            "me_query": registrar and query(follow=None if follow == registrar.pk else registrar.pk),
         },
     )

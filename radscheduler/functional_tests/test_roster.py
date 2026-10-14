@@ -133,3 +133,44 @@ def test_a_registrar_follows_themselves_and_switches_views_with_m(page: Page, li
     expect(page.get_by_role("heading", level=1)).to_have_text("My roster")
     page.keyboard.press("m")
     expect(page.get_by_role("heading", level=1)).to_have_text("Roster")
+
+
+def test_a_registrars_filters_never_follow_them_and_keys_walk_the_years(page: Page, live_server, real_bundles, roster):
+    page.set_viewport_size({"width": 1440, "height": 900})
+    sign_in(page, live_server, "rachel")
+    page.goto(f"{live_server.url}/?view=dept")
+
+    page.get_by_label("Show").select_option("oncall")
+    expect(page.get_by_label("Show")).to_have_class(re.compile(r"\bis-narrowing\b"))
+    assert "follow" not in dict(parse_qsl(urlsplit(page.url).query))
+    expect(page.get_by_role("button", name="Me")).to_have_attribute("aria-pressed", "false")
+
+    # Arrow keys walk the years, focus staying in the group as the roster re-draws.
+    page.locator("#rb-year-all").focus()
+    page.keyboard.press("ArrowRight")
+    expect(page.locator("#rb-year-all + span, input[name=year]:checked + span").last).to_be_visible()
+    page.wait_for_function("() => new URLSearchParams(location.search).get('year') !== null")
+    first = dict(parse_qsl(urlsplit(page.url).query))["year"]
+    expect(page.locator(f"#rb-year-{first}")).to_be_focused()
+    page.keyboard.press("ArrowRight")
+    page.wait_for_function("y => new URLSearchParams(location.search).get('year') !== y", arg=first)
+    assert "follow" not in dict(parse_qsl(urlsplit(page.url).query))
+
+
+def test_on_a_phone_the_filters_open_as_a_sheet_from_the_month_bar(page: Page, live_server, real_bundles, roster):
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{live_server.url}/?view=dept")
+
+    filters = page.get_by_role("form", name="Filters")
+    expect(filters).to_be_hidden()
+    toggle = page.get_by_role("button", name="Filter")
+    expect(toggle).to_be_in_viewport()
+    toggle.click()
+    expect(filters).to_be_visible()
+    expect(toggle).to_have_attribute("aria-expanded", "true")
+
+    page.get_by_label("Show").select_option("leave")
+    expect(page.locator(".rb-filter-toggle .rb-count")).to_have_text("1")
+    expect(filters).to_be_visible()
+    page.get_by_role("button", name="Done").click()
+    expect(filters).to_be_hidden()

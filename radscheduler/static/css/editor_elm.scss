@@ -12,6 +12,8 @@
   --re-muted: #5c6670;
   --re-line: #dfe3e8;
   --re-line-strong: #aab3bc;
+  // A control's edge: 3:1 on white, so buttons and fields can be told apart from the page.
+  --re-control-line: #8a949e;
   --re-panel: #f6f7f9;
   --re-accent: #0b5ed7;
   --re-accent-deep: #0a4bab;
@@ -115,7 +117,7 @@
   gap: 0.375rem;
   min-height: 2rem;
   padding: 0.25rem 0.625rem;
-  border: 1px solid var(--re-line-strong);
+  border: 1px solid var(--re-control-line);
   border-radius: 0.375rem;
   background: #fff;
   color: var(--re-ink);
@@ -214,7 +216,7 @@
 .re-input {
   min-height: 2rem;
   padding: 0.25rem 0.5rem;
-  border: 1px solid var(--re-line-strong);
+  border: 1px solid var(--re-control-line);
   border-radius: 0.375rem;
   background: #fff;
   color: var(--re-ink);
