@@ -44,8 +44,11 @@
     <i class="bi {% if chip.state == 'approved' %}bi-check-lg{% elif chip.state == 'partial' %}bi-hourglass-split{% else %}bi-question-lg{% endif %}"
        aria-hidden="true"></i>
   {% endif %}
-  <span class="rb-type">{% if view == "mine" %}{{ chip.type_label }}{% else %}{{ chip.label }}{% endif %}{% if chip.portion == "AM" %}·am{% elif chip.portion == "PM" %}·pm{% endif %}</span>
-  {% if view != "mine" %}{{ chip.name }}{% endif %}
+  <span class="rb-type">{% if view == "mine" %}{{ chip.type_label }}{% else %}{{ chip.label }}{% endif %}</span>
+  {% if chip.portion == "AM" or chip.portion == "PM" %}
+    <span class="rb-half"><span aria-hidden="true">{{ chip.portion }}</span><span class="visually-hidden">{% if chip.portion == "AM" %}morning{% else %}afternoon{% endif %}</span></span>
+  {% endif %}
+  {% if view != "mine" %}<span class="rb-name">{{ chip.name }}</span>{% endif %}
   {% if chip.extra %}<span class="visually-hidden">(extra duty)</span>{% endif %}
   {% if chip.state == "pending" %}
     <span class="visually-hidden">(waiting for approval)</span>
@@ -361,44 +364,73 @@
                 <h2 class="rb-sheet-title">Key</h2>
                 <button class="re-btn re-btn--primary rb-pop-close" type="button">Done</button>
               </div>
-              <ul class="rb-key-list">
-                {% for item in key %}
-                  <li>
-                    <span class="re-chip re-shift is-{{ item.type|lower }}">{{ item.short }}</span>
-                    {{ item.label }}
-                    {% if item.hours %}<span class="rb-key-hours">{{ item.hours }}</span>{% endif %}
-                  </li>
-                {% endfor %}
-                <li>
-                  <span class="re-chip re-shift is-night is-extra">Night</span> Extra duty (folded corner)
-                </li>
-                <li>
-                  <span class="re-chip re-leave is-approved"><i class="bi bi-check-lg" aria-hidden="true"></i>Annual</span> Leave, approved
-                </li>
-                <li>
-                  <span class="re-chip re-leave is-pending"><i class="bi bi-question-lg" aria-hidden="true"></i>Annual</span> Leave, waiting for approval
-                </li>
-                <li>
-                  <span class="re-chip re-leave is-partial"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Annual</span> Leave, approved by one of two
-                </li>
-                <li>
-                  <span class="re-chip re-leave is-approved is-am"><i class="bi bi-check-lg" aria-hidden="true"></i>Annual·am</span> Half a day: morning (am) or afternoon (pm)
-                </li>
-                {% if view != "mine" %}
-                  <li>
-                    <span class="rb-key-fold">2 off · 9 on leave</span> A busy day's days off and leave: open it for the names
-                  </li>
-                  <li>
-                    <span class="rb-key-filter">Year 2</span> A filter that narrows the roster; Clear all undoes them
-                  </li>
-                {% endif %}
-                <li>
-                  <span class="rb-key-day is-holiday"></span> Public holiday
-                </li>
-                <li>
-                  <span class="rb-key-day is-unpublished"></span> Not published yet: may still change
-                </li>
-              </ul>
+              {# The page's own chips, as they are drawn here: what each kind of mark on this roster means. #}
+              <div class="rb-key-groups">
+                <section class="rb-key-group" aria-labelledby="rb-key-shifts">
+                  <h3 class="rb-key-heading" id="rb-key-shifts">Shifts</h3>
+                  <ul class="rb-key-list">
+                    {% for item in key %}
+                      <li>
+                        <span class="re-chip rb-chip re-shift is-{{ item.type|lower }}"><span class="rb-type">{{ item.short }}</span></span>
+                        <span>{{ item.label }} <span class="rb-key-hours">{{ item.hours|default:item.note }}</span></span>
+                      </li>
+                    {% endfor %}
+                    <li>
+                      <span class="re-chip rb-chip re-shift is-night is-extra"><span class="rb-type">Night</span></span>
+                      <span>Extra duty <span class="rb-key-hours">folded corner</span></span>
+                    </li>
+                  </ul>
+                </section>
+                <section class="rb-key-group" aria-labelledby="rb-key-leave">
+                  <h3 class="rb-key-heading" id="rb-key-leave">Leave</h3>
+                  <ul class="rb-key-list">
+                    <li>
+                      <span class="re-chip rb-chip re-leave is-approved"><i class="bi bi-check-lg" aria-hidden="true"></i><span class="rb-type">Annual</span></span>
+                      <span>Approved</span>
+                    </li>
+                    <li>
+                      <span class="re-chip rb-chip re-leave is-pending"><i class="bi bi-question-lg" aria-hidden="true"></i><span class="rb-type">Annual</span></span>
+                      <span>Waiting for approval</span>
+                    </li>
+                    <li>
+                      <span class="re-chip rb-chip re-leave is-partial"><i class="bi bi-hourglass-split" aria-hidden="true"></i><span class="rb-type">Annual</span></span>
+                      <span>Approved by one, <span class="rb-key-hours">waiting on the other</span></span>
+                    </li>
+                    <li>
+                      <span class="re-chip rb-chip re-leave is-approved"><i class="bi bi-check-lg" aria-hidden="true"></i><span class="rb-type">Annual</span><span class="rb-half">AM</span></span>
+                      <span>Half a day <span class="rb-key-hours">morning or afternoon</span></span>
+                    </li>
+                  </ul>
+                </section>
+                <section class="rb-key-group" aria-labelledby="rb-key-days">
+                  <h3 class="rb-key-heading" id="rb-key-days">Days</h3>
+                  <ul class="rb-key-list">
+                    <li>
+                      <span class="rb-key-day is-today"></span>
+                      <span>Today</span>
+                    </li>
+                    <li>
+                      <span class="rb-key-day is-holiday"></span>
+                      <span>Public holiday</span>
+                    </li>
+                    <li>
+                      <span class="rb-key-day is-unpublished"></span>
+                      <span>Not published yet <span class="rb-key-hours">may still change</span></span>
+                    </li>
+                    {% if view == "mine" %}
+                      <li>
+                        <span class="rb-key-mates"><span class="rb-swatch is-night" aria-hidden="true"></span>Night</span>
+                        <span>Who else is on call <span class="rb-key-hours">beside your on-call days</span></span>
+                      </li>
+                    {% else %}
+                      <li>
+                        <span class="rb-key-fold">3 off · 9 on leave</span>
+                        <span>A busy day's days off and leave <span class="rb-key-hours">open it for the names</span></span>
+                      </li>
+                    {% endif %}
+                  </ul>
+                </section>
+              </div>
               <p class="rb-key-note">
                 {% if view != "mine" %}
                   <span class="rb-key-pointer">Point at a name to see them across the month; click it to follow them, whatever the filters.</span>

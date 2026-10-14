@@ -355,8 +355,12 @@ def clock(t) -> str:
     return f"{t.hour % 12 or 12}{'am' if t.hour < 12 else 'pm'}"
 
 
+# What a day off is, for the key: they have no hours to say it.
+SHIFT_NOTES = {ShiftType.RDO: "rostered day off", ShiftType.SLEEP: "day off after nights"}
+
+
 def shift_key() -> list[dict]:
-    """Each shift type, its name and its hours, for the page's key."""
+    """Each shift type, its name and its hours (or what it is, for a day off), for the page's key."""
     key = []
     for shift_type in ON_CALL + OFF_DUTY:
         hours = ""
@@ -370,6 +374,7 @@ def shift_key() -> list[dict]:
                 "short": SHIFT_SHORT[shift_type],
                 "label": ShiftType(shift_type).label,
                 "hours": hours,
+                "note": SHIFT_NOTES.get(shift_type, ""),
             }
         )
     return key

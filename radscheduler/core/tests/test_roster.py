@@ -222,7 +222,7 @@ class TestPage:
         page = app.get(reverse("home")).html
 
         assert page.select_one("h1").text.strip() == "Roster"
-        chip = page.select_one(".rb-chip")
+        chip = page.select_one(".rb-chips .rb-chip")
         assert " ".join(chip.text.split()) == "Swing Rachel B."
         assert f"follow={team['rachel'].pk}" in chip["href"]
         assert page.select_one(".rb-views") is None
@@ -254,11 +254,11 @@ class TestPage:
         style = page.select_one("#rb-follow-css").text
         assert f'.rb-chip[data-r]:not([data-r="{ed}"])' in style
         assert f'.rb-chip[data-r="{ed}"].is-folded' in style
-        assert [c.get("aria-describedby") for c in page.select(".rb-chip")] == [None, "rb-following-name"]
+        assert [c.get("aria-describedby") for c in page.select(".rb-chips .rb-chip")] == [None, "rb-following-name"]
         assert " ".join(page.select_one(".rb-following-text").text.split()) == "Following Ed Hart:"
         assert page.select_one(".rb-following-count").text == "1 on call in October"
         # Its own chip stops following them, and the months either side keep following them.
-        assert "follow=" not in page.select(".rb-chip")[1]["href"]
+        assert "follow=" not in page.select(".rb-chips .rb-chip")[1]["href"]
 
     def test_filters_narrow_the_department_roster_and_can_be_cleared(self, app, team):
         Shift.objects.create(date=TODAY, type=ShiftType.SWING, registrar=team["rachel"])
@@ -266,7 +266,7 @@ class TestPage:
 
         page = app.get(reverse("home"), {"view": "dept", "show": "leave"}).html
 
-        assert [c.text.split()[0] for c in page.select(".rb-chip")] == ["Annual"]
+        assert [c.text.split()[0] for c in page.select(".rb-chips .rb-chip")] == ["Annual"]
         assert "is-narrowing" in page.select_one("select[name=show]")["class"]
         assert page.select_one(".rb-clear").text.strip() == "Clear all"
         assert page.select_one(".rb-count").text == "1"
