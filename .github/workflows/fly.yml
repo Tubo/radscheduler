@@ -45,19 +45,8 @@ jobs:
       - run: ruff format --check .
       # A Playwright trace of each browser test that fails, kept with the run.
       - run: pytest -p no:sugar --tracing retain-on-failure --output test-results
-      # TEMPORARY: run the flaky leave requests tests again and again for a trace of the failure.
-      - name: Repeat the leave requests tests
-        if: always()
-        run: |
-          failed=0
-          for i in $(seq 1 20); do
-            pytest -p no:sugar -q radscheduler/functional_tests/test_editor_elm.py \
-              radscheduler/functional_tests/test_leave_requests.py \
-              --tracing retain-on-failure --output "test-results/repeat-$i" || failed=$((failed + 1))
-          done
-          echo "$failed of 20 runs failed"
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: failure()
         with:
           name: playwright-traces
           path: test-results/
